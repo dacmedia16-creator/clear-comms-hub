@@ -1,133 +1,156 @@
 
-# Corrigir Permissões de Visualização para Moradores
 
-## Problema Identificado
+# Badge de Papel + Perfil de Usuário
 
-O morador (Francisco) está vendo os mesmos botões que um síndico/admin no dashboard:
-- "Gerenciar avisos" (não deveria ver)
-- "Config" (não deveria ver)
-- "Ver timeline" (deveria ver)
+## Visão Geral
 
-A informação do papel (`userRole`) já existe no hook `useProfile`, mas o `DashboardPage` não está usando essa informação para filtrar os botões.
+Adicionar duas funcionalidades ao dashboard:
+1. **Badge visual** mostrando o papel do usuário em cada card de condomínio
+2. **Página de Perfil** para o usuário visualizar e editar seus dados
 
 ---
 
-## Hierarquia de Permissões
+## 1. Badge de Papel no Card de Condomínio
 
-| Papel | Gerenciar Avisos | Configurações | Ver Timeline |
-|-------|------------------|---------------|--------------|
-| owner | Sim | Sim | Sim |
-| admin | Sim | Sim | Sim |
-| syndic | Sim | Sim | Sim |
-| collaborator | Sim | Nao | Sim |
-| resident | Nao | Nao | Sim |
+### Mapeamento de Papéis para Labels
+
+| Role | Label | Cor |
+|------|-------|-----|
+| owner | Proprietário | Verde |
+| admin | Administrador | Verde |
+| syndic | Síndico | Azul/Accent |
+| collaborator | Colaborador | Amarelo |
+| resident | Morador | Cinza |
+
+### Localização no Card
+
+O badge será adicionado logo abaixo do título do condomínio, antes da descrição:
+
+```text
+┌─────────────────────────────────────┐
+│  🏢                          Free   │
+│                                     │
+│  Vitrine Esplanada                  │
+│  🟢 Síndico                         │  ← Badge do papel
+│  Descrição do condomínio...         │
+│                                     │
+│  [ Gerenciar avisos ]               │
+│  [ Config ] [ Ver timeline ]        │
+└─────────────────────────────────────┘
+```
+
+### Arquivo: `src/pages/DashboardPage.tsx`
+
+- Adicionar mapeamento de `roleLabels` e `roleStyles`
+- Inserir badge após o `CardTitle` com o papel do usuário
+- Reutilizar estilos já existentes em `UserRoleBadges.tsx`
 
 ---
 
-## Solucao
+## 2. Página de Perfil do Usuário
 
-Modificar o `DashboardPage` para verificar o `userRole` de cada condomínio e renderizar botões diferentes:
+### Nova Rota: `/profile`
 
-### Para Moradores (resident):
-- Apenas botão "Ver timeline"
-- Texto de boas-vindas: "Veja os avisos do seu condomínio"
+### Funcionalidades:
+- Visualizar dados do perfil (nome, email, telefone)
+- Editar nome e telefone
+- Upload de avatar (opcional, fase futura)
+- Listar condomínios vinculados com seus papéis
+- Botão para alterar senha (redireciona para reset)
 
-### Para Colaboradores (collaborator):
-- Botão "Criar avisos" (não gerenciar)
-- Botão "Ver timeline"
+### Arquivo: `src/pages/ProfilePage.tsx` (novo)
 
-### Para Síndicos/Admins/Owners:
-- Botão "Gerenciar avisos"
-- Botão "Config"
-- Botão "Ver timeline"
+```text
+┌─────────────────────────────────────────────────────────┐
+│  AVISO PRO                            [←] Voltar        │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ┌──────┐                                               │
+│  │ 👤   │  João Silva                                   │
+│  └──────┘  joao@email.com                               │
+│                                                         │
+│  ─────────────────────────────────────────────────────  │
+│                                                         │
+│  Informações Pessoais                      [ Editar ]   │
+│                                                         │
+│  Nome: João Silva                                       │
+│  Email: joao@email.com                                  │
+│  Telefone: (11) 99999-9999                              │
+│                                                         │
+│  ─────────────────────────────────────────────────────  │
+│                                                         │
+│  Meus Condomínios                                       │
+│                                                         │
+│  • Vitrine Esplanada     🟢 Síndico                     │
+│  • Residencial Jardins   ⚪ Morador                     │
+│                                                         │
+│  ─────────────────────────────────────────────────────  │
+│                                                         │
+│  [ Alterar senha ]                                      │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Acesso à Página de Perfil
+
+- Adicionar link no header do `DashboardPage`
+- Clicar no nome do usuário ou em um ícone de usuário abre dropdown com "Meu Perfil"
 
 ---
 
-## Arquivos a Modificar
+## Arquivos a Criar/Modificar
 
-### 1. `src/pages/DashboardPage.tsx`
+### Novos Arquivos:
+1. `src/pages/ProfilePage.tsx` - Página de perfil completa
 
-**Mudanças:**
-- Criar funções helper para verificar permissões:
-  - `canManageAnnouncements(role)` - owner, admin, syndic, collaborator
-  - `canAccessSettings(role)` - owner, admin, syndic
-  
-- Modificar o card de condomínio para renderizar botões condicionalmente baseado no `condo.userRole`
+### Arquivos Modificados:
+1. `src/pages/DashboardPage.tsx`
+   - Adicionar badge de papel em cada card
+   - Adicionar dropdown no header com link para perfil
+   
+2. `src/App.tsx`
+   - Adicionar rota `/profile` → `ProfilePage`
 
-- Ajustar texto de boas-vindas baseado no papel (evitar "Síndico" para moradores)
+---
 
-### Código exemplo da lógica:
+## Detalhes Técnicos
+
+### Badge de Papel (DashboardPage)
 
 ```typescript
-// Helper functions
-const canManageAnnouncements = (role?: string) => 
-  ['owner', 'admin', 'syndic', 'collaborator'].includes(role || '');
+// Mapeamento de labels
+const roleLabels: Record<string, string> = {
+  owner: "Proprietário",
+  admin: "Administrador",
+  syndic: "Síndico",
+  collaborator: "Colaborador",
+  resident: "Morador",
+};
 
-const canAccessSettings = (role?: string) => 
-  ['owner', 'admin', 'syndic'].includes(role || '');
-
-// No card de cada condomínio:
-{canManageAnnouncements(condo.userRole) ? (
-  <Button asChild>
-    <Link to={`/admin/${condo.id}`}>Gerenciar avisos</Link>
-  </Button>
-) : null}
-
-{canAccessSettings(condo.userRole) && (
-  <Button asChild variant="outline">
-    <Link to={`/admin/${condo.id}/settings`}>Config</Link>
-  </Button>
-)}
-
-{/* Ver timeline sempre visível */}
-<Button asChild variant="outline">
-  <Link to={`/c/${condo.slug}`}>Ver timeline</Link>
-</Button>
+// Estilos por papel
+const roleStyles: Record<string, string> = {
+  owner: "bg-green-100 text-green-700",
+  admin: "bg-green-100 text-green-700",
+  syndic: "bg-blue-100 text-blue-700",
+  collaborator: "bg-yellow-100 text-yellow-700",
+  resident: "bg-gray-100 text-gray-600",
+};
 ```
+
+### ProfilePage
+
+- Usar `useProfile()` para obter dados do perfil e condomínios
+- Formulário de edição com `useState` para modo de edição
+- Atualizar perfil via `supabase.from("profiles").update()`
+- Lista de condomínios com badges de papel
 
 ---
 
-## Resultado Esperado
+## Resumo das Mudanças
 
-### Morador (Francisco):
+| Arquivo | Tipo | Descrição |
+|---------|------|-----------|
+| `src/pages/DashboardPage.tsx` | Modificar | Badge de papel + dropdown de perfil no header |
+| `src/pages/ProfilePage.tsx` | Criar | Página completa de perfil |
+| `src/App.tsx` | Modificar | Adicionar rota `/profile` |
 
-```text
-┌─────────────────────────────────────┐
-│  Vitrine Esplanada          Free    │
-│                                     │
-│  ┌─────────────────────────────┐    │
-│  │     Ver avisos              │    │
-│  └─────────────────────────────┘    │
-└─────────────────────────────────────┘
-```
-
-### Síndico/Admin:
-
-```text
-┌─────────────────────────────────────┐
-│  Vitrine Esplanada          Free    │
-│                                     │
-│  ┌─────────────────────────────┐    │
-│  │     Gerenciar avisos        │    │
-│  └─────────────────────────────┘    │
-│  ┌────────────┐ ┌──────────────┐    │
-│  │   Config   │ │ Ver timeline │    │
-│  └────────────┘ └──────────────┘    │
-└─────────────────────────────────────┘
-```
-
----
-
-## Benefícios
-
-1. **Segurança**: Moradores não veem botões de funcionalidades que não podem acessar
-2. **UX**: Interface limpa e apropriada para cada tipo de usuário
-3. **Escalável**: Fácil adicionar novos papéis no futuro
-
----
-
-## Considerações Técnicas
-
-- A segurança real (RLS) já está implementada no banco - esta mudança é apenas visual
-- Mesmo que um morador tentasse acessar `/admin/{id}`, o backend bloquearia as operações
-- Esta mudança melhora a experiência do usuário mostrando apenas o que ele pode fazer

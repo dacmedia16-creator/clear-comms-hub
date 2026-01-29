@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+
+declare const EdgeRuntime: {
+  waitUntil(promise: Promise<unknown>): void;
+};
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -108,6 +112,87 @@ function generateMessage(
     .replace("{link}", timelineUrl);
 }
 
+// Random delay between min and max seconds
+function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
+  const ms = Math.floor(Math.random() * (maxSeconds - minSeconds + 1) + minSeconds) * 1000;
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Background task to send messages with delays
+async function sendMessagesInBackground(
+  members: MemberRow[],
+  message: string,
+  authHeader: string,
+  announcement: Announcement,
+  condominium: Condominium,
+  supabase: SupabaseClient
+) {
+  console.log(`[Background] Iniciando envio para ${members.length} membros com delays...`);
+
+  for (let i = 0; i < members.length; i++) {
+    const member = members[i];
+    const profile = member.profiles;
+
+    // Wait before sending (except for first member)
+    if (i > 0) {
+      const delaySeconds = Math.floor(Math.random() * 16) + 15; // 15-30 seconds
+      console.log(`[Background] Aguardando ${delaySeconds}s antes do próximo envio...`);
+      await randomDelay(15, 30);
+    }
+
+    console.log(`[Background] Enviando para membro ${i + 1} de ${members.length}: ${profile.phone} (${profile.full_name || 'Unknown'})`);
+
+    try {
+      const formData = new FormData();
+      formData.append('msg', message);
+      formData.append('mobile_phone', profile.phone);
+
+      const response = await fetch(
+        'https://app.ziontalk.com/api/send_message/',
+        {
+          method: 'POST',
+          headers: { 'Authorization': authHeader },
+          body: formData,
+        }
+      );
+
+      const success = response.status === 201;
+      let errorMessage: string | undefined;
+
+      if (!success) {
+        errorMessage = await response.text();
+        console.error(`[Background] Falha ao enviar para ${profile.phone}: ${response.status} - ${errorMessage}`);
+      } else {
+        console.log(`[Background] ✓ Enviado com sucesso para ${profile.phone}`);
+      }
+
+      // Log the send attempt
+      await supabase.from('whatsapp_logs').insert({
+        announcement_id: announcement.id,
+        condominium_id: condominium.id,
+        recipient_phone: profile.phone,
+        recipient_name: profile.full_name,
+        status: success ? 'sent' : 'failed',
+        error_message: errorMessage || null,
+      });
+
+    } catch (sendError) {
+      console.error(`[Background] Exceção ao enviar para ${profile.phone}:`, sendError);
+
+      await supabase.from('whatsapp_logs').insert({
+        announcement_id: announcement.id,
+        condominium_id: condominium.id,
+        recipient_phone: profile.phone,
+        recipient_name: profile.full_name,
+        status: 'failed',
+        error_message: sendError instanceof Error ? sendError.message : 'Unknown error',
+      });
+    }
+  }
+
+  console.log(`[Background] ✓ Processamento concluído para ${members.length} membros`);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -170,84 +255,20 @@ serve(async (req) => {
     const message = generateMessage(announcement, condominium, baseUrl);
     console.log("Generated message:", message.substring(0, 100) + "...");
 
-    // Send to each member via ZionTalk
-    const results: Array<{ phone: string; name: string | null; success: boolean; error?: string }> = [];
-    
-    for (const member of members) {
-      const profile = member.profiles;
-      
-      try {
-        // Create form data for ZionTalk API
-        const formData = new FormData();
-        formData.append('msg', message);
-        formData.append('mobile_phone', profile.phone);
+    // Start background processing with delays
+    EdgeRuntime.waitUntil(
+      sendMessagesInBackground(members, message, authHeader, announcement, condominium, supabase)
+    );
 
-        console.log(`Sending to ${profile.phone} (${profile.full_name || 'Unknown'})`);
-
-        const response = await fetch(
-          'https://app.ziontalk.com/api/send_message/',
-          {
-            method: 'POST',
-            headers: { 'Authorization': authHeader },
-            body: formData,
-          }
-        );
-
-        const success = response.status === 201;
-        let errorMessage: string | undefined;
-        
-        if (!success) {
-          errorMessage = await response.text();
-          console.error(`Failed to send to ${profile.phone}: ${response.status} - ${errorMessage}`);
-        } else {
-          console.log(`Successfully sent to ${profile.phone}`);
-        }
-
-        results.push({ 
-          phone: profile.phone, 
-          name: profile.full_name,
-          success,
-          error: errorMessage
-        });
-
-        // Log the send attempt
-        await supabase.from('whatsapp_logs').insert({
-          announcement_id: announcement.id,
-          condominium_id: condominium.id,
-          recipient_phone: profile.phone,
-          recipient_name: profile.full_name,
-          status: success ? 'sent' : 'failed',
-          error_message: errorMessage || null,
-        });
-
-      } catch (sendError) {
-        console.error(`Exception sending to ${profile.phone}:`, sendError);
-        results.push({ 
-          phone: profile.phone, 
-          name: profile.full_name,
-          success: false,
-          error: sendError instanceof Error ? sendError.message : 'Unknown error'
-        });
-
-        // Log the failed attempt
-        await supabase.from('whatsapp_logs').insert({
-          announcement_id: announcement.id,
-          condominium_id: condominium.id,
-          recipient_phone: profile.phone,
-          recipient_name: profile.full_name,
-          status: 'failed',
-          error_message: sendError instanceof Error ? sendError.message : 'Unknown error',
-        });
-      }
-    }
-
-    const sent = results.filter(r => r.success).length;
-    const failed = results.filter(r => !r.success).length;
-
-    console.log(`Completed: ${sent} sent, ${failed} failed out of ${results.length} total`);
+    // Return immediate response
+    console.log(`Returning immediate response, ${members.length} messages will be sent in background with 15-30s delays`);
 
     return new Response(
-      JSON.stringify({ total: results.length, sent, failed, results }),
+      JSON.stringify({ 
+        total: members.length, 
+        status: 'processing',
+        message: `Enviando mensagens para ${members.length} moradores em segundo plano. Cada envio terá um intervalo de 15-30 segundos.`
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

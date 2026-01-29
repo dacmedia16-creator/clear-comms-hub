@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { 
   ArrowLeft, 
@@ -27,13 +28,17 @@ import {
   Edit, 
   ExternalLink,
   AlertTriangle,
-  Clock
+  Clock,
+  CheckCircle,
+  MessageCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ANNOUNCEMENT_CATEGORIES, AnnouncementCategory } from "@/lib/constants";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
+import { WhatsAppShareButton } from "@/components/WhatsAppShareButton";
+import { generateWhatsAppMessage, openWhatsAppShare } from "@/lib/whatsapp-templates";
 
 interface Announcement {
   id: string;
@@ -64,6 +69,8 @@ export default function AdminCondominiumPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [lastCreatedAnnouncement, setLastCreatedAnnouncement] = useState<Announcement | null>(null);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -155,10 +162,7 @@ export default function AdminCondominiumPage() {
       if (error) throw error;
 
       setAnnouncements((prev) => [data, ...prev]);
-      toast({
-        title: "Aviso publicado!",
-        description: "O aviso foi publicado com sucesso.",
-      });
+      setLastCreatedAnnouncement(data);
 
       // Reset form
       setCreateDialogOpen(false);
@@ -168,6 +172,9 @@ export default function AdminCondominiumPage() {
       setCategory("informativo");
       setIsPinned(false);
       setIsUrgent(false);
+
+      // Show success dialog with share option
+      setSuccessDialogOpen(true);
     } catch (error: any) {
       console.error("Error creating announcement:", error);
       toast({
@@ -433,6 +440,10 @@ export default function AdminCondominiumPage() {
                       </div>
 
                       <div className="flex items-center gap-1">
+                        <WhatsAppShareButton
+                          announcement={announcement}
+                          condominium={condominium}
+                        />
                         <Button
                           variant="ghost"
                           size="icon"
@@ -462,6 +473,56 @@ export default function AdminCondominiumPage() {
             })}
           </div>
         )}
+
+        {/* Success Dialog with Share Option */}
+        <Dialog open={successDialogOpen} onOpenChange={setSuccessDialogOpen}>
+          <DialogContent className="sm:max-w-md bg-card">
+            <DialogHeader>
+              <div className="mx-auto w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-2">
+                <CheckCircle className="w-6 h-6 text-emerald-600" />
+              </div>
+              <DialogTitle className="text-center font-display">Aviso publicado!</DialogTitle>
+              <DialogDescription className="text-center">
+                O aviso foi publicado com sucesso na timeline do condomínio.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {lastCreatedAnnouncement && (
+              <div className="bg-muted/50 rounded-lg p-4 my-2">
+                <p className="font-medium text-sm">{lastCreatedAnnouncement.title}</p>
+                {lastCreatedAnnouncement.summary && (
+                  <p className="text-sm text-muted-foreground mt-1">{lastCreatedAnnouncement.summary}</p>
+                )}
+              </div>
+            )}
+
+            <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                onClick={() => setSuccessDialogOpen(false)}
+                className="w-full sm:w-auto"
+              >
+                Fechar
+              </Button>
+              {lastCreatedAnnouncement && (
+                <Button
+                  onClick={() => {
+                    const message = generateWhatsAppMessage(
+                      lastCreatedAnnouncement,
+                      condominium,
+                      "https://clear-comms-hub.lovable.app"
+                    );
+                    openWhatsAppShare(message);
+                  }}
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Compartilhar via WhatsApp
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

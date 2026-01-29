@@ -147,53 +147,55 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="touch-target">
-                <Plus className="w-5 h-5 mr-2" />
-                Novo Condomínio
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-card">
-              <DialogHeader>
-                <DialogTitle className="font-display">Criar novo condomínio</DialogTitle>
-                <DialogDescription>
-                  Preencha as informações básicas do seu condomínio
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreateCondominium} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="condoName">Nome do condomínio *</Label>
-                  <Input
-                    id="condoName"
-                    placeholder="Ex: Residencial Jardins"
-                    value={newCondoName}
-                    onChange={(e) => setNewCondoName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="condoDescription">Descrição (opcional)</Label>
-                  <Textarea
-                    id="condoDescription"
-                    placeholder="Uma breve descrição do condomínio..."
-                    value={newCondoDescription}
-                    onChange={(e) => setNewCondoDescription(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={creating || !newCondoName.trim()}>
-                    {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Criar condomínio
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          {isSuperAdmin && (
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="touch-target">
+                  <Plus className="w-5 h-5 mr-2" />
+                  Novo Condomínio
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-card">
+                <DialogHeader>
+                  <DialogTitle className="font-display">Criar novo condomínio</DialogTitle>
+                  <DialogDescription>
+                    Preencha as informações básicas do seu condomínio
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateCondominium} className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="condoName">Nome do condomínio *</Label>
+                    <Input
+                      id="condoName"
+                      placeholder="Ex: Residencial Jardins"
+                      value={newCondoName}
+                      onChange={(e) => setNewCondoName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="condoDescription">Descrição (opcional)</Label>
+                    <Textarea
+                      id="condoDescription"
+                      placeholder="Uma breve descrição do condomínio..."
+                      value={newCondoDescription}
+                      onChange={(e) => setNewCondoDescription(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" disabled={creating || !newCondoName.trim()}>
+                      {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Criar condomínio
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Condominiums Grid */}
@@ -205,12 +207,16 @@ export default function DashboardPage() {
               </div>
               <h3 className="font-display text-xl font-semibold mb-2">Nenhum condomínio cadastrado</h3>
               <p className="text-muted-foreground mb-6">
-                Crie seu primeiro condomínio para começar a publicar avisos
+                {isSuperAdmin 
+                  ? "Crie seu primeiro condomínio para começar a publicar avisos"
+                  : "Você ainda não está vinculado a nenhum condomínio. Entre em contato com o administrador."}
               </p>
-              <Button onClick={() => setCreateDialogOpen(true)}>
-                <Plus className="w-5 h-5 mr-2" />
-                Criar meu primeiro condomínio
-              </Button>
+              {isSuperAdmin && (
+                <Button onClick={() => setCreateDialogOpen(true)}>
+                  <Plus className="w-5 h-5 mr-2" />
+                  Criar meu primeiro condomínio
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (

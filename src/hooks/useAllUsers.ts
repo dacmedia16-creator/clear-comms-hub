@@ -1,14 +1,22 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+interface UserRole {
+  role: "admin" | "syndic" | "resident" | "collaborator";
+  condominium_name: string;
+  condominium_id: string;
+}
+
 interface Profile {
   id: string;
   user_id: string;
   full_name: string | null;
   email: string | null;
+  phone: string | null;
   avatar_url: string | null;
   created_at: string;
   is_super_admin?: boolean;
+  roles?: UserRole[];
 }
 
 export function useAllUsers() {
@@ -34,18 +42,40 @@ export function useAllUsers() {
         .from("super_admins")
         .select("user_id");
 
-      if (saError) {
-        // If we can't access super_admins (not a super admin), just show profiles
-        console.warn("Could not fetch super admins list");
-        setUsers(profiles || []);
-      } else {
-        const superAdminIds = new Set(superAdmins?.map(sa => sa.user_id) || []);
-        const usersWithSA = (profiles || []).map(profile => ({
-          ...profile,
-          is_super_admin: superAdminIds.has(profile.id)
-        }));
-        setUsers(usersWithSA);
+      // Fetch user roles with condominium names
+      const { data: userRoles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select(`
+          user_id,
+          role,
+          condominium_id,
+          condominiums (name)
+        `);
+
+      const superAdminIds = new Set(superAdmins?.map(sa => sa.user_id) || []);
+      
+      // Group roles by user_id
+      const rolesByUser: Record<string, UserRole[]> = {};
+      if (!rolesError && userRoles) {
+        for (const ur of userRoles) {
+          if (!rolesByUser[ur.user_id]) {
+            rolesByUser[ur.user_id] = [];
+          }
+          rolesByUser[ur.user_id].push({
+            role: ur.role as UserRole["role"],
+            condominium_id: ur.condominium_id,
+            condominium_name: (ur.condominiums as any)?.name || "—",
+          });
+        }
       }
+
+      const usersWithRoles = (profiles || []).map(profile => ({
+        ...profile,
+        is_super_admin: superAdminIds.has(profile.id),
+        roles: rolesByUser[profile.id] || [],
+      }));
+
+      setUsers(usersWithRoles);
     } catch (err: any) {
       console.error("Error fetching users:", err);
       setError(err.message);

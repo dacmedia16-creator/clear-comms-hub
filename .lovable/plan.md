@@ -1,65 +1,77 @@
 
 
-# Correção: Permitir Auto-Cadastro de Morador
+# Restringir Criação de Condomínios para Super Admins
 
-## Problema Identificado
+## Resumo
 
-O teste revelou que o cadastro de morador falha na etapa final. O profile é criado corretamente, mas a vinculação ao condomínio (`user_roles`) não funciona devido a restrições de RLS.
-
-**Erro no console:** `403 Forbidden` ao tentar inserir em `user_roles`
-
-**Causa raiz:** A política atual de INSERT em `user_roles` exige:
-- `can_manage_condominium(condominium_id)` OU
-- `is_super_admin()`
-
-Um morador recém-cadastrado não tem nenhuma dessas permissões.
+Atualmente, qualquer usuário autenticado pode criar condomínios no dashboard. Vamos restringir essa funcionalidade para que **apenas super admins** possam criar condomínios.
 
 ---
 
-## Solução Proposta
+## Alterações Necessárias
 
-Criar uma política RLS adicional que permita auto-cadastro como morador:
+### 1. Política RLS no Banco de Dados
 
+Modificar a política de INSERT na tabela `condominiums`:
+
+**De (atual):**
 ```sql
-CREATE POLICY "Users can self-register as resident"
-ON public.user_roles
-FOR INSERT
 WITH CHECK (
-  role = 'resident'
-  AND user_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
-);
+  (owner_id = (SELECT id FROM profiles WHERE user_id = auth.uid())) 
+  OR is_super_admin()
+)
 ```
 
-Esta política permite que:
-1. O usuário insira **apenas** registros onde ele mesmo é o `user_id`
-2. A role seja **apenas** `resident` (não pode se auto-promover a admin/syndic)
-3. O condomínio existe (validado pela FK)
+**Para (nova):**
+```sql
+WITH CHECK (is_super_admin())
+```
+
+### 2. Interface do Dashboard
+
+Atualizar `src/pages/DashboardPage.tsx`:
+- Ocultar o botão "Novo Condomínio" para usuários que não são super admin
+- Remover a opção de criar condomínio quando a lista está vazia (para não-super-admins)
+- Manter a funcionalidade para super admins
 
 ---
 
-## Arquivos a Modificar
+## Fluxo Atualizado
 
-| Arquivo | Alteração |
-|---------|-----------|
-| Nova migração SQL | Adicionar política de auto-registro |
-
----
-
-## Resultado Esperado
-
-Após a correção:
-1. Morador preenche o formulário com código do condomínio
-2. Sistema cria a conta de autenticação
-3. Trigger cria o profile automaticamente
-4. Sistema vincula o morador ao condomínio com role `resident`
-5. Morador é redirecionado ao dashboard com acesso à timeline do condomínio
+| Tipo de Usuário | Pode Criar Condomínio? |
+|-----------------|------------------------|
+| Super Admin | Sim |
+| Síndico | Nao (apenas gerencia se for owner) |
+| Morador | Nao |
 
 ---
 
-## Segurança
+## Impacto
 
-A política proposta é segura porque:
-- Limita a role a `resident` apenas (não permite auto-promoção)
-- Garante que o usuário só pode criar registros para si mesmo
-- Mantém as políticas existentes para outras operações (update/delete)
+- **Síndicos existentes**: Continuam podendo gerenciar seus condomínios existentes
+- **Novos síndicos**: Precisam que um super admin crie o condomínio e os atribua como owner
+- **Segurança**: Maior controle sobre quais condomínios são criados na plataforma
+
+---
+
+## Detalhes Técnicos
+
+### Migração SQL
+
+```sql
+-- Remove a política antiga
+DROP POLICY IF EXISTS "Users can create condominiums" ON public.condominiums;
+
+-- Cria nova política restritiva
+CREATE POLICY "Only super admins can create condominiums"
+ON public.condominiums
+FOR INSERT
+WITH CHECK (is_super_admin());
+```
+
+### Alterações no Código
+
+No arquivo `DashboardPage.tsx`:
+- Condicionar renderização do Dialog de criação ao estado `isSuperAdmin`
+- Mostrar mensagem apropriada para síndicos sem condomínios
 

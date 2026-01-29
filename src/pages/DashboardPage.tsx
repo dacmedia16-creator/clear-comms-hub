@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -15,12 +16,36 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Bell, Building2, LogOut, Plus, FileText, Settings, Loader2, ExternalLink, Shield } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Bell, Building2, LogOut, Plus, FileText, Settings, Loader2, ExternalLink, Shield, User, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { RefreshButton } from "@/components/RefreshButton";
 import { PendingApprovalScreen } from "@/components/PendingApprovalScreen";
+
+// Role labels and styles
+const roleLabels: Record<string, string> = {
+  owner: "Proprietário",
+  admin: "Administrador",
+  syndic: "Síndico",
+  collaborator: "Colaborador",
+  resident: "Morador",
+};
+
+const roleStyles: Record<string, string> = {
+  owner: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  admin: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  syndic: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  collaborator: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+  resident: "bg-muted text-muted-foreground",
+};
 
 // Permission helper functions
 const canManageAnnouncements = (role?: string) =>
@@ -148,13 +173,31 @@ export default function DashboardPage() {
                   </Link>
                 </Button>
               )}
-              <span className="text-sm text-muted-foreground hidden sm:block">
-                {profile?.full_name || profile?.email}
-              </span>
               <RefreshButton />
-              <Button variant="ghost" size="icon" onClick={handleSignOut}>
-                <LogOut className="w-5 h-5" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    <span className="hidden sm:inline text-sm">
+                      {profile?.full_name?.split(" ")[0] || "Usuário"}
+                    </span>
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="flex items-center">
+                      <User className="w-4 h-4 mr-2" />
+                      Meu Perfil
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sair
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -260,8 +303,11 @@ export default function DashboardPage() {
                     </span>
                   </div>
                   <CardTitle className="font-display mt-3">{condo.name}</CardTitle>
+                  <Badge className={`${roleStyles[condo.userRole || "resident"]} mt-1`} variant="secondary">
+                    {roleLabels[condo.userRole || "resident"]}
+                  </Badge>
                   {condo.description && (
-                    <CardDescription className="line-clamp-2">{condo.description}</CardDescription>
+                    <CardDescription className="line-clamp-2 mt-2">{condo.description}</CardDescription>
                   )}
                 </CardHeader>
                 <CardContent>

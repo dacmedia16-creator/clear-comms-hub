@@ -18,6 +18,7 @@ import SuperAdminCondominiums from "./pages/super-admin/SuperAdminCondominiums";
 import SuperAdminCondoMembers from "./pages/super-admin/SuperAdminCondoMembers";
 import SuperAdminUsers from "./pages/super-admin/SuperAdminUsers";
 import SuperAdminTimelines from "./pages/super-admin/SuperAdminTimelines";
+import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/auth/signup/resident" element={<SignupResidentPage />} />
             <Route path="/auth/signup/syndic" element={<SignupSyndicPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin/:condoId" element={<AdminCondominiumPage />} />
             <Route path="/admin/:condoId/settings" element={<CondominiumSettingsPage />} />
             <Route path="/c/:slug" element={<TimelinePage />} />

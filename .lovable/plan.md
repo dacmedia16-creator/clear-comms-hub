@@ -1,148 +1,161 @@
 
-
-# Badge de Papel + Perfil de Usuário
+# Página de Gerenciamento da API WhatsApp
 
 ## Visão Geral
 
-Adicionar duas funcionalidades ao dashboard:
-1. **Badge visual** mostrando o papel do usuário em cada card de condomínio
-2. **Página de Perfil** para o usuário visualizar e editar seus dados
+Criar uma página administrativa para gerenciar a integração WhatsApp (Zion Talk) com funcionalidades:
+1. **Listar todos os condomínios** com status de WhatsApp (ativo/inativo)
+2. **Ativar/desativar** WhatsApp para cada condomínio
+3. **Enviar mensagem de teste** para validar a configuração
+4. **Visualizar logs** de envios recentes
 
 ---
 
-## 1. Badge de Papel no Card de Condomínio
+## Nova Rota: `/super-admin/whatsapp`
 
-### Mapeamento de Papéis para Labels
-
-| Role | Label | Cor |
-|------|-------|-----|
-| owner | Proprietário | Verde |
-| admin | Administrador | Verde |
-| syndic | Síndico | Azul/Accent |
-| collaborator | Colaborador | Amarelo |
-| resident | Morador | Cinza |
-
-### Localização no Card
-
-O badge será adicionado logo abaixo do título do condomínio, antes da descrição:
-
-```text
-┌─────────────────────────────────────┐
-│  🏢                          Free   │
-│                                     │
-│  Vitrine Esplanada                  │
-│  🟢 Síndico                         │  ← Badge do papel
-│  Descrição do condomínio...         │
-│                                     │
-│  [ Gerenciar avisos ]               │
-│  [ Config ] [ Ver timeline ]        │
-└─────────────────────────────────────┘
-```
-
-### Arquivo: `src/pages/DashboardPage.tsx`
-
-- Adicionar mapeamento de `roleLabels` e `roleStyles`
-- Inserir badge após o `CardTitle` com o papel do usuário
-- Reutilizar estilos já existentes em `UserRoleBadges.tsx`
+### Acesso
+- Somente Super Admins (protegido pelo `SuperAdminGuard`)
+- Link adicionado no menu do `SuperAdminDashboard`
 
 ---
 
-## 2. Página de Perfil do Usuário
-
-### Nova Rota: `/profile`
-
-### Funcionalidades:
-- Visualizar dados do perfil (nome, email, telefone)
-- Editar nome e telefone
-- Upload de avatar (opcional, fase futura)
-- Listar condomínios vinculados com seus papéis
-- Botão para alterar senha (redireciona para reset)
-
-### Arquivo: `src/pages/ProfilePage.tsx` (novo)
+## Layout da Página
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│  AVISO PRO                            [←] Voltar        │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌──────┐                                               │
-│  │ 👤   │  João Silva                                   │
-│  └──────┘  joao@email.com                               │
-│                                                         │
-│  ─────────────────────────────────────────────────────  │
-│                                                         │
-│  Informações Pessoais                      [ Editar ]   │
-│                                                         │
-│  Nome: João Silva                                       │
-│  Email: joao@email.com                                  │
-│  Telefone: (11) 99999-9999                              │
-│                                                         │
-│  ─────────────────────────────────────────────────────  │
-│                                                         │
-│  Meus Condomínios                                       │
-│                                                         │
-│  • Vitrine Esplanada     🟢 Síndico                     │
-│  • Residencial Jardins   ⚪ Morador                     │
-│                                                         │
-│  ─────────────────────────────────────────────────────  │
-│                                                         │
-│  [ Alterar senha ]                                      │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  🔔 Super Admin                            [ Atualizar ] [Sair] │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  API WhatsApp (Zion Talk)                                       │
+│  Gerencie a integração de notificações via WhatsApp             │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Status da API: 🟢 Configurada    [ Enviar Teste Global ] │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  Condomínios                                                    │
+│                                                                 │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ Nome              │ Plano  │ WhatsApp │ Ações              │ │
+│  ├───────────────────┼────────┼──────────┼────────────────────┤ │
+│  │ Vitrine Esplanada │ Free   │ 🟢 Ativo │ [Toggle] [Testar]  │ │
+│  │ Residencial Jardim│ Pro    │ ⚪ Inativo│ [Toggle] [Testar]  │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  Logs de Envio Recentes                                         │
+│                                                                 │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ Data/Hora   │ Condomínio  │ Telefone      │ Status         │ │
+│  ├─────────────┼─────────────┼───────────────┼────────────────┤ │
+│  │ 29/01 14:30 │ Vitrine     │ (11) 9999-999 │ ✅ Enviado     │ │
+│  │ 29/01 14:28 │ Vitrine     │ (11) 8888-888 │ ❌ Falhou      │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Acesso à Página de Perfil
+---
 
-- Adicionar link no header do `DashboardPage`
-- Clicar no nome do usuário ou em um ícone de usuário abre dropdown com "Meu Perfil"
+## Funcionalidades Detalhadas
+
+### 1. Status da API
+- Verifica se a `ZIONTALK_API_KEY` está configurada (via edge function de teste)
+- Mostra indicador visual: 🟢 Configurada / 🔴 Não configurada
+
+### 2. Tabela de Condomínios
+- Lista todos os condomínios com:
+  - Nome e plano
+  - Status atual do WhatsApp (`notification_whatsapp`)
+  - Toggle para ativar/desativar
+  - Botão "Testar" para envio de mensagem de teste
+
+### 3. Ação de Toggle
+- Atualiza `notification_whatsapp` na tabela `condominiums`
+- Feedback visual imediato com toast
+
+### 4. Envio de Teste
+- Cria uma edge function `test-whatsapp` que:
+  - Recebe um telefone de destino (input do super admin)
+  - Envia uma mensagem padrão de teste
+  - Retorna sucesso ou erro
+- Modal para inserir número de telefone antes de enviar
+
+### 5. Logs de Envio
+- Tabela mostrando registros da `whatsapp_logs`:
+  - Data/hora do envio
+  - Nome do condomínio
+  - Telefone do destinatário
+  - Status (enviado/falhou)
+  - Mensagem de erro (se houver)
 
 ---
 
 ## Arquivos a Criar/Modificar
 
 ### Novos Arquivos:
-1. `src/pages/ProfilePage.tsx` - Página de perfil completa
+1. `src/pages/super-admin/SuperAdminWhatsApp.tsx` - Página principal
+2. `supabase/functions/test-whatsapp/index.ts` - Edge function para teste
 
 ### Arquivos Modificados:
-1. `src/pages/DashboardPage.tsx`
-   - Adicionar badge de papel em cada card
-   - Adicionar dropdown no header com link para perfil
-   
-2. `src/App.tsx`
-   - Adicionar rota `/profile` → `ProfilePage`
+1. `src/App.tsx` - Adicionar rota `/super-admin/whatsapp`
+2. `src/pages/super-admin/SuperAdminDashboard.tsx` - Adicionar card de acesso
 
 ---
 
 ## Detalhes Técnicos
 
-### Badge de Papel (DashboardPage)
+### Hook para Carregar Dados
 
 ```typescript
-// Mapeamento de labels
-const roleLabels: Record<string, string> = {
-  owner: "Proprietário",
-  admin: "Administrador",
-  syndic: "Síndico",
-  collaborator: "Colaborador",
-  resident: "Morador",
-};
+// Buscar condomínios com status WhatsApp
+const { data: condominiums } = await supabase
+  .from("condominiums")
+  .select("id, name, slug, plan, notification_whatsapp")
+  .order("name");
 
-// Estilos por papel
-const roleStyles: Record<string, string> = {
-  owner: "bg-green-100 text-green-700",
-  admin: "bg-green-100 text-green-700",
-  syndic: "bg-blue-100 text-blue-700",
-  collaborator: "bg-yellow-100 text-yellow-700",
-  resident: "bg-gray-100 text-gray-600",
+// Buscar logs recentes
+const { data: logs } = await supabase
+  .from("whatsapp_logs")
+  .select(`
+    *,
+    condominiums:condominium_id (name)
+  `)
+  .order("sent_at", { ascending: false })
+  .limit(50);
+```
+
+### Toggle WhatsApp
+
+```typescript
+const toggleWhatsApp = async (condoId: string, enabled: boolean) => {
+  await supabase
+    .from("condominiums")
+    .update({ notification_whatsapp: enabled })
+    .eq("id", condoId);
 };
 ```
 
-### ProfilePage
+### Edge Function: test-whatsapp
 
-- Usar `useProfile()` para obter dados do perfil e condomínios
-- Formulário de edição com `useState` para modo de edição
-- Atualizar perfil via `supabase.from("profiles").update()`
-- Lista de condomínios com badges de papel
+```typescript
+// Recebe: { phone: string, condominiumId?: string }
+// Envia mensagem de teste via Zion Talk
+// Registra na whatsapp_logs com announcement_id = null
+```
+
+---
+
+## Fluxo de Teste
+
+1. Super Admin clica em "Testar" em um condomínio
+2. Abre modal pedindo número de telefone
+3. Ao confirmar, chama edge function `test-whatsapp`
+4. Exibe resultado (sucesso ou erro)
+5. Registra tentativa na tabela `whatsapp_logs`
 
 ---
 
@@ -150,7 +163,7 @@ const roleStyles: Record<string, string> = {
 
 | Arquivo | Tipo | Descrição |
 |---------|------|-----------|
-| `src/pages/DashboardPage.tsx` | Modificar | Badge de papel + dropdown de perfil no header |
-| `src/pages/ProfilePage.tsx` | Criar | Página completa de perfil |
-| `src/App.tsx` | Modificar | Adicionar rota `/profile` |
-
+| `src/pages/super-admin/SuperAdminWhatsApp.tsx` | Criar | Página completa de gerenciamento |
+| `supabase/functions/test-whatsapp/index.ts` | Criar | Edge function para teste de envio |
+| `src/App.tsx` | Modificar | Adicionar rota `/super-admin/whatsapp` |
+| `src/pages/super-admin/SuperAdminDashboard.tsx` | Modificar | Adicionar card "API WhatsApp" |

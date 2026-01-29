@@ -23,7 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, Building2, LogOut, Plus, FileText, Settings, Loader2, ExternalLink, Shield, User, ChevronDown } from "lucide-react";
+import { Bell, Building2, LogOut, Plus, FileText, Settings, Loader2, ExternalLink, Shield, User, ChevronDown, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
@@ -327,16 +327,20 @@ export default function DashboardPage() {
                         </Link>
                       </Button>
                     )}
-                    {(canAccessSettings(condo.userRole) || canManageAnnouncements(condo.userRole)) && !isResidentOnly(condo.userRole) && (
+                    {canAccessSettings(condo.userRole) && (
                       <div className="flex gap-2">
-                        {canAccessSettings(condo.userRole) && (
-                          <Button asChild variant="outline" className="flex-1">
-                            <Link to={`/admin/${condo.id}/settings`}>
-                              <Settings className="w-4 h-4 mr-1" />
-                              Config
-                            </Link>
-                          </Button>
-                        )}
+                        <Button asChild variant="outline" className="flex-1">
+                          <Link to={`/admin/${condo.id}/settings`}>
+                            <Settings className="w-4 h-4 mr-1" />
+                            Config
+                          </Link>
+                        </Button>
+                        <Button asChild variant="outline" className="flex-1">
+                          <Link to={`/admin/${condo.id}/members`}>
+                            <Users className="w-4 h-4 mr-1" />
+                            Moradores
+                          </Link>
+                        </Button>
                         <Button asChild variant="outline" className="flex-1">
                           <Link to={`/c/${condo.slug}`} target="_blank">
                             <ExternalLink className="w-4 h-4 mr-1" />

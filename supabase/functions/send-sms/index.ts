@@ -93,11 +93,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Fetch members with registered phone numbers
+    // Fetch members with registered phone numbers (only approved members)
     const { data: membersData, error: membersError } = await supabase
       .from('user_roles')
       .select('user_id, profiles!inner(id, phone, full_name)')
       .eq('condominium_id', condominium.id)
+      .eq('is_approved', true)
       .not('profiles.phone', 'is', null);
 
     if (membersError) {

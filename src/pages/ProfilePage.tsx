@@ -38,6 +38,27 @@ function getInitials(name: string | null | undefined): string {
     .slice(0, 2);
 }
 
+function formatPhoneBR(value: string): string {
+  // Remove tudo que não for número
+  const numbers = value.replace(/\D/g, "");
+  
+  // Limita a 11 dígitos
+  const limited = numbers.slice(0, 11);
+  
+  // Aplica a máscara
+  if (limited.length <= 2) {
+    return limited.length ? `(${limited}` : "";
+  }
+  if (limited.length <= 6) {
+    return `(${limited.slice(0, 2)}) ${limited.slice(2)}`;
+  }
+  if (limited.length <= 10) {
+    return `(${limited.slice(0, 2)}) ${limited.slice(2, 6)}-${limited.slice(6)}`;
+  }
+  // Celular com 9 dígitos
+  return `(${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`;
+}
+
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth();
   const { profile, condominiums, loading: profileLoading, refetch } = useProfile();
@@ -334,9 +355,10 @@ export default function ProfilePage() {
                   <Input
                     id="phone"
                     value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
+                    onChange={(e) => setEditPhone(formatPhoneBR(e.target.value))}
                     placeholder="(11) 99999-9999"
                     type="tel"
+                    maxLength={16}
                   />
                 </div>
               </>

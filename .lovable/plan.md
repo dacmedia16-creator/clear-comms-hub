@@ -1,27 +1,101 @@
 
-# Plano: Permitir Síndico Ver Moradores Cadastrados
+# Correção: Recursão Infinita nas Políticas de Profiles
 
-## Resumo do Problema
+## Problema Identificado
 
-Atualmente, apenas Super Admins conseguem ver a lista de moradores de um condomínio. Síndicos não têm acesso porque:
+A nova política RLS `"Condo managers can view member profiles"` está causando **recursão infinita** no banco de dados, impedindo qualquer consulta à tabela `profiles`.
 
-1. A página de membros (`SuperAdminCondoMembers`) está protegida pelo `SuperAdminGuard`
-2. A política de segurança da tabela `profiles` só permite visualização pelo próprio usuário ou Super Admins
+### Cadeia de Recursão
 
-## Solução Proposta
-
-Criar uma nova página de membros acessível para gestores (Síndico/Admin/Owner) e atualizar as permissões do banco de dados.
+```text
+SELECT FROM profiles
+    ↓
+Policy: "Condo managers can view member profiles"
+    ↓
+Chama can_manage_condominium()
+    ↓
+Chama has_condominium_role()
+    ↓
+JOIN public.profiles p ON ur.user_id = p.id
+    ↓
+SELECT FROM profiles (RECURSÃO!)
+```
 
 ---
 
-## Alterações Necessárias
+## Solução
 
-### 1. Banco de Dados (Migration SQL)
+### Passo 1: Remover a Política Problemática
 
-Atualizar a política RLS da tabela `profiles` para permitir que gestores de condomínios vejam os perfis dos membros vinculados:
+Primeiro, precisamos remover a política que está causando o problema para restaurar o funcionamento da aplicação:
 
 ```sql
--- Nova política: Gestores podem ver perfis de membros do seu condomínio
+DROP POLICY IF EXISTS "Condo managers can view member profiles" ON public.profiles;
+```
+
+### Passo 2: Atualizar as Funções de Verificação
+
+As funções `has_condominium_role`, `is_condominium_owner` e `is_super_admin` devem consultar diretamente `auth.uid()` sem fazer JOIN com `profiles`, usando a tabela `user_roles.user_id` como referência ao `profiles.id`:
+
+```sql
+-- Função auxiliar para obter o profile_id do usuário logado sem acessar profiles
+CREATE OR REPLACE FUNCTION public.get_current_profile_id()
+ RETURNS uuid
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $$
+  SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1;
+$$;
+
+-- Atualizar has_condominium_role para evitar JOIN com profiles
+CREATE OR REPLACE FUNCTION public.has_condominium_role(cond_id uuid, _role app_role DEFAULT NULL::app_role)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles ur
+    WHERE ur.condominium_id = cond_id 
+      AND ur.user_id = public.get_current_profile_id()
+      AND (_role IS NULL OR ur.role = _role)
+  );
+$$;
+
+-- Atualizar is_condominium_owner
+CREATE OR REPLACE FUNCTION public.is_condominium_owner(cond_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.condominiums c
+    WHERE c.id = cond_id 
+      AND c.owner_id = public.get_current_profile_id()
+  );
+$$;
+
+-- Atualizar is_super_admin
+CREATE OR REPLACE FUNCTION public.is_super_admin()
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.super_admins sa
+    WHERE sa.user_id = public.get_current_profile_id()
+  );
+$$;
+```
+
+### Passo 3: Recriar Política Sem Recursão
+
+Depois de atualizar as funções, podemos recriar a política de forma segura:
+
+```sql
 CREATE POLICY "Condo managers can view member profiles"
 ON public.profiles FOR SELECT
 USING (
@@ -33,91 +107,37 @@ USING (
 );
 ```
 
-### 2. Nova Página: Membros do Condomínio
-
-Criar `src/pages/CondoMembersPage.tsx` - página de visualização de membros para gestores:
-
-| Elemento | Descrição |
-|----------|-----------|
-| Header | Botão voltar + nome do condomínio |
-| Tabela | Lista de membros com nome, telefone, unidade, função |
-| Botão Adicionar | Para cadastrar novos moradores |
-
-### 3. Atualizar Rotas
-
-Adicionar nova rota em `src/App.tsx`:
-- `/admin/:condoId/members` → `CondoMembersPage`
-
-### 4. Atualizar Dashboard/Admin
-
-Adicionar botão "Ver Moradores" na página de administração do condomínio para síndicos/admins.
-
 ---
 
-## Fluxo de Acesso
-
-```text
-Dashboard
-    │
-    ├── Card do Condomínio
-    │       │
-    │       └── Botão "Gerenciar avisos" → AdminCondominiumPage
-    │                                           │
-    │                                           ├── Botão "Ver Moradores" → CondoMembersPage (NOVO)
-    │                                           │
-    │                                           └── Botão "Config" → CondominiumSettingsPage
-```
-
----
-
-## Arquivos a Criar/Modificar
+## Arquivos a Modificar
 
 | Arquivo | Ação | Descrição |
 |---------|------|-----------|
-| `supabase/migrations/...` | Criar | Política RLS para profiles |
-| `src/pages/CondoMembersPage.tsx` | Criar | Nova página de membros |
-| `src/App.tsx` | Modificar | Adicionar rota `/admin/:condoId/members` |
-| `src/pages/AdminCondominiumPage.tsx` | Modificar | Adicionar botão "Ver Moradores" |
+| Migration SQL | Criar | Remover política + atualizar funções + recriar política |
 
 ---
 
-## Permissões
+## Ordem de Execução
 
-| Ação | Síndico | Admin | Owner | Super Admin |
-|------|---------|-------|-------|-------------|
-| Ver lista de membros | ✅ | ✅ | ✅ | ✅ |
-| Adicionar membro | ✅ | ✅ | ✅ | ✅ |
-| Remover membro | ✅ | ✅ | ✅ | ✅ |
+1. DROP da política problemática (restaura acesso imediato)
+2. CREATE função `get_current_profile_id()`
+3. ALTER funções existentes para usar a nova função auxiliar
+4. CREATE da política corrigida
 
 ---
 
 ## Seção Técnica
 
-### Política RLS Detalhada
+### Por que a Recursão Acontece?
 
-A nova política verifica se o usuário logado pode gerenciar pelo menos um condomínio onde o perfil alvo está vinculado:
+O PostgreSQL avalia políticas RLS antes de retornar dados. Quando uma política em `profiles` chama uma função que faz SELECT em `profiles`, o banco precisa verificar as políticas novamente, criando um loop infinito.
 
-```sql
-CREATE POLICY "Condo managers can view member profiles"
-ON public.profiles FOR SELECT
-USING (
-  -- Permite visualizar perfis de membros dos condomínios que o usuário gerencia
-  EXISTS (
-    SELECT 1 FROM user_roles ur
-    WHERE ur.user_id = profiles.id
-    AND can_manage_condominium(ur.condominium_id)
-  )
-);
-```
+### Solução: Função SECURITY DEFINER
 
-### Reutilização de Componentes
+A função `get_current_profile_id()` é marcada como `SECURITY DEFINER`, o que significa que ela roda com os privilégios do **criador da função** (superuser), não do usuário atual. Isso permite que ela consulte `profiles` sem passar pelas políticas RLS, quebrando o ciclo de recursão.
 
-- `useCondoMembers` - hook existente que já busca membros
-- `AddMemberDialog` - componente existente para adicionar membros
-- O código será similar ao `SuperAdminCondoMembers`, mas sem o guard de super admin
+### Impacto
 
-### Segurança
-
-- Síndicos só verão membros dos **seus** condomínios
-- A função `can_manage_condominium` já inclui validação de owner/admin/syndic
-- Moradores comuns não terão acesso a esta página
+- Todas as funções de verificação continuarão funcionando normalmente
+- Nenhuma mudança no código frontend necessária
+- A aplicação voltará a funcionar imediatamente após a migração

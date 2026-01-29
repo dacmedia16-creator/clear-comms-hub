@@ -20,10 +20,14 @@ interface Condominium {
   owner_id: string;
 }
 
+interface CondominiumWithRole extends Condominium {
+  userRole?: "admin" | "syndic" | "resident" | "collaborator" | "owner";
+}
+
 export function useProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [condominiums, setCondominiums] = useState<Condominium[]>([]);
+  const [condominiums, setCondominiums] = useState<CondominiumWithRole[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,15 +50,47 @@ export function useProfile() {
         if (profileError) throw profileError;
         setProfile(profileData);
 
-        // Fetch condominiums owned by this user
         if (profileData) {
-          const { data: condoData, error: condoError } = await supabase
+          // Fetch condominiums owned by this user
+          const { data: ownedCondos, error: ownedError } = await supabase
             .from("condominiums")
             .select("*")
             .eq("owner_id", profileData.id);
 
-          if (condoError) throw condoError;
-          setCondominiums(condoData || []);
+          if (ownedError) throw ownedError;
+
+          // Fetch condominiums where user has a role
+          const { data: roleCondos, error: roleError } = await supabase
+            .from("user_roles")
+            .select(`
+              role,
+              condominiums (*)
+            `)
+            .eq("user_id", profileData.id);
+
+          if (roleError) throw roleError;
+
+          // Combine results without duplicates
+          const ownedWithRole: CondominiumWithRole[] = (ownedCondos || []).map((c) => ({
+            ...c,
+            userRole: "owner" as const,
+          }));
+
+          const roleWithRole: CondominiumWithRole[] = (roleCondos || [])
+            .filter((r: any) => r.condominiums)
+            .map((r: any) => ({
+              ...r.condominiums,
+              userRole: r.role,
+            }));
+
+          // Merge, prioritizing owned condos
+          const ownedIds = new Set(ownedWithRole.map((c) => c.id));
+          const merged = [
+            ...ownedWithRole,
+            ...roleWithRole.filter((c) => !ownedIds.has(c.id)),
+          ];
+
+          setCondominiums(merged);
         }
       } catch (error) {
         console.error("Error loading profile:", error);

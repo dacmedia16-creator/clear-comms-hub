@@ -60,18 +60,19 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile) {
       setEditName(profile.full_name || "");
-      setEditPhone("");
+      setEditPhone(profile.phone || "");
     }
   }, [profile]);
 
   const handleStartEdit = () => {
     setEditName(profile?.full_name || "");
+    setEditPhone(profile?.phone || "");
     setIsEditing(true);
   };
 
   const handleCancelEdit = () => {
     setEditName(profile?.full_name || "");
-    setEditPhone("");
+    setEditPhone(profile?.phone || "");
     setIsEditing(false);
   };
 
@@ -84,6 +85,7 @@ export default function ProfilePage() {
         .from("profiles")
         .update({
           full_name: editName.trim() || null,
+          phone: editPhone.trim() || null,
         })
         .eq("id", profile.id);
 
@@ -327,6 +329,16 @@ export default function ProfilePage() {
                   />
                   <p className="text-xs text-muted-foreground">O email não pode ser alterado</p>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Telefone</Label>
+                  <Input
+                    id="phone"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="(11) 99999-9999"
+                    type="tel"
+                  />
+                </div>
               </>
             ) : (
               <>
@@ -337,6 +349,10 @@ export default function ProfilePage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Email</p>
                   <p className="font-medium">{profile?.email || "Não informado"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Telefone</p>
+                  <p className="font-medium">{profile?.phone || "Não informado"}</p>
                 </div>
               </>
             )}

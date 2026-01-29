@@ -9,6 +9,9 @@ import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
 import AdminCondominiumPage from "./pages/AdminCondominiumPage";
 import TimelinePage from "./pages/TimelinePage";
+import SuperAdminDashboard from "./pages/super-admin/SuperAdminDashboard";
+import SuperAdminCondominiums from "./pages/super-admin/SuperAdminCondominiums";
+import SuperAdminUsers from "./pages/super-admin/SuperAdminUsers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +29,9 @@ const App = () => (
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/admin/:condoId" element={<AdminCondominiumPage />} />
             <Route path="/c/:slug" element={<TimelinePage />} />
+            <Route path="/super-admin" element={<SuperAdminDashboard />} />
+            <Route path="/super-admin/condominiums" element={<SuperAdminCondominiums />} />
+            <Route path="/super-admin/users" element={<SuperAdminUsers />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

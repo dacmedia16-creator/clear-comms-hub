@@ -18,6 +18,7 @@ import SuperAdminCondominiums from "./pages/super-admin/SuperAdminCondominiums";
 import SuperAdminCondoMembers from "./pages/super-admin/SuperAdminCondoMembers";
 import SuperAdminUsers from "./pages/super-admin/SuperAdminUsers";
 import SuperAdminTimelines from "./pages/super-admin/SuperAdminTimelines";
+import SuperAdminWhatsApp from "./pages/super-admin/SuperAdminWhatsApp";
 import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/super-admin/condominiums/:condoId/members" element={<SuperAdminCondoMembers />} />
             <Route path="/super-admin/users" element={<SuperAdminUsers />} />
             <Route path="/super-admin/timelines" element={<SuperAdminTimelines />} />
+            <Route path="/super-admin/whatsapp" element={<SuperAdminWhatsApp />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

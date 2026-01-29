@@ -26,10 +26,12 @@ import { useAllUsers } from "@/hooks/useAllUsers";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, ArrowLeft, Loader2, Shield, ShieldOff, Search } from "lucide-react";
+import { Users, ArrowLeft, Loader2, Shield, ShieldOff, Search, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
+import { EditUserDialog } from "@/components/super-admin/EditUserDialog";
+import { UserRoleBadges } from "@/components/super-admin/UserRoleBadges";
 
 export default function SuperAdminUsers() {
   const { users, loading, refetch } = useAllUsers();
@@ -39,6 +41,8 @@ export default function SuperAdminUsers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [promotingUser, setPromotingUser] = useState<any>(null);
   const [demotingUser, setDemotingUser] = useState<any>(null);
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [deletingUser, setDeletingUser] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
 
   const filteredUsers = users.filter(user =>
@@ -94,6 +98,42 @@ export default function SuperAdminUsers() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deletingUser) return;
+
+    setProcessing(true);
+    try {
+      // Delete from super_admins if exists
+      await supabase
+        .from("super_admins")
+        .delete()
+        .eq("user_id", deletingUser.id);
+
+      // Delete user_roles (cascade should handle this, but being explicit)
+      await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", deletingUser.id);
+
+      // Delete profile
+      const { error } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", deletingUser.id);
+
+      if (error) throw error;
+
+      toast({ title: "Usuário excluído com sucesso!" });
+      setDeletingUser(null);
+      refetch();
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   return (
     <SuperAdminGuard>
       <div className="min-h-screen bg-background">
@@ -142,7 +182,7 @@ export default function SuperAdminUsers() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Usuário</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Papéis</TableHead>
                     <TableHead>Criado em</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -161,46 +201,64 @@ export default function SuperAdminUsers() {
                           <div>
                             <div className="font-medium">{user.full_name || "—"}</div>
                             <div className="text-sm text-muted-foreground">{user.email}</div>
+                            {user.phone && (
+                              <div className="text-xs text-muted-foreground">{user.phone}</div>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
-                          {user.is_super_admin ? (
-                            <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive">
-                              <Shield className="w-3 h-3" />
-                              Super Admin
-                            </span>
-                          ) : (
-                            <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                              Usuário
-                            </span>
-                          )}
+                          <UserRoleBadges 
+                            isSuperAdmin={user.is_super_admin || false} 
+                            roles={user.roles || []} 
+                          />
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {format(new Date(user.created_at), "dd/MM/yyyy", { locale: ptBR })}
                         </TableCell>
                         <TableCell className="text-right">
-                          {user.id !== currentProfile?.id && (
-                            user.is_super_admin ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDemotingUser(user)}
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <ShieldOff className="w-4 h-4 mr-1" />
-                                Remover SA
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setPromotingUser(user)}
-                              >
-                                <Shield className="w-4 h-4 mr-1" />
-                                Promover
-                              </Button>
-                            )
-                          )}
+                          <div className="flex items-center justify-end gap-1">
+                            {user.id !== currentProfile?.id && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setEditingUser(user)}
+                                  title="Editar"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setDeletingUser(user)}
+                                  className="text-destructive hover:text-destructive"
+                                  title="Excluir"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                                {user.is_super_admin ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setDemotingUser(user)}
+                                    className="text-destructive hover:text-destructive"
+                                    title="Remover Super Admin"
+                                  >
+                                    <ShieldOff className="w-4 h-4" />
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setPromotingUser(user)}
+                                    title="Promover a Super Admin"
+                                  >
+                                    <Shield className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -210,6 +268,34 @@ export default function SuperAdminUsers() {
             </Card>
           )}
         </main>
+
+        {/* Edit User Dialog */}
+        <EditUserDialog
+          user={editingUser}
+          open={!!editingUser}
+          onOpenChange={(open) => !open && setEditingUser(null)}
+          onSuccess={refetch}
+        />
+
+        {/* Delete User Dialog */}
+        <AlertDialog open={!!deletingUser} onOpenChange={(open) => !open && setDeletingUser(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir <strong>{deletingUser?.full_name || deletingUser?.email}</strong>?
+                Esta ação é irreversível e removerá todos os dados associados.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={processing}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} disabled={processing} className="bg-destructive hover:bg-destructive/90">
+                {processing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Promote Dialog */}
         <AlertDialog open={!!promotingUser} onOpenChange={(open) => !open && setPromotingUser(null)}>

@@ -22,12 +22,25 @@ import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { RefreshButton } from "@/components/RefreshButton";
 import { PendingApprovalScreen } from "@/components/PendingApprovalScreen";
 
+// Permission helper functions
+const canManageAnnouncements = (role?: string) =>
+  ['owner', 'admin', 'syndic', 'collaborator'].includes(role || '');
+
+const canAccessSettings = (role?: string) =>
+  ['owner', 'admin', 'syndic'].includes(role || '');
+
+const isResidentOnly = (role?: string) => role === 'resident';
+
 export default function DashboardPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { profile, condominiums, pendingRoles, loading: profileLoading, refetch } = useProfile();
   const { isSuperAdmin } = useSuperAdmin();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Check if user is only a resident (no admin roles)
+  const hasOnlyResidentRoles = condominiums.length > 0 && 
+    condominiums.every(c => c.userRole === 'resident');
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newCondoName, setNewCondoName] = useState("");
@@ -150,12 +163,14 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="container px-4 mx-auto py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div>
+        <div>
             <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
-              Olá, {profile?.full_name?.split(" ")[0] || "Síndico"}! 👋
+              Olá, {profile?.full_name?.split(" ")[0] || "Usuário"}! 👋
             </h1>
             <p className="text-muted-foreground mt-1">
-              Gerencie seus condomínios e avisos
+              {hasOnlyResidentRoles 
+                ? "Veja os avisos do seu condomínio"
+                : "Gerencie seus condomínios e avisos"}
             </p>
           </div>
 
@@ -251,26 +266,39 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-col gap-2">
-                    <Button asChild className="w-full touch-target">
-                      <Link to={`/admin/${condo.id}`}>
-                        <FileText className="w-4 h-4 mr-2" />
-                        Gerenciar avisos
-                      </Link>
-                    </Button>
-                    <div className="flex gap-2">
-                      <Button asChild variant="outline" className="flex-1">
-                        <Link to={`/admin/${condo.id}/settings`}>
-                          <Settings className="w-4 h-4 mr-1" />
-                          Config
+                    {canManageAnnouncements(condo.userRole) ? (
+                      <Button asChild className="w-full touch-target">
+                        <Link to={`/admin/${condo.id}`}>
+                          <FileText className="w-4 h-4 mr-2" />
+                          {condo.userRole === 'collaborator' ? 'Criar avisos' : 'Gerenciar avisos'}
                         </Link>
                       </Button>
-                      <Button asChild variant="outline" className="flex-1">
+                    ) : (
+                      <Button asChild className="w-full touch-target">
                         <Link to={`/c/${condo.slug}`} target="_blank">
-                          <ExternalLink className="w-4 h-4 mr-1" />
-                          Ver timeline
+                          <FileText className="w-4 h-4 mr-2" />
+                          Ver avisos
                         </Link>
                       </Button>
-                    </div>
+                    )}
+                    {(canAccessSettings(condo.userRole) || canManageAnnouncements(condo.userRole)) && !isResidentOnly(condo.userRole) && (
+                      <div className="flex gap-2">
+                        {canAccessSettings(condo.userRole) && (
+                          <Button asChild variant="outline" className="flex-1">
+                            <Link to={`/admin/${condo.id}/settings`}>
+                              <Settings className="w-4 h-4 mr-1" />
+                              Config
+                            </Link>
+                          </Button>
+                        )}
+                        <Button asChild variant="outline" className="flex-1">
+                          <Link to={`/c/${condo.slug}`} target="_blank">
+                            <ExternalLink className="w-4 h-4 mr-1" />
+                            Ver timeline
+                          </Link>
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

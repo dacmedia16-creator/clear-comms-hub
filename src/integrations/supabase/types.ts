@@ -270,18 +270,21 @@ export type Database = {
       }
       super_admins: {
         Row: {
+          auth_user_id: string | null
           created_at: string
           created_by: string | null
           id: string
           user_id: string
         }
         Insert: {
+          auth_user_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           user_id: string
         }
         Update: {
+          auth_user_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -306,6 +309,7 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          auth_user_id: string | null
           condominium_id: string
           created_at: string
           id: string
@@ -315,6 +319,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auth_user_id?: string | null
           condominium_id: string
           created_at?: string
           id?: string
@@ -324,6 +329,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auth_user_id?: string | null
           condominium_id?: string
           created_at?: string
           id?: string
@@ -415,7 +421,6 @@ export type Database = {
       can_create_announcement: { Args: { cond_id: string }; Returns: boolean }
       can_manage_condominium: { Args: { cond_id: string }; Returns: boolean }
       generate_unique_slug: { Args: { base_name: string }; Returns: string }
-      get_current_profile_id: { Args: never; Returns: string }
       has_condominium_role: {
         Args: {
           _role?: Database["public"]["Enums"]["app_role"]

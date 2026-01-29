@@ -15,13 +15,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Bell, Building2, LogOut, Plus, FileText, Settings, Loader2, ExternalLink } from "lucide-react";
+import { Bell, Building2, LogOut, Plus, FileText, Settings, Loader2, ExternalLink, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 
 export default function DashboardPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { profile, condominiums, loading: profileLoading } = useProfile();
+  const { isSuperAdmin } = useSuperAdmin();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -112,6 +114,14 @@ export default function DashboardPage() {
             </Link>
 
             <div className="flex items-center gap-4">
+              {isSuperAdmin && (
+                <Button asChild variant="outline" size="sm" className="hidden sm:flex">
+                  <Link to="/super-admin">
+                    <Shield className="w-4 h-4 mr-2" />
+                    Super Admin
+                  </Link>
+                </Button>
+              )}
               <span className="text-sm text-muted-foreground hidden sm:block">
                 {profile?.full_name || profile?.email}
               </span>

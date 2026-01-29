@@ -1,126 +1,126 @@
 
-# Criar Página de Configurações do Condomínio
 
-## Problema Identificado
+# Adicionar Código Numérico Simples aos Condomínios
 
-O botão "Config" no dashboard aponta para `/admin/:condoId/settings`, mas essa rota **não existe** no aplicativo. Ao clicar, o usuário é redirecionado para a página 404 (NotFound).
+## Objetivo
+
+Permitir que moradores usem um **código simples** (ex: 101, 102, 103...) para se cadastrar, em vez do slug complexo (ex: "vitrine-esplanada-a05f26"). Isso facilita o cadastro e a comunicação entre síndico e moradores.
 
 ---
 
 ## Solução
 
-Criar uma nova página de configurações do condomínio que permita ao usuário editar:
-
-### Informações Básicas
-- Nome do condomínio
-- Descrição
-- Endereço
-- Cidade e Estado
-
-### Configurações de Notificação
-- Habilitar/desabilitar notificação por email
-- Habilitar/desabilitar notificação por WhatsApp
-
-### Informações Adicionais (somente visualização)
-- Slug (link da timeline)
-- Plano atual
+Adicionar um novo campo `code` na tabela `condominiums` com um número sequencial único começando em 101. O morador poderá digitar esse código simples no cadastro.
 
 ---
 
-## Arquivos a Criar
+## Alterações Necessárias
 
-### `src/pages/CondominiumSettingsPage.tsx`
-Nova página com formulário para editar as configurações do condomínio contendo:
-- Header com botão de voltar
-- Formulário com os campos editáveis
-- Botão de salvar alterações
-- Seção de informações somente leitura (slug, plano)
+### 1. Migração de Banco de Dados
 
----
+Adicionar coluna `code` com sequência automática:
 
-## Arquivos a Modificar
+```sql
+-- Adicionar coluna code com sequência iniciando em 101
+CREATE SEQUENCE IF NOT EXISTS condominiums_code_seq START WITH 101;
 
-### `src/App.tsx`
-Adicionar nova rota:
-```tsx
-<Route path="/admin/:condoId/settings" element={<CondominiumSettingsPage />} />
+ALTER TABLE public.condominiums 
+ADD COLUMN code INTEGER UNIQUE DEFAULT nextval('condominiums_code_seq');
+
+-- Gerar códigos para condomínios existentes
+UPDATE public.condominiums 
+SET code = nextval('condominiums_code_seq') 
+WHERE code IS NULL;
+
+-- Tornar a coluna NOT NULL após popular os existentes
+ALTER TABLE public.condominiums 
+ALTER COLUMN code SET NOT NULL;
 ```
+
+### 2. Atualizar Página de Cadastro de Morador
+
+Modificar `src/pages/auth/SignupResidentPage.tsx` para:
+- Aceitar tanto o código numérico quanto o slug
+- Buscar condomínio por `code` (numérico) OU por `slug`
+- Atualizar placeholder: "ex: 101 ou jardins-abc123"
+
+### 3. Exibir Código nas Configurações
+
+Atualizar `src/pages/CondominiumSettingsPage.tsx` para:
+- Mostrar o código do condomínio na seção "Informações do Sistema"
+- Destacar o código para fácil compartilhamento com moradores
+
+### 4. Exibir Código na Lista de Condomínios (Super Admin)
+
+Atualizar `src/pages/super-admin/SuperAdminCondominiums.tsx` para:
+- Mostrar a coluna "Código" na tabela
 
 ---
 
 ## Interface Visual
 
-```
-┌───────────────────────────────────────────────────────────┐
-│ ← Vitrine Esplanada                                       │
-│   Configurações                                           │
-├───────────────────────────────────────────────────────────┤
-│                                                           │
-│  Informações Básicas                                      │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │ Nome do condomínio                                  │  │
-│  │ [Vitrine Esplanada                            ]     │  │
-│  │                                                     │  │
-│  │ Descrição                                           │  │
-│  │ [Descrição opcional do condomínio...          ]     │  │
-│  │                                                     │  │
-│  │ Endereço                                            │  │
-│  │ [Rua das Flores, 123                          ]     │  │
-│  │                                                     │  │
-│  │ Cidade             Estado                           │  │
-│  │ [São Paulo   ]     [SP    ]                         │  │
-│  └─────────────────────────────────────────────────────┘  │
-│                                                           │
-│  Notificações                                             │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │ [✓] Notificação por Email                           │  │
-│  │ [✓] Notificação por WhatsApp                        │  │
-│  └─────────────────────────────────────────────────────┘  │
-│                                                           │
-│  Informações do Sistema                                   │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │ Link da timeline: /c/vitrine-esplanada-a05f26       │  │
-│  │ Plano atual: Free                                   │  │
-│  └─────────────────────────────────────────────────────┘  │
-│                                                           │
-│                             [Cancelar]  [Salvar]          │
-└───────────────────────────────────────────────────────────┘
+### Configurações do Condomínio
+
+```text
+Informações do Sistema
+┌─────────────────────────────────────────────────────────┐
+│ Código do condomínio        101                         │
+│ Link da timeline            /c/vitrine-esplanada-a05f26 │
+│ Plano atual                 Free                        │
+└─────────────────────────────────────────────────────────┘
 ```
 
----
+### Cadastro de Morador
 
-## Fluxo de Funcionamento
-
-1. Usuário clica em "Config" no card do condomínio no dashboard
-2. É redirecionado para `/admin/:condoId/settings`
-3. Página carrega dados do condomínio do banco
-4. Usuário edita os campos desejados
-5. Clica em "Salvar"
-6. Sistema atualiza os dados no Supabase
-7. Exibe toast de sucesso
-8. Usuário pode voltar ao dashboard ou à página de avisos
+```text
+Código do Condomínio *
+┌─────────────────────────────────────────────────────────┐
+│ ex: 101                                                 │
+└─────────────────────────────────────────────────────────┘
+Solicite ao seu síndico
+```
 
 ---
 
 ## Detalhes Técnicos
 
-### Novo Arquivo: `src/pages/CondominiumSettingsPage.tsx`
+### Arquivos a Modificar
 
-- Usar `useParams` para pegar o `condoId`
-- Carregar dados do condomínio via Supabase
-- Formulário controlado com estados para cada campo
-- Função `handleSave` que faz UPDATE na tabela `condominiums`
-- Validação: nome é obrigatório
+**Banco de Dados (Migração SQL)**
+- Criar sequência `condominiums_code_seq` iniciando em 101
+- Adicionar coluna `code` INTEGER UNIQUE NOT NULL
+- Popular códigos para condomínios existentes
 
-### Modificação: `src/App.tsx`
+**`src/pages/auth/SignupResidentPage.tsx`**
+- Modificar query de validação para buscar por `code` (se numérico) ou `slug` (se texto)
+- Atualizar placeholder do campo
 
-Adicionar import e rota:
-```tsx
-import CondominiumSettingsPage from "./pages/CondominiumSettingsPage";
-// ...
-<Route path="/admin/:condoId/settings" element={<CondominiumSettingsPage />} />
-```
+**`src/pages/CondominiumSettingsPage.tsx`**
+- Adicionar `code` na interface e exibição
+- Mostrar código destacado na seção de informações do sistema
 
-### Segurança
+**`src/pages/super-admin/SuperAdminCondominiums.tsx`**
+- Adicionar coluna "Código" na tabela de condomínios
 
-As políticas RLS existentes já devem permitir que o owner atualize o condomínio. Caso contrário, será necessário adicionar uma política.
+**`src/hooks/useAllCondominiums.ts`**
+- Incluir campo `code` na interface Condominium
+
+---
+
+## Fluxo de Funcionamento
+
+1. Síndico acessa configurações do condomínio e vê o código (ex: 101)
+2. Síndico compartilha o código com os moradores
+3. Morador acessa cadastro e digita "101"
+4. Sistema busca condomínio pelo código e valida
+5. Morador completa o cadastro normalmente
+
+---
+
+## Benefícios
+
+- Código fácil de memorizar e compartilhar
+- Funciona tanto código numérico quanto slug antigo
+- Retrocompatível com cadastros existentes
+- Geração automática para novos condomínios
+

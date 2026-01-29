@@ -33,7 +33,7 @@ import { useAllCondominiums } from "@/hooks/useAllCondominiums";
 import { useAllUsers } from "@/hooks/useAllUsers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, Building2, Plus, ArrowLeft, Loader2, Pencil, Trash2, ExternalLink, Search } from "lucide-react";
+import { Bell, Building2, Plus, ArrowLeft, Loader2, Pencil, Trash2, ExternalLink, Search, Users } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -322,15 +322,20 @@ export default function SuperAdminCondominiums() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <Button asChild variant="ghost" size="icon">
+                            <Button asChild variant="ghost" size="icon" title="Ver Timeline">
                               <Link to={`/c/${condo.slug}`} target="_blank">
                                 <ExternalLink className="w-4 h-4" />
                               </Link>
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(condo)}>
+                            <Button asChild variant="ghost" size="icon" title="Gerenciar Membros">
+                              <Link to={`/super-admin/condominiums/${condo.id}/members`}>
+                                <Users className="w-4 h-4" />
+                              </Link>
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(condo)} title="Editar">
                               <Pencil className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(condo)}>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(condo)} title="Excluir">
                               <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
                           </div>

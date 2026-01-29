@@ -18,13 +18,14 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAllCondominiums } from "@/hooks/useAllCondominiums";
-import { Loader2, Trash2, Plus } from "lucide-react";
+import { Loader2, Trash2, Plus, Check, Clock } from "lucide-react";
 
 interface UserRole {
   id: string;
   role: "admin" | "syndic" | "resident" | "collaborator";
   condominium_name: string;
   condominium_id: string;
+  is_approved?: boolean;
 }
 
 interface ManageUserRolesDialogProps {
@@ -40,7 +41,7 @@ interface ManageUserRolesDialogProps {
 }
 
 interface EditableRole extends UserRole {
-  _action?: "update" | "delete" | "create";
+  _action?: "update" | "delete" | "create" | "approve";
   _originalRole?: UserRole["role"];
 }
 
@@ -95,6 +96,14 @@ export function ManageUserRolesDialog({
     );
   };
 
+  const handleApproveRole = (roleId: string) => {
+    setRoles(prev =>
+      prev.map(r =>
+        r.id === roleId ? { ...r, is_approved: true, _action: "approve" as const } : r
+      )
+    );
+  };
+
   const handleRemoveRole = (roleId: string) => {
     setRoles(prev =>
       prev.map(r =>
@@ -134,6 +143,7 @@ export function ManageUserRolesDialog({
         role: newRole,
         condominium_id: newCondoId,
         condominium_name: condo.name,
+        is_approved: true, // Super admin creates as approved
         _action: "create",
       },
     ]);
@@ -151,12 +161,22 @@ export function ManageUserRolesDialog({
       const toUpdate = roles.filter(r => r._action === "update");
       const toDelete = roles.filter(r => r._action === "delete");
       const toCreate = roles.filter(r => r._action === "create");
+      const toApprove = roles.filter(r => r._action === "approve");
 
       // Update roles
       for (const role of toUpdate) {
         const { error } = await supabase
           .from("user_roles")
           .update({ role: role.role })
+          .eq("id", role.id);
+        if (error) throw error;
+      }
+
+      // Approve roles
+      for (const role of toApprove) {
+        const { error } = await supabase
+          .from("user_roles")
+          .update({ is_approved: true })
           .eq("id", role.id);
         if (error) throw error;
       }
@@ -178,6 +198,7 @@ export function ManageUserRolesDialog({
             user_id: user.id,
             condominium_id: role.condominium_id,
             role: role.role,
+            is_approved: true,
           });
         if (error) throw error;
       }
@@ -226,12 +247,22 @@ export function ManageUserRolesDialog({
           {activeRoles.map(role => (
             <div
               key={role.id}
-              className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
+              className={`flex items-center gap-3 p-3 rounded-lg ${
+                role.is_approved === false ? "bg-amber-500/10 border border-amber-500/20" : "bg-muted/50"
+              }`}
             >
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {role.condominium_name}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium truncate">
+                    {role.condominium_name}
+                  </p>
+                  {role.is_approved === false && (
+                    <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600">
+                      <Clock className="w-3 h-3" />
+                      Pendente
+                    </span>
+                  )}
+                </div>
               </div>
               <Select
                 value={role.role}
@@ -249,11 +280,26 @@ export function ManageUserRolesDialog({
                   <SelectItem value="collaborator">{roleLabels.collaborator}</SelectItem>
                 </SelectContent>
               </Select>
+              {role.is_approved === false && role._action !== "approve" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleApproveRole(role.id)}
+                  className="text-green-600 hover:text-green-600 hover:bg-green-500/10"
+                  title="Aprovar"
+                >
+                  <Check className="w-4 h-4" />
+                </Button>
+              )}
+              {role._action === "approve" && (
+                <span className="text-xs text-green-600 font-medium">Aprovar</span>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => handleRemoveRole(role.id)}
                 className="text-destructive hover:text-destructive"
+                title={role.is_approved === false ? "Rejeitar" : "Remover"}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>

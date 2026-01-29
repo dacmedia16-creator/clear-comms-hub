@@ -20,10 +20,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { RefreshButton } from "@/components/RefreshButton";
+import { PendingApprovalScreen } from "@/components/PendingApprovalScreen";
 
 export default function DashboardPage() {
   const { user, loading: authLoading, signOut } = useAuth();
-  const { profile, condominiums, loading: profileLoading } = useProfile();
+  const { profile, condominiums, pendingRoles, loading: profileLoading, refetch } = useProfile();
   const { isSuperAdmin } = useSuperAdmin();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -98,6 +99,17 @@ export default function DashboardPage() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  // Show pending approval screen if user has only pending roles
+  if (pendingRoles.length > 0 && condominiums.length === 0 && !isSuperAdmin) {
+    return (
+      <PendingApprovalScreen
+        pendingRoles={pendingRoles}
+        onSignOut={handleSignOut}
+        onRefresh={refetch}
+      />
     );
   }
 

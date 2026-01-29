@@ -10,6 +10,7 @@ export interface CondoMember {
     id: string;
     full_name: string | null;
     email: string | null;
+    phone: string | null;
   } | null;
 }
 
@@ -39,7 +40,8 @@ export function useCondoMembers(condoId: string) {
           profiles:user_id (
             id,
             full_name,
-            email
+            email,
+            phone
           )
         `)
         .eq("condominium_id", condoId)

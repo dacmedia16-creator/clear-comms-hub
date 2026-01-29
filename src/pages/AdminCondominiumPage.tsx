@@ -37,8 +37,7 @@ import { ANNOUNCEMENT_CATEGORIES, AnnouncementCategory } from "@/lib/constants";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
-import { WhatsAppShareButton } from "@/components/WhatsAppShareButton";
-import { generateWhatsAppMessage, openWhatsAppShare } from "@/lib/whatsapp-templates";
+import { SendWhatsAppButton } from "@/components/SendWhatsAppButton";
 
 interface Announcement {
   id: string;
@@ -440,9 +439,9 @@ export default function AdminCondominiumPage() {
                       </div>
 
                       <div className="flex items-center gap-1">
-                        <WhatsAppShareButton
-                          announcement={announcement}
-                          condominium={condominium}
+                        <SendWhatsAppButton
+                          announcement={{ ...announcement, id: announcement.id }}
+                          condominium={{ ...condominium, id: condominium.id }}
                         />
                         <Button
                           variant="ghost"
@@ -478,8 +477,8 @@ export default function AdminCondominiumPage() {
         <Dialog open={successDialogOpen} onOpenChange={setSuccessDialogOpen}>
           <DialogContent className="sm:max-w-md bg-card">
             <DialogHeader>
-              <div className="mx-auto w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-2">
-                <CheckCircle className="w-6 h-6 text-emerald-600" />
+              <div className="mx-auto w-12 h-12 rounded-full bg-accent flex items-center justify-center mb-2">
+                <CheckCircle className="w-6 h-6 text-primary" />
               </div>
               <DialogTitle className="text-center font-display">Aviso publicado!</DialogTitle>
               <DialogDescription className="text-center">
@@ -505,20 +504,13 @@ export default function AdminCondominiumPage() {
                 Fechar
               </Button>
               {lastCreatedAnnouncement && (
-                <Button
-                  onClick={() => {
-                    const message = generateWhatsAppMessage(
-                      lastCreatedAnnouncement,
-                      condominium,
-                      "https://clear-comms-hub.lovable.app"
-                    );
-                    openWhatsAppShare(message);
-                  }}
-                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700"
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Compartilhar via WhatsApp
-                </Button>
+                <SendWhatsAppButton
+                  announcement={{ ...lastCreatedAnnouncement, id: lastCreatedAnnouncement.id }}
+                  condominium={{ ...condominium, id: condominium.id }}
+                  variant="default"
+                  size="default"
+                  showLabel
+                />
               )}
             </DialogFooter>
           </DialogContent>

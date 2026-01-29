@@ -1,40 +1,88 @@
 
 
-# Promoção para Super Admin
+# Plano: Renomear Sistema para AVISO PRO
 
-## Usuário Identificado
-- **Nome**: Denis
-- **Email**: dacmedia16@gmail.com
-- **Profile ID**: `e44ce79a-ee72-425c-800d-a842f0530bd2`
+## Resumo
 
-## Acao Necessaria
+Alterar o nome do sistema de **"AVISO CD"** para **"AVISO PRO"** em todos os arquivos do projeto.
 
-Executar o seguinte comando SQL para promover o usuario a Super Admin:
+---
 
-```sql
-INSERT INTO super_admins (user_id) 
-VALUES ('e44ce79a-ee72-425c-800d-a842f0530bd2');
+## Arquivos a Modificar
+
+| Arquivo | Linha | Alteracao |
+|---------|-------|-----------|
+| `index.html` | 7, 12 | Alterar titulo e og:title para "AVISO PRO" |
+| `index.html` | 8, 13 | Atualizar descricoes meta tags |
+| `src/index.css` | 5 | Comentario: "AVISO PRO Design System" |
+| `src/components/landing/Header.tsx` | 18 | Logo texto: "AVISO PRO" |
+| `src/components/landing/Footer.tsx` | 15, 64 | Logo e copyright: "AVISO PRO" |
+| `src/pages/DashboardPage.tsx` | 113 | Logo no dashboard: "AVISO PRO" |
+| `src/pages/TimelinePage.tsx` | 344 | "Powered by AVISO PRO" |
+| `src/pages/AuthPage.tsx` | 84, 152 | Mensagens de boas-vindas e titulo do card |
+
+---
+
+## Detalhes das Alteracoes
+
+### 1. index.html
+- `<title>AVISO PRO</title>`
+- `<meta name="description" content="AVISO PRO - Comunicacao oficial para condominios" />`
+- `<meta property="og:title" content="AVISO PRO" />`
+- `<meta property="og:description" content="AVISO PRO - Comunicacao oficial para condominios" />`
+
+### 2. src/index.css
+```css
+/* AVISO PRO Design System - Warm & Accessible */
 ```
 
-## O Que Vai Acontecer
+### 3. src/components/landing/Header.tsx
+```jsx
+<span className="font-display text-xl font-bold text-foreground">AVISO PRO</span>
+```
 
-Apos a execucao:
+### 4. src/components/landing/Footer.tsx
+```jsx
+<span className="font-display text-xl font-bold">AVISO PRO</span>
+...
+<p>© {new Date().getFullYear()} AVISO PRO. Todos os direitos reservados.</p>
+```
 
-1. O usuario **Denis** tera acesso ao painel Super Admin
-2. Podera gerenciar todos os condominios da plataforma
-3. Podera promover outros usuarios a Super Admin
-4. Tera visao global de todos os usuarios do sistema
+### 5. src/pages/DashboardPage.tsx
+```jsx
+<span className="font-display text-xl font-bold text-foreground">AVISO PRO</span>
+```
 
-## Como Acessar
+### 6. src/pages/TimelinePage.tsx
+```jsx
+Powered by AVISO PRO
+```
 
-Apos a promocao:
+### 7. src/pages/AuthPage.tsx
+```jsx
+description: "Bem-vindo ao AVISO PRO.",
+...
+{mode === "signin" ? "Entrar no AVISO PRO" : "Criar sua conta"}
+```
 
-1. Faca login com `dacmedia16@gmail.com`
-2. Acesse o Dashboard (`/dashboard`)
-3. Clique no link **"Super Admin"** que aparecera no header
-4. Ou acesse diretamente: `/super-admin`
+---
 
-## Secao Tecnica
+## Total de Alteracoes
 
-A migration executara um INSERT na tabela `super_admins` vinculando o `profile.id` do usuario ao sistema de Super Admin. As RLS policies ja estao configuradas para reconhecer este usuario como Super Admin atraves da funcao `is_super_admin()`.
+- **6 arquivos** serao modificados
+- **10 ocorrencias** de "AVISO CD" serao substituidas por "AVISO PRO"
+- Meta tags do `index.html` serao atualizadas com nome e descricao corretos
+
+---
+
+## Resultado Final
+
+Apos a implementacao, o nome "AVISO PRO" aparecera em:
+- Titulo da aba do navegador
+- Header da landing page
+- Footer da landing page
+- Dashboard logado
+- Pagina de autenticacao
+- Timeline publica
+- Meta tags para compartilhamento social
 

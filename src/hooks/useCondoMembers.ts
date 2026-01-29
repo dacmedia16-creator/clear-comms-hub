@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface CondoMember {
   id: string;
   user_id: string;
-  role: "admin" | "syndic" | "resident";
+  role: "admin" | "syndic" | "resident" | "collaborator";
   created_at: string;
   profile: {
     id: string;
@@ -68,7 +68,7 @@ export function useCondoMembers(condoId: string) {
     fetchMembers();
   }, [condoId]);
 
-  const addMember = async (userId: string, role: "admin" | "syndic" | "resident") => {
+  const addMember = async (userId: string, role: "admin" | "syndic" | "resident" | "collaborator") => {
     try {
       const { error } = await supabase
         .from("user_roles")

@@ -281,6 +281,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_create_announcement: { Args: { cond_id: string }; Returns: boolean }
       can_manage_condominium: { Args: { cond_id: string }; Returns: boolean }
       generate_unique_slug: { Args: { base_name: string }; Returns: string }
       has_condominium_role: {
@@ -301,7 +302,7 @@ export type Database = {
         | "convivencia"
         | "seguranca"
         | "urgente"
-      app_role: "admin" | "syndic" | "resident"
+      app_role: "admin" | "syndic" | "resident" | "collaborator"
       plan_type: "free" | "starter" | "pro"
     }
     CompositeTypes: {
@@ -438,7 +439,7 @@ export const Constants = {
         "seguranca",
         "urgente",
       ],
-      app_role: ["admin", "syndic", "resident"],
+      app_role: ["admin", "syndic", "resident", "collaborator"],
       plan_type: ["free", "starter", "pro"],
     },
   },

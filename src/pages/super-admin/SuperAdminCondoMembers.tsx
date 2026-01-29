@@ -40,12 +40,14 @@ const roleLabels: Record<string, string> = {
   admin: "Administrador",
   syndic: "Síndico",
   resident: "Morador",
+  collaborator: "Colaborador",
 };
 
 const roleColors: Record<string, string> = {
   admin: "bg-primary/10 text-primary",
   syndic: "bg-accent text-accent-foreground",
   resident: "bg-muted text-muted-foreground",
+  collaborator: "bg-chart-4/20 text-chart-4",
 };
 
 export default function SuperAdminCondoMembers() {
@@ -57,7 +59,7 @@ export default function SuperAdminCondoMembers() {
   const [condoName, setCondoName] = useState<string>("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
-  const [selectedRole, setSelectedRole] = useState<"admin" | "syndic" | "resident">("syndic");
+  const [selectedRole, setSelectedRole] = useState<"admin" | "syndic" | "resident" | "collaborator">("syndic");
   const [saving, setSaving] = useState(false);
 
   // Get condominium info
@@ -156,7 +158,7 @@ export default function SuperAdminCondoMembers() {
                   <DialogHeader>
                     <DialogTitle>Adicionar Membro</DialogTitle>
                     <DialogDescription>
-                      Adicione um síndico, administrador ou morador a este condomínio
+                      Adicione um síndico, administrador, colaborador ou morador a este condomínio
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleAddMember} className="space-y-4 mt-4">
@@ -193,6 +195,7 @@ export default function SuperAdminCondoMembers() {
                         <SelectContent>
                           <SelectItem value="syndic">Síndico</SelectItem>
                           <SelectItem value="admin">Administrador</SelectItem>
+                          <SelectItem value="collaborator">Colaborador</SelectItem>
                           <SelectItem value="resident">Morador</SelectItem>
                         </SelectContent>
                       </Select>

@@ -1,185 +1,240 @@
 
 
-# Plano: Criar Usuario Colaborador
+# Plano: Templates de WhatsApp por Categoria
 
 ## Resumo
 
-Criar um novo tipo de papel "collaborator" (colaborador) que pode ser vinculado a um condominio e possui permissao para criar avisos, mas sem as demais permissoes de administracao.
+Criar templates padrao de mensagem WhatsApp para cada categoria de aviso, com texto formatado e link direto para a timeline publica (sem necessidade de login).
 
 ---
 
-## Analise do Estado Atual
+## Analise do Contexto
 
-### Sistema de Roles Existente
+### Categorias Existentes
 
-| Role | Descricao | Permissoes |
-|------|-----------|------------|
-| admin | Administrador do condominio | Gestao completa |
-| syndic | Sindico | Gestao completa |
-| resident | Morador | Apenas visualizacao |
+| Categoria | Emoji Sugerido | Tom da Mensagem |
+|-----------|----------------|-----------------|
+| Informativo | ℹ️ | Neutro, informativo |
+| Financeiro | 💰 | Formal, importante |
+| Manutencao | 🔧 | Pratico, objetivo |
+| Convivencia | 🤝 | Amigavel, comunitario |
+| Seguranca | 🔒 | Serio, atencao |
+| Urgente | ⚠️ | Alerta, acao imediata |
 
-### RLS Policy para Criacao de Avisos
+### URL da Timeline
 
-A policy atual permite criar avisos se:
-```sql
-can_manage_condominium(condominium_id) OR is_super_admin()
-```
+A timeline e acessada via: `https://clear-comms-hub.lovable.app/c/{slug}`
 
-A funcao `can_manage_condominium` verifica:
-- Se e owner do condominio OU
-- Se tem role "admin" no condominio
-
-### O que Precisa Mudar
-
-1. Adicionar novo valor "collaborator" ao enum `app_role`
-2. Atualizar policies RLS para permitir colaboradores criarem avisos
-3. Atualizar interface do Super Admin para gerenciar colaboradores
-4. Criar pagina de acesso para colaboradores
+- Nao requer login
+- Qualquer pessoa com o link pode visualizar
+- URL unica por condominio
 
 ---
 
 ## Implementacao
 
-### 1. Migracao SQL
+### 1. Criar Constantes de Templates
 
-```sql
--- Adicionar role collaborator
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'collaborator';
+Adicionar ao arquivo `src/lib/constants.ts` os templates de mensagem para cada categoria.
 
--- Criar funcao para verificar se pode criar avisos
-CREATE OR REPLACE FUNCTION public.can_create_announcement(cond_id uuid)
-RETURNS boolean
-LANGUAGE plpgsql
-STABLE SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-BEGIN
-  RETURN 
-    public.can_manage_condominium(cond_id) OR 
-    public.has_condominium_role(cond_id, 'collaborator') OR
-    public.is_super_admin();
-END;
-$$;
+### 2. Criar Componente de Compartilhamento
 
--- Atualizar policy de INSERT em announcements
-DROP POLICY IF EXISTS "Create announcements" ON announcements;
+Novo componente `WhatsAppShareButton` que:
+- Recebe o aviso e dados do condominio
+- Gera a mensagem formatada baseada na categoria
+- Abre o WhatsApp com a mensagem pre-preenchida
 
-CREATE POLICY "Create announcements" ON public.announcements
-FOR INSERT
-WITH CHECK (
-  (can_create_announcement(condominium_id) AND 
-   created_by = (SELECT id FROM profiles WHERE user_id = auth.uid()))
-);
-```
+### 3. Integrar ao Fluxo de Criacao
 
-### 2. Atualizar Hook useProfile
+Apos publicar um aviso, exibir opcao de compartilhar via WhatsApp com o template ja preenchido.
 
-Modificar para buscar condominios onde o usuario tem qualquer role (incluindo collaborator), nao apenas onde e owner.
+### 4. Adicionar Botao de Compartilhar na Lista
 
-### 3. Atualizar Interface de Membros
-
-Adicionar "Colaborador" como opcao ao adicionar membros no painel Super Admin.
-
-### 4. Criar Pagina para Colaboradores
-
-Colaboradores devem ter acesso a uma interface simplificada para:
-- Ver condominios onde sao colaboradores
-- Criar avisos nesses condominios
-- Nao podem editar/excluir avisos de outros ou gerenciar membros
+Na lista de avisos do admin, adicionar botao para compartilhar cada aviso individual.
 
 ---
 
-## Arquivos a Modificar
+## Templates de Mensagem
 
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/hooks/useProfile.ts` | Buscar condominios por role alem de ownership |
-| `src/hooks/useCondoMembers.ts` | Incluir collaborator no tipo |
-| `src/pages/super-admin/SuperAdminCondoMembers.tsx` | Adicionar opcao "Colaborador" |
-| `src/pages/AdminCondominiumPage.tsx` | Ajustar verificacao de permissao |
+```text
+## INFORMATIVO
+ℹ️ *AVISO - {nome_condo}*
+
+📋 *{titulo}*
+
+{resumo}
+
+🔗 Acesse o aviso completo:
+{link}
+
+---
+
+## FINANCEIRO
+💰 *AVISO FINANCEIRO - {nome_condo}*
+
+📋 *{titulo}*
+
+{resumo}
+
+💵 Confira os detalhes:
+{link}
+
+---
+
+## MANUTENCAO
+🔧 *AVISO DE MANUTENCAO - {nome_condo}*
+
+📋 *{titulo}*
+
+{resumo}
+
+📍 Mais informacoes:
+{link}
+
+---
+
+## CONVIVENCIA
+🤝 *AVISO DE CONVIVENCIA - {nome_condo}*
+
+📋 *{titulo}*
+
+{resumo}
+
+🏠 Leia mais:
+{link}
+
+---
+
+## SEGURANCA
+🔒 *AVISO DE SEGURANCA - {nome_condo}*
+
+📋 *{titulo}*
+
+{resumo}
+
+⚡ Veja o comunicado:
+{link}
+
+---
+
+## URGENTE
+⚠️ *AVISO URGENTE - {nome_condo}*
+
+📋 *{titulo}*
+
+{resumo}
+
+🚨 LEIA AGORA:
+{link}
+```
+
+---
 
 ## Arquivos a Criar
 
 | Arquivo | Descricao |
 |---------|-----------|
-| Nenhum novo arquivo necessario | Reutilizar estrutura existente |
+| `src/lib/whatsapp-templates.ts` | Templates de mensagem por categoria |
+| `src/components/WhatsAppShareButton.tsx` | Componente de botao para compartilhar |
+
+## Arquivos a Modificar
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/pages/AdminCondominiumPage.tsx` | Adicionar botao de compartilhar em cada aviso e apos criar |
 
 ---
 
-## Fluxo do Colaborador
+## Fluxo do Usuario
 
 ```text
-1. Super Admin adiciona usuario como "Colaborador" em um condominio
-                          |
-                          v
-2. Colaborador faz login e ve o condominio no seu dashboard
-                          |
-                          v
-3. Colaborador acessa AdminCondominiumPage
-                          |
-                          v
-4. Colaborador pode criar novos avisos
-   (Nao pode editar/excluir avisos de outros, nem gerenciar membros)
+1. Admin cria novo aviso
+          |
+          v
+2. Aviso e publicado com sucesso
+          |
+          v
+3. Dialog exibe opcao "Compartilhar via WhatsApp"
+          |
+          v
+4. Admin clica no botao
+          |
+          v
+5. WhatsApp abre com mensagem pre-formatada
+   incluindo link para a timeline publica
+          |
+          v
+6. Admin seleciona contato/grupo e envia
 ```
 
 ---
 
 ## Secao Tecnica
 
-### Diferenca entre Roles
-
-| Acao | Owner | Admin | Syndic | Collaborator | Resident |
-|------|-------|-------|--------|--------------|----------|
-| Criar avisos | Sim | Sim | Sim | Sim | Nao |
-| Editar avisos proprios | Sim | Sim | Sim | Sim | Nao |
-| Editar avisos de outros | Sim | Sim | Sim | Nao | Nao |
-| Excluir avisos | Sim | Sim | Sim | Nao | Nao |
-| Gerenciar membros | Sim | Sim | Nao | Nao | Nao |
-| Ver timeline | Sim | Sim | Sim | Sim | Sim |
-
-### Nova Funcao SQL
-
-```sql
-CREATE OR REPLACE FUNCTION public.can_create_announcement(cond_id uuid)
-RETURNS boolean
-LANGUAGE plpgsql
-STABLE SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-BEGIN
-  RETURN 
-    public.can_manage_condominium(cond_id) OR 
-    public.has_condominium_role(cond_id, 'collaborator') OR
-    public.is_super_admin();
-END;
-$$;
-```
-
-### Atualizacao do useProfile
+### Funcao de Geracao de Template
 
 ```typescript
-// Buscar condominios onde o usuario e owner OU tem um role
-const { data: condoData } = await supabase
-  .from("condominiums")
-  .select(`
-    *,
-    user_roles!inner(role)
-  `)
-  .or(`owner_id.eq.${profileData.id},user_roles.user_id.eq.${profileData.id}`);
+export function generateWhatsAppMessage(
+  announcement: { title: string; summary: string | null; category: string },
+  condominium: { name: string; slug: string },
+  baseUrl: string
+): string {
+  const template = WHATSAPP_TEMPLATES[announcement.category];
+  const timelineUrl = `${baseUrl}/c/${condominium.slug}`;
+  
+  return template
+    .replace("{nome_condo}", condominium.name)
+    .replace("{titulo}", announcement.title)
+    .replace("{resumo}", announcement.summary || "Acesse o link para mais detalhes.")
+    .replace("{link}", timelineUrl);
+}
 ```
 
-Alternativa mais simples usando duas queries:
-1. Buscar condominios onde e owner
-2. Buscar condominios via user_roles
-3. Combinar resultados sem duplicatas
+### Componente WhatsAppShareButton
+
+```typescript
+export function WhatsAppShareButton({ 
+  announcement, 
+  condominium 
+}: WhatsAppShareButtonProps) {
+  const handleShare = () => {
+    const message = generateWhatsAppMessage(
+      announcement, 
+      condominium, 
+      window.location.origin
+    );
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/?text=${encodedMessage}`, "_blank");
+  };
+
+  return (
+    <Button variant="outline" size="sm" onClick={handleShare}>
+      <MessageCircle className="w-4 h-4 mr-1" />
+      Compartilhar
+    </Button>
+  );
+}
+```
+
+### Integracao na Lista de Avisos
+
+O botao sera adicionado ao lado dos botoes de fixar e excluir na lista de avisos do admin.
+
+### Comportamento apos Criar Aviso
+
+Apos publicar um aviso com sucesso, exibir um dialog de confirmacao com:
+- Mensagem de sucesso
+- Botao "Compartilhar via WhatsApp" 
+- Botao "Fechar"
 
 ---
 
 ## Resultado Final
 
 Apos implementacao:
-- Super Admin pode adicionar usuarios como "Colaborador" a qualquer condominio
-- Colaboradores veem os condominios no dashboard e podem criar avisos
-- Colaboradores NAO podem excluir avisos ou gerenciar membros
-- Sistema de roles fica mais flexivel para futuras expansoes
+- Templates padrao de WhatsApp para cada categoria
+- Botao de compartilhar em cada aviso na lista
+- Opcao de compartilhar imediatamente apos criar aviso
+- Link direto para timeline publica (sem login)
+- Mensagens formatadas com emojis e destaque
 

@@ -1,82 +1,123 @@
 
+# Plano: Permitir Síndico Ver Moradores Cadastrados
 
-# Correção: Síndico não consegue salvar configurações de SMS
+## Resumo do Problema
 
-## Diagnóstico
+Atualmente, apenas Super Admins conseguem ver a lista de moradores de um condomínio. Síndicos não têm acesso porque:
 
-O problema foi identificado: a política de segurança (RLS) da tabela `condominiums` não permite que **Síndicos** atualizem as configurações.
-
-### Política atual de UPDATE:
-```sql
-USING (can_manage_condominium(id) OR is_super_admin())
-```
-
-A função `can_manage_condominium()` só verifica:
-- Se o usuário é **owner** (dono)
-- Se o usuário tem role **admin**
-
-O **Síndico** não está incluído, por isso a atualização falha silenciosamente (o Supabase retorna sucesso sem modificar nenhuma linha).
-
----
+1. A página de membros (`SuperAdminCondoMembers`) está protegida pelo `SuperAdminGuard`
+2. A política de segurança da tabela `profiles` só permite visualização pelo próprio usuário ou Super Admins
 
 ## Solução Proposta
 
-Atualizar a função `can_manage_condominium` para incluir o papel de **síndico**, permitindo que síndicos também possam editar as configurações do condomínio.
+Criar uma nova página de membros acessível para gestores (Síndico/Admin/Owner) e atualizar as permissões do banco de dados.
 
-### Alteração na função PostgreSQL
+---
+
+## Alterações Necessárias
+
+### 1. Banco de Dados (Migration SQL)
+
+Atualizar a política RLS da tabela `profiles` para permitir que gestores de condomínios vejam os perfis dos membros vinculados:
 
 ```sql
-CREATE OR REPLACE FUNCTION public.can_manage_condominium(cond_id uuid)
- RETURNS boolean
- LANGUAGE plpgsql
- STABLE SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-BEGIN
-  RETURN 
-    public.is_condominium_owner(cond_id) OR 
-    public.has_condominium_role(cond_id, 'admin') OR
-    public.has_condominium_role(cond_id, 'syndic');  -- ADICIONAR SÍNDICO
-END;
-$function$;
+-- Nova política: Gestores podem ver perfis de membros do seu condomínio
+CREATE POLICY "Condo managers can view member profiles"
+ON public.profiles FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM user_roles ur
+    WHERE ur.user_id = profiles.id
+    AND can_manage_condominium(ur.condominium_id)
+  )
+);
+```
+
+### 2. Nova Página: Membros do Condomínio
+
+Criar `src/pages/CondoMembersPage.tsx` - página de visualização de membros para gestores:
+
+| Elemento | Descrição |
+|----------|-----------|
+| Header | Botão voltar + nome do condomínio |
+| Tabela | Lista de membros com nome, telefone, unidade, função |
+| Botão Adicionar | Para cadastrar novos moradores |
+
+### 3. Atualizar Rotas
+
+Adicionar nova rota em `src/App.tsx`:
+- `/admin/:condoId/members` → `CondoMembersPage`
+
+### 4. Atualizar Dashboard/Admin
+
+Adicionar botão "Ver Moradores" na página de administração do condomínio para síndicos/admins.
+
+---
+
+## Fluxo de Acesso
+
+```text
+Dashboard
+    │
+    ├── Card do Condomínio
+    │       │
+    │       └── Botão "Gerenciar avisos" → AdminCondominiumPage
+    │                                           │
+    │                                           ├── Botão "Ver Moradores" → CondoMembersPage (NOVO)
+    │                                           │
+    │                                           └── Botão "Config" → CondominiumSettingsPage
 ```
 
 ---
 
-## Arquivos Afetados
+## Arquivos a Criar/Modificar
 
-| Arquivo | Tipo | Descrição |
+| Arquivo | Ação | Descrição |
 |---------|------|-----------|
-| Migration SQL | Novo | Atualizar função `can_manage_condominium` |
+| `supabase/migrations/...` | Criar | Política RLS para profiles |
+| `src/pages/CondoMembersPage.tsx` | Criar | Nova página de membros |
+| `src/App.tsx` | Modificar | Adicionar rota `/admin/:condoId/members` |
+| `src/pages/AdminCondominiumPage.tsx` | Modificar | Adicionar botão "Ver Moradores" |
 
 ---
 
-## Fluxo de Implementação
+## Permissões
 
-1. Criar migration para atualizar a função `can_manage_condominium`
-2. A função passará a retornar `true` também para usuários com role `syndic`
-3. Após a alteração, síndicos poderão:
-   - Atualizar configurações do condomínio
-   - Habilitar/desabilitar notificações (SMS, WhatsApp, Email)
-
----
-
-## Impacto
-
-### Antes
-- Apenas **Owner** e **Admin** podem editar configurações
-- Síndico vê mensagem "Configurações salvas!" mas nada é alterado
-
-### Depois
-- **Owner**, **Admin** e **Síndico** podem editar configurações
-- Configurações de notificação serão salvas corretamente
+| Ação | Síndico | Admin | Owner | Super Admin |
+|------|---------|-------|-------|-------------|
+| Ver lista de membros | ✅ | ✅ | ✅ | ✅ |
+| Adicionar membro | ✅ | ✅ | ✅ | ✅ |
+| Remover membro | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
-## Considerações de Segurança
+## Seção Técnica
 
-Esta alteração é segura porque:
-- O síndico já tem permissão para criar/editar avisos no condomínio
-- É esperado que um síndico possa gerenciar as configurações de notificação
-- A hierarquia de acesso será: Owner > Admin = Síndico > Colaborador > Morador
+### Política RLS Detalhada
 
+A nova política verifica se o usuário logado pode gerenciar pelo menos um condomínio onde o perfil alvo está vinculado:
+
+```sql
+CREATE POLICY "Condo managers can view member profiles"
+ON public.profiles FOR SELECT
+USING (
+  -- Permite visualizar perfis de membros dos condomínios que o usuário gerencia
+  EXISTS (
+    SELECT 1 FROM user_roles ur
+    WHERE ur.user_id = profiles.id
+    AND can_manage_condominium(ur.condominium_id)
+  )
+);
+```
+
+### Reutilização de Componentes
+
+- `useCondoMembers` - hook existente que já busca membros
+- `AddMemberDialog` - componente existente para adicionar membros
+- O código será similar ao `SuperAdminCondoMembers`, mas sem o guard de super admin
+
+### Segurança
+
+- Síndicos só verão membros dos **seus** condomínios
+- A função `can_manage_condominium` já inclui validação de owner/admin/syndic
+- Moradores comuns não terão acesso a esta página

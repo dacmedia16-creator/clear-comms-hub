@@ -1,177 +1,133 @@
 
+# Corrigir Permissões de Visualização para Moradores
 
-# Fluxo de Cadastro de Síndico com Aprovação
+## Problema Identificado
 
-## Visão Geral
+O morador (Francisco) está vendo os mesmos botões que um síndico/admin no dashboard:
+- "Gerenciar avisos" (não deveria ver)
+- "Config" (não deveria ver)
+- "Ver timeline" (deveria ver)
 
-Modificar o cadastro de síndico para:
-1. Exigir vínculo a um condomínio existente (usando código numérico ou slug)
-2. Criar o registro com status "pendente" até aprovação do Super Admin
-3. Bloquear acesso do síndico até a aprovação
+A informação do papel (`userRole`) já existe no hook `useProfile`, mas o `DashboardPage` não está usando essa informação para filtrar os botões.
 
 ---
 
-## Alterações de Banco de Dados
+## Hierarquia de Permissões
 
-### 1. Adicionar coluna `is_approved` na tabela `user_roles`
+| Papel | Gerenciar Avisos | Configurações | Ver Timeline |
+|-------|------------------|---------------|--------------|
+| owner | Sim | Sim | Sim |
+| admin | Sim | Sim | Sim |
+| syndic | Sim | Sim | Sim |
+| collaborator | Sim | Nao | Sim |
+| resident | Nao | Nao | Sim |
 
-Nova coluna para controlar se o vínculo foi aprovado pelo Super Admin:
+---
 
-```sql
-ALTER TABLE public.user_roles 
-ADD COLUMN is_approved BOOLEAN NOT NULL DEFAULT true;
+## Solucao
 
--- Síndicos que se auto-cadastram precisam de aprovação
--- Residentes continuam com aprovação automática
-```
+Modificar o `DashboardPage` para verificar o `userRole` de cada condomínio e renderizar botões diferentes:
 
-**Lógica:**
-- `is_approved = true` (padrão): Aprovado automaticamente
-- `is_approved = false`: Aguardando aprovação do Super Admin
+### Para Moradores (resident):
+- Apenas botão "Ver timeline"
+- Texto de boas-vindas: "Veja os avisos do seu condomínio"
 
-### 2. Atualizar política RLS para auto-registro de síndico
+### Para Colaboradores (collaborator):
+- Botão "Criar avisos" (não gerenciar)
+- Botão "Ver timeline"
 
-Criar política que permite síndicos se auto-registrarem como "pendente":
-
-```sql
-CREATE POLICY "Syndics can self-register as pending"
-ON public.user_roles FOR INSERT
-WITH CHECK (
-  role = 'syndic'::app_role 
-  AND is_approved = false
-  AND user_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
-);
-```
+### Para Síndicos/Admins/Owners:
+- Botão "Gerenciar avisos"
+- Botão "Config"
+- Botão "Ver timeline"
 
 ---
 
 ## Arquivos a Modificar
 
-### 1. `src/pages/auth/SignupSyndicPage.tsx`
+### 1. `src/pages/DashboardPage.tsx`
 
 **Mudanças:**
-- Adicionar campo de código do condomínio (similar ao SignupResidentPage)
-- Validação em tempo real do código do condomínio
-- Criar registro em `user_roles` com `role: 'syndic'` e `is_approved: false`
-- Exibir mensagem informando que o cadastro aguarda aprovação
+- Criar funções helper para verificar permissões:
+  - `canManageAnnouncements(role)` - owner, admin, syndic, collaborator
+  - `canAccessSettings(role)` - owner, admin, syndic
+  
+- Modificar o card de condomínio para renderizar botões condicionalmente baseado no `condo.userRole`
 
-**Novo fluxo:**
-1. Síndico digita código do condomínio
-2. Sistema valida se o condomínio existe
-3. Cria conta + profile + user_role (pendente)
-4. Exibe tela de "aguardando aprovação"
+- Ajustar texto de boas-vindas baseado no papel (evitar "Síndico" para moradores)
 
-### 2. `src/hooks/useProfile.ts`
+### Código exemplo da lógica:
 
-**Mudanças:**
-- Incluir `is_approved` na busca de roles
-- Filtrar apenas roles aprovados para exibição no dashboard
-- Expor lista de roles pendentes para exibir aviso
+```typescript
+// Helper functions
+const canManageAnnouncements = (role?: string) => 
+  ['owner', 'admin', 'syndic', 'collaborator'].includes(role || '');
 
-### 3. `src/pages/DashboardPage.tsx`
+const canAccessSettings = (role?: string) => 
+  ['owner', 'admin', 'syndic'].includes(role || '');
 
-**Mudanças:**
-- Verificar se usuário tem apenas roles pendentes
-- Exibir mensagem de "aguardando aprovação" se necessário
-- Bloquear acesso a funcionalidades enquanto pendente
+// No card de cada condomínio:
+{canManageAnnouncements(condo.userRole) ? (
+  <Button asChild>
+    <Link to={`/admin/${condo.id}`}>Gerenciar avisos</Link>
+  </Button>
+) : null}
 
-### 4. `src/pages/super-admin/SuperAdminUsers.tsx`
+{canAccessSettings(condo.userRole) && (
+  <Button asChild variant="outline">
+    <Link to={`/admin/${condo.id}/settings`}>Config</Link>
+  </Button>
+)}
 
-**Mudanças:**
-- Mostrar badge "Pendente" para usuários com `is_approved = false`
-- Adicionar ação "Aprovar" para vínculos pendentes
-- Filtro para ver apenas cadastros pendentes
-
-### 5. `src/hooks/useAllUsers.ts`
-
-**Mudanças:**
-- Incluir `is_approved` nos dados de roles dos usuários
-- Permitir identificar quais vínculos estão pendentes
-
-### 6. `src/components/super-admin/UserRoleBadges.tsx`
-
-**Mudanças:**
-- Exibir indicador visual para roles pendentes (ex: badge amarelo "Pendente")
-
-### 7. `src/components/super-admin/ManageUserRolesDialog.tsx`
-
-**Mudanças:**
-- Adicionar botão "Aprovar" para roles pendentes
-- Permitir rejeitar (deletar) cadastros pendentes
+{/* Ver timeline sempre visível */}
+<Button asChild variant="outline">
+  <Link to={`/c/${condo.slug}`}>Ver timeline</Link>
+</Button>
+```
 
 ---
 
-## Fluxo Visual
+## Resultado Esperado
 
-### Cadastro do Síndico
-
-```text
-Cadastro de Síndico
-┌─────────────────────────────────────────────────────────┐
-│ Código do Condomínio *                                  │
-│ ┌─────────────────────────────────────────────────────┐ │
-│ │ ex: 101                                     ✓       │ │
-│ └─────────────────────────────────────────────────────┘ │
-│ Vitrine Esplanada                                       │
-│                                                         │
-│ Nome Completo *                                         │
-│ ┌─────────────────────────────────────────────────────┐ │
-│ │ Seu nome                                            │ │
-│ └─────────────────────────────────────────────────────┘ │
-│                                                         │
-│ [... demais campos ...]                                 │
-│                                                         │
-│ ℹ️ Após o cadastro, você precisará aguardar a           │
-│    aprovação do administrador do sistema.               │
-│                                                         │
-│ ┌─────────────────────────────────────────────────────┐ │
-│ │              Criar minha conta                       │ │
-│ └─────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Tela de Aguardando Aprovação
+### Morador (Francisco):
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│                     ⏳                                   │
-│                                                         │
-│         Aguardando aprovação                            │
-│                                                         │
-│  Seu cadastro como síndico do condomínio                │
-│  "Vitrine Esplanada" está sendo analisado.              │
-│                                                         │
-│  Você receberá um email quando for aprovado.            │
-│                                                         │
-│  ┌──────────────┐  ┌──────────────┐                     │
-│  │    Sair      │  │  Atualizar   │                     │
-│  └──────────────┘  └──────────────┘                     │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────┐
+│  Vitrine Esplanada          Free    │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │     Ver avisos              │    │
+│  └─────────────────────────────┘    │
+└─────────────────────────────────────┘
 ```
 
-### Super Admin - Lista de Usuários
+### Síndico/Admin:
 
 ```text
-| Usuário           | Papéis                              | Ações      |
-|-------------------|-------------------------------------|------------|
-| João Silva        | 🟡 Síndico (Pendente) - Jardins     | ✓ ✗ ✏️ 🗑️  |
-| Maria Santos      | 🟢 Síndico - Vitrine                | ✏️ ⚙️ 🗑️   |
+┌─────────────────────────────────────┐
+│  Vitrine Esplanada          Free    │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │     Gerenciar avisos        │    │
+│  └─────────────────────────────┘    │
+│  ┌────────────┐ ┌──────────────┐    │
+│  │   Config   │ │ Ver timeline │    │
+│  └────────────┘ └──────────────┘    │
+└─────────────────────────────────────┘
 ```
+
+---
+
+## Benefícios
+
+1. **Segurança**: Moradores não veem botões de funcionalidades que não podem acessar
+2. **UX**: Interface limpa e apropriada para cada tipo de usuário
+3. **Escalável**: Fácil adicionar novos papéis no futuro
 
 ---
 
 ## Considerações Técnicas
 
-### Segurança
-- Síndico só consegue criar role com `is_approved = false`
-- Apenas Super Admin pode alterar `is_approved` para `true`
-- Dashboard bloqueia funcionalidades até aprovação
-
-### Retrocompatibilidade
-- Registros existentes continuam com `is_approved = true` (padrão)
-- Não afeta moradores (continuam com aprovação automática)
-
-### Notificações (Futura implementação)
-- Email para Super Admin quando novo síndico se cadastra
-- Email para síndico quando aprovado
-
+- A segurança real (RLS) já está implementada no banco - esta mudança é apenas visual
+- Mesmo que um morador tentasse acessar `/admin/{id}`, o backend bloquearia as operações
+- Esta mudança melhora a experiência do usuário mostrando apenas o que ele pode fazer

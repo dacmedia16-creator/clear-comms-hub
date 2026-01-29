@@ -6,6 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
+import SignupTypePage from "./pages/auth/SignupTypePage";
+import SignupResidentPage from "./pages/auth/SignupResidentPage";
+import SignupSyndicPage from "./pages/auth/SignupSyndicPage";
 import DashboardPage from "./pages/DashboardPage";
 import AdminCondominiumPage from "./pages/AdminCondominiumPage";
 import TimelinePage from "./pages/TimelinePage";
@@ -28,6 +31,9 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/auth/signup" element={<SignupTypePage />} />
+            <Route path="/auth/signup/resident" element={<SignupResidentPage />} />
+            <Route path="/auth/signup/syndic" element={<SignupSyndicPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/admin/:condoId" element={<AdminCondominiumPage />} />
             <Route path="/c/:slug" element={<TimelinePage />} />

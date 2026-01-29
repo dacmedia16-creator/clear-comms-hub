@@ -59,11 +59,20 @@ export default function SignupResidentPage() {
       setValidatingCondo(true);
       setCondoError(null);
       
-      const { data, error } = await supabase
+      // Check if it's a numeric code or a slug
+      const isNumeric = /^\d+$/.test(trimmedCode);
+      
+      let query = supabase
         .from("condominiums")
-        .select("id, name")
-        .eq("slug", trimmedCode)
-        .single();
+        .select("id, name");
+      
+      if (isNumeric) {
+        query = query.eq("code", parseInt(trimmedCode, 10));
+      } else {
+        query = query.eq("slug", trimmedCode);
+      }
+      
+      const { data, error } = await query.single();
       
       setValidatingCondo(false);
       
@@ -245,7 +254,7 @@ export default function SignupResidentPage() {
                   <Input
                     id="condoCode"
                     type="text"
-                    placeholder="ex: jardins-abc123"
+                    placeholder="ex: 101"
                     value={condoCode}
                     onChange={(e) => setCondoCode(e.target.value)}
                     className={`pr-10 ${errors.condoCode || condoError ? "border-destructive" : validCondo ? "border-green-500" : ""}`}

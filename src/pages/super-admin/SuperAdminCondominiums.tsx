@@ -284,6 +284,7 @@ export default function SuperAdminCondominiums() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Código</TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Proprietário</TableHead>
                     <TableHead>Plano</TableHead>
@@ -294,13 +295,18 @@ export default function SuperAdminCondominiums() {
                 <TableBody>
                   {filteredCondos.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         Nenhum condomínio encontrado
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredCondos.map((condo) => (
                       <TableRow key={condo.id}>
+                        <TableCell>
+                          <code className="text-sm bg-primary/10 text-primary font-bold px-2 py-1 rounded">
+                            {condo.code}
+                          </code>
+                        </TableCell>
                         <TableCell>
                           <div>
                             <div className="font-medium">{condo.name}</div>

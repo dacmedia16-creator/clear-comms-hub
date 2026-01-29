@@ -1,123 +1,135 @@
 
-# Plano: Permitir Síndico Ver Moradores Cadastrados
+# Correção: Recursão Infinita nas Políticas RLS
 
-## Resumo do Problema
+## Diagnóstico da Causa Raiz
 
-Atualmente, apenas Super Admins conseguem ver a lista de moradores de um condomínio. Síndicos não têm acesso porque:
+Após investigação detalhada, identifiquei o problema exato. A política RLS criada na última atualização causou **recursão infinita**:
 
-1. A página de membros (`SuperAdminCondoMembers`) está protegida pelo `SuperAdminGuard`
-2. A política de segurança da tabela `profiles` só permite visualização pelo próprio usuário ou Super Admins
+### Cadeia de Recursão
+```text
+SELECT profiles
+    ↓
+Política: "Condo managers can view member profiles"
+    ↓
+Função: can_manage_condominium(ur.condominium_id)
+    ↓
+Função: is_condominium_owner(cond_id)
+    ↓
+JOIN public.profiles p ON p.id = c.owner_id ← ACIONA NOVAMENTE SELECT profiles
+    ↓
+RECURSÃO INFINITA!
+```
+
+A função `is_condominium_owner()` faz um JOIN com a tabela `profiles` para verificar se o usuário é dono do condomínio. Quando isso acontece dentro de uma política RLS da própria tabela `profiles`, o PostgreSQL detecta a recursão e retorna erro.
+
+## Os Dados NÃO Foram Perdidos
+
+Os condomínios e usuários ainda existem no banco de dados. O problema é apenas de **permissão de leitura** (RLS). Prova: a timeline pública ainda funciona porque a tabela `announcements` não tem esse problema.
+
+---
 
 ## Solução Proposta
 
-Criar uma nova página de membros acessível para gestores (Síndico/Admin/Owner) e atualizar as permissões do banco de dados.
+### Estratégia: Adicionar auth_owner_id em condominiums
+
+Assim como já foi feito em `super_admins` e `user_roles` (que têm `auth_user_id`), vamos adicionar uma coluna `auth_owner_id` na tabela `condominiums` que referencia diretamente `auth.uid()`, evitando a necessidade de JOIN com `profiles`.
+
+### Alterações Necessárias
+
+| Arquivo/Recurso | Ação | Descrição |
+|-----------------|------|-----------|
+| Migration SQL | Criar | Adicionar coluna `auth_owner_id` em condominiums |
+| Migration SQL | Criar | Atualizar dados existentes com os auth_user_id corretos |
+| Migration SQL | Criar | Atualizar função `is_condominium_owner()` |
+| Migration SQL | Criar | Atualizar política "Condo managers can view member profiles" |
+| Migration SQL | Criar | Corrigir política "Users can view own roles" em user_roles |
 
 ---
 
-## Alterações Necessárias
+## Detalhes Técnicos
 
-### 1. Banco de Dados (Migration SQL)
-
-Atualizar a política RLS da tabela `profiles` para permitir que gestores de condomínios vejam os perfis dos membros vinculados:
+### 1. Adicionar coluna auth_owner_id
 
 ```sql
--- Nova política: Gestores podem ver perfis de membros do seu condomínio
-CREATE POLICY "Condo managers can view member profiles"
-ON public.profiles FOR SELECT
-USING (
-  EXISTS (
-    SELECT 1 FROM user_roles ur
-    WHERE ur.user_id = profiles.id
-    AND can_manage_condominium(ur.condominium_id)
-  )
-);
+-- Adicionar coluna que referencia diretamente auth.users
+ALTER TABLE public.condominiums 
+ADD COLUMN auth_owner_id UUID REFERENCES auth.users(id);
+
+-- Preencher com dados existentes
+UPDATE public.condominiums c
+SET auth_owner_id = p.user_id
+FROM public.profiles p
+WHERE c.owner_id = p.id;
 ```
 
-### 2. Nova Página: Membros do Condomínio
-
-Criar `src/pages/CondoMembersPage.tsx` - página de visualização de membros para gestores:
-
-| Elemento | Descrição |
-|----------|-----------|
-| Header | Botão voltar + nome do condomínio |
-| Tabela | Lista de membros com nome, telefone, unidade, função |
-| Botão Adicionar | Para cadastrar novos moradores |
-
-### 3. Atualizar Rotas
-
-Adicionar nova rota em `src/App.tsx`:
-- `/admin/:condoId/members` → `CondoMembersPage`
-
-### 4. Atualizar Dashboard/Admin
-
-Adicionar botão "Ver Moradores" na página de administração do condomínio para síndicos/admins.
-
----
-
-## Fluxo de Acesso
-
-```text
-Dashboard
-    │
-    ├── Card do Condomínio
-    │       │
-    │       └── Botão "Gerenciar avisos" → AdminCondominiumPage
-    │                                           │
-    │                                           ├── Botão "Ver Moradores" → CondoMembersPage (NOVO)
-    │                                           │
-    │                                           └── Botão "Config" → CondominiumSettingsPage
-```
-
----
-
-## Arquivos a Criar/Modificar
-
-| Arquivo | Ação | Descrição |
-|---------|------|-----------|
-| `supabase/migrations/...` | Criar | Política RLS para profiles |
-| `src/pages/CondoMembersPage.tsx` | Criar | Nova página de membros |
-| `src/App.tsx` | Modificar | Adicionar rota `/admin/:condoId/members` |
-| `src/pages/AdminCondominiumPage.tsx` | Modificar | Adicionar botão "Ver Moradores" |
-
----
-
-## Permissões
-
-| Ação | Síndico | Admin | Owner | Super Admin |
-|------|---------|-------|-------|-------------|
-| Ver lista de membros | ✅ | ✅ | ✅ | ✅ |
-| Adicionar membro | ✅ | ✅ | ✅ | ✅ |
-| Remover membro | ✅ | ✅ | ✅ | ✅ |
-
----
-
-## Seção Técnica
-
-### Política RLS Detalhada
-
-A nova política verifica se o usuário logado pode gerenciar pelo menos um condomínio onde o perfil alvo está vinculado:
+### 2. Atualizar função is_condominium_owner
 
 ```sql
-CREATE POLICY "Condo managers can view member profiles"
-ON public.profiles FOR SELECT
-USING (
-  -- Permite visualizar perfis de membros dos condomínios que o usuário gerencia
-  EXISTS (
-    SELECT 1 FROM user_roles ur
-    WHERE ur.user_id = profiles.id
-    AND can_manage_condominium(ur.condominium_id)
-  )
-);
+CREATE OR REPLACE FUNCTION public.is_condominium_owner(cond_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.condominiums c
+    WHERE c.id = cond_id 
+      AND c.auth_owner_id = auth.uid()
+  );
+$$;
 ```
 
-### Reutilização de Componentes
+**Diferença:** Não faz mais JOIN com `profiles`, usa diretamente `auth_owner_id`.
 
-- `useCondoMembers` - hook existente que já busca membros
-- `AddMemberDialog` - componente existente para adicionar membros
-- O código será similar ao `SuperAdminCondoMembers`, mas sem o guard de super admin
+### 3. Corrigir política "Users can view own roles"
 
-### Segurança
+```sql
+-- Remover política atual que causa recursão
+DROP POLICY IF EXISTS "Users can view own roles" ON public.user_roles;
 
-- Síndicos só verão membros dos **seus** condomínios
-- A função `can_manage_condominium` já inclui validação de owner/admin/syndic
-- Moradores comuns não terão acesso a esta página
+-- Criar nova política usando auth_user_id diretamente
+CREATE POLICY "Users can view own roles"
+ON public.user_roles FOR SELECT
+USING (auth_user_id = auth.uid());
+```
+
+### 4. Manter política de profiles (agora funciona)
+
+A política "Condo managers can view member profiles" continuará funcionando porque:
+- `can_manage_condominium()` → `is_condominium_owner()` agora usa `auth_owner_id`
+- Não há mais JOIN com `profiles`
+
+---
+
+## Impacto da Correção
+
+### Antes (Problema)
+- Erro 500 em qualquer query que toque `profiles`
+- Dashboard vazio para todos os usuários
+- Listas de usuários e condomínios vazias
+
+### Depois (Corrigido)
+- Super Admin volta a ver todos os condomínios e usuários
+- Síndicos podem ver moradores dos seus condomínios
+- Todas as funcionalidades restauradas
+
+---
+
+## Passos de Implementação
+
+1. **Migration SQL única** contendo todas as correções:
+   - Adicionar `auth_owner_id` em condominiums
+   - Preencher dados existentes
+   - Atualizar `is_condominium_owner()`
+   - Corrigir política de `user_roles`
+
+2. **Nenhuma alteração de código frontend necessária**
+   - O problema é 100% no banco de dados
+
+---
+
+## Considerações de Segurança
+
+- A abordagem `auth_user_id` / `auth_owner_id` é o padrão recomendado para evitar recursão
+- Todas as funções de segurança continuam usando `SECURITY DEFINER`
+- Os dados sensíveis permanecem protegidos pelas políticas RLS

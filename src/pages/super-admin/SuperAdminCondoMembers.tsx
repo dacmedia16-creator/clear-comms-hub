@@ -3,22 +3,6 @@ import { Link, useParams } from "react-router-dom";
 import { SuperAdminGuard } from "@/components/SuperAdminGuard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -35,6 +19,7 @@ import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle } from "lucide-reac
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
+import { AddMemberDialog } from "@/components/super-admin/AddMemberDialog";
 
 const roleLabels: Record<string, string> = {
   admin: "Administrador",
@@ -52,15 +37,12 @@ const roleColors: Record<string, string> = {
 
 export default function SuperAdminCondoMembers() {
   const { condoId } = useParams<{ condoId: string }>();
-  const { members, loading, addMember, removeMember } = useCondoMembers(condoId || "");
+  const { members, loading, addMember, createMember, removeMember } = useCondoMembers(condoId || "");
   const { users } = useAllUsers();
   const { toast } = useToast();
 
   const [condoName, setCondoName] = useState<string>("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState("");
-  const [selectedRole, setSelectedRole] = useState<"admin" | "syndic" | "resident" | "collaborator">("syndic");
-  const [saving, setSaving] = useState(false);
 
   // Get condominium info
   useEffect(() => {
@@ -80,19 +62,10 @@ export default function SuperAdminCondoMembers() {
   const memberUserIds = new Set(members.map((m) => m.user_id));
   const availableUsers = users.filter((u) => !memberUserIds.has(u.id));
 
-  const handleAddMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedUserId || !selectedRole) return;
-
-    setSaving(true);
-    const result = await addMember(selectedUserId, selectedRole);
-    setSaving(false);
-
+  const handleAddExisting = async (userId: string, role: "admin" | "syndic" | "resident" | "collaborator", unit: string) => {
+    const result = await addMember(userId, role, unit);
     if (result.success) {
       toast({ title: "Membro adicionado com sucesso!" });
-      setAddDialogOpen(false);
-      setSelectedUserId("");
-      setSelectedRole("syndic");
     } else {
       toast({
         title: "Erro ao adicionar membro",
@@ -100,6 +73,27 @@ export default function SuperAdminCondoMembers() {
         variant: "destructive",
       });
     }
+    return result;
+  };
+
+  const handleCreateNew = async (data: {
+    fullName: string;
+    phone: string;
+    email: string;
+    unit: string;
+    role: "admin" | "syndic" | "resident" | "collaborator";
+  }) => {
+    const result = await createMember(data);
+    if (result.success) {
+      toast({ title: "Morador cadastrado com sucesso!" });
+    } else {
+      toast({
+        title: "Erro ao cadastrar morador",
+        description: result.error,
+        variant: "destructive",
+      });
+    }
+    return result;
   };
 
   const handleRemoveMember = async (memberId: string, memberName: string) => {
@@ -147,79 +141,23 @@ export default function SuperAdminCondoMembers() {
 
               <div className="flex items-center gap-2">
                 <RefreshButton />
-                <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Adicionar
-                    </Button>
-                  </DialogTrigger>
-                <DialogContent className="bg-card">
-                  <DialogHeader>
-                    <DialogTitle>Adicionar Membro</DialogTitle>
-                    <DialogDescription>
-                      Adicione um síndico, administrador, colaborador ou morador a este condomínio
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleAddMember} className="space-y-4 mt-4">
-                    <div className="space-y-2">
-                      <Label>Usuário *</Label>
-                      <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um usuário" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableUsers.length === 0 ? (
-                            <div className="p-4 text-sm text-muted-foreground text-center">
-                              Nenhum usuário disponível
-                            </div>
-                          ) : (
-                            availableUsers.map((user) => (
-                              <SelectItem key={user.id} value={user.id}>
-                                {user.full_name || user.email || "Sem nome"}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Função *</Label>
-                      <Select
-                        value={selectedRole}
-                        onValueChange={(v) => setSelectedRole(v as any)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="syndic">Síndico</SelectItem>
-                          <SelectItem value="admin">Administrador</SelectItem>
-                          <SelectItem value="collaborator">Colaborador</SelectItem>
-                          <SelectItem value="resident">Morador</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex justify-end gap-3 pt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setAddDialogOpen(false)}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button type="submit" disabled={saving || !selectedUserId}>
-                        {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Adicionar
-                      </Button>
-                    </div>
-                  </form>
-                  </DialogContent>
-                </Dialog>
+                <Button onClick={() => setAddDialogOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar
+                </Button>
               </div>
             </div>
           </div>
         </header>
+
+        {/* Add Member Dialog */}
+        <AddMemberDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          availableUsers={availableUsers}
+          onAddExisting={handleAddExisting}
+          onCreateNew={handleCreateNew}
+        />
 
         {/* Main Content */}
         <main className="container px-4 mx-auto py-8">
@@ -234,6 +172,7 @@ export default function SuperAdminCondoMembers() {
                   <TableRow>
                     <TableHead>Usuário</TableHead>
                     <TableHead>Telefone</TableHead>
+                    <TableHead>Unidade</TableHead>
                     <TableHead>Função</TableHead>
                     <TableHead>Adicionado em</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -242,7 +181,7 @@ export default function SuperAdminCondoMembers() {
                 <TableBody>
                   {members.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
                           <UserCircle className="w-12 h-12 opacity-30" />
                           <p>Nenhum membro cadastrado neste condomínio</p>
@@ -265,6 +204,9 @@ export default function SuperAdminCondoMembers() {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {member.profile?.phone || "—"}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {member.unit || "—"}
                         </TableCell>
                         <TableCell>
                           <span

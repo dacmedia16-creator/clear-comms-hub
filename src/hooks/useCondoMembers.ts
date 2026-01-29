@@ -5,6 +5,7 @@ export interface CondoMember {
   id: string;
   user_id: string;
   role: "admin" | "syndic" | "resident" | "collaborator";
+  unit: string | null;
   created_at: string;
   profile: {
     id: string;
@@ -36,6 +37,7 @@ export function useCondoMembers(condoId: string) {
           id,
           user_id,
           role,
+          unit,
           created_at,
           profiles:user_id (
             id,
@@ -53,6 +55,7 @@ export function useCondoMembers(condoId: string) {
         id: item.id,
         user_id: item.user_id,
         role: item.role,
+        unit: item.unit,
         created_at: item.created_at,
         profile: item.profiles,
       }));
@@ -70,7 +73,11 @@ export function useCondoMembers(condoId: string) {
     fetchMembers();
   }, [condoId]);
 
-  const addMember = async (userId: string, role: "admin" | "syndic" | "resident" | "collaborator") => {
+  const addMember = async (
+    userId: string,
+    role: "admin" | "syndic" | "resident" | "collaborator",
+    unit?: string
+  ) => {
     try {
       const { error } = await supabase
         .from("user_roles")
@@ -78,6 +85,7 @@ export function useCondoMembers(condoId: string) {
           condominium_id: condoId,
           user_id: userId,
           role,
+          unit: unit || null,
         });
 
       if (error) throw error;
@@ -85,6 +93,51 @@ export function useCondoMembers(condoId: string) {
       return { success: true };
     } catch (err: any) {
       console.error("Error adding member:", err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const createMember = async (memberData: {
+    fullName: string;
+    phone: string;
+    email: string;
+    unit: string;
+    role: "admin" | "syndic" | "resident" | "collaborator";
+  }) => {
+    try {
+      // 1. Create profile without auth user (using a placeholder user_id)
+      // We use gen_random_uuid() pattern for profiles without login
+      const placeholderUserId = crypto.randomUUID();
+      
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .insert({
+          user_id: placeholderUserId,
+          full_name: memberData.fullName,
+          email: memberData.email,
+          phone: memberData.phone,
+        })
+        .select("id")
+        .single();
+
+      if (profileError) throw profileError;
+
+      // 2. Create user_role linking profile to condominium
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({
+          condominium_id: condoId,
+          user_id: profileData.id,
+          role: memberData.role,
+          unit: memberData.unit,
+        });
+
+      if (roleError) throw roleError;
+
+      await fetchMembers();
+      return { success: true };
+    } catch (err: any) {
+      console.error("Error creating member:", err);
       return { success: false, error: err.message };
     }
   };
@@ -111,6 +164,7 @@ export function useCondoMembers(condoId: string) {
     error,
     refetch: fetchMembers,
     addMember,
+    createMember,
     removeMember,
   };
 }

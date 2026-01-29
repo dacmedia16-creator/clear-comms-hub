@@ -32,8 +32,7 @@ import {
   CheckCircle,
   MessageCircle,
   Mail,
-  Smartphone,
-  Users
+  Smartphone
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSendWhatsApp } from "@/hooks/useSendWhatsApp";
@@ -328,12 +327,6 @@ export default function AdminCondominiumPage() {
             </div>
             <div className="flex items-center gap-2">
               <RefreshButton />
-              <Button asChild variant="outline" size="sm">
-                <Link to={`/admin/${condoId}/members`}>
-                  <Users className="w-4 h-4 mr-1" />
-                  Moradores
-                </Link>
-              </Button>
               <Button asChild variant="outline" size="sm">
                 <Link to={`/c/${condominium.slug}`} target="_blank">
                   <ExternalLink className="w-4 h-4 mr-1" />

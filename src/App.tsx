@@ -11,6 +11,7 @@ import SignupResidentPage from "./pages/auth/SignupResidentPage";
 import SignupSyndicPage from "./pages/auth/SignupSyndicPage";
 import DashboardPage from "./pages/DashboardPage";
 import AdminCondominiumPage from "./pages/AdminCondominiumPage";
+import CondominiumSettingsPage from "./pages/CondominiumSettingsPage";
 import TimelinePage from "./pages/TimelinePage";
 import SuperAdminDashboard from "./pages/super-admin/SuperAdminDashboard";
 import SuperAdminCondominiums from "./pages/super-admin/SuperAdminCondominiums";
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/auth/signup/syndic" element={<SignupSyndicPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/admin/:condoId" element={<AdminCondominiumPage />} />
+            <Route path="/admin/:condoId/settings" element={<CondominiumSettingsPage />} />
             <Route path="/c/:slug" element={<TimelinePage />} />
             <Route path="/super-admin" element={<SuperAdminDashboard />} />
             <Route path="/super-admin/condominiums" element={<SuperAdminCondominiums />} />

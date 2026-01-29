@@ -33,7 +33,7 @@ export function Hero() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
               <Button asChild size="lg" className="touch-target text-base font-semibold px-8">
-                <Link to="/auth">
+                <Link to="/auth/signup">
                   Começar gratuitamente
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Link>

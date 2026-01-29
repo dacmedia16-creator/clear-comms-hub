@@ -341,7 +341,7 @@ export default function TimelinePage() {
             to="/" 
             className="text-sm text-primary hover:underline mt-1 inline-block"
           >
-            Powered by AVISO CD
+            Powered by AVISO PRO
           </Link>
         </div>
       </footer>

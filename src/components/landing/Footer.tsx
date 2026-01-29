@@ -12,7 +12,7 @@ export function Footer() {
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
                 <Bell className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="font-display text-xl font-bold">AVISO CD</span>
+              <span className="font-display text-xl font-bold">AVISO PRO</span>
             </Link>
             <p className="text-background/70 max-w-md">
               O canal oficial de comunicação do seu condomínio. Centralize informações, 
@@ -61,7 +61,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-background/10 mt-12 pt-8 text-center text-background/50 text-sm">
-          <p>© {new Date().getFullYear()} AVISO CD. Todos os direitos reservados.</p>
+          <p>© {new Date().getFullYear()} AVISO PRO. Todos os direitos reservados.</p>
         </div>
       </div>
     </footer>

@@ -81,7 +81,7 @@ export default function AuthPage() {
 
         toast({
           title: "Conta criada com sucesso!",
-          description: "Bem-vindo ao AVISO CD.",
+          description: "Bem-vindo ao AVISO PRO.",
         });
         navigate("/dashboard");
       } else {
@@ -149,7 +149,7 @@ export default function AuthPage() {
               </div>
             </div>
             <CardTitle className="font-display text-2xl">
-              {mode === "signin" ? "Entrar no AVISO CD" : "Criar sua conta"}
+              {mode === "signin" ? "Entrar no AVISO PRO" : "Criar sua conta"}
             </CardTitle>
             <CardDescription>
               {mode === "signin" 

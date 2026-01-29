@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAllCondominiums } from "@/hooks/useAllCondominiums";
 import { useAllUsers } from "@/hooks/useAllUsers";
 import { useAllAnnouncements } from "@/hooks/useAllAnnouncements";
-import { Bell, Building2, Users, FileText, ArrowLeft, Loader2 } from "lucide-react";
+import { Bell, Building2, Users, FileText, ArrowLeft, Loader2, MessageSquare } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshButton } from "@/components/RefreshButton";
 
@@ -181,6 +181,31 @@ export default function SuperAdminDashboard() {
                       <Link to="/super-admin/timelines">
                         <FileText className="w-4 h-4 mr-2" />
                         Ver Timelines
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center mb-2">
+                      <MessageSquare className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="font-display">API WhatsApp</CardTitle>
+                    <CardDescription>
+                      Gerencie a integração com a API Zion Talk para notificações
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                        Zion Talk
+                      </span>
+                    </div>
+                    <Button asChild className="w-full">
+                      <Link to="/super-admin/whatsapp">
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Gerenciar API
                       </Link>
                     </Button>
                   </CardContent>

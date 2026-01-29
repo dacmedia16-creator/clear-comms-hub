@@ -1,169 +1,232 @@
 
-# Página de Gerenciamento da API WhatsApp
+# Adicionar Opções de Envio WhatsApp e Email no Formulário de Avisos
 
-## Visão Geral
+## Visao Geral
 
-Criar uma página administrativa para gerenciar a integração WhatsApp (Zion Talk) com funcionalidades:
-1. **Listar todos os condomínios** com status de WhatsApp (ativo/inativo)
-2. **Ativar/desativar** WhatsApp para cada condomínio
-3. **Enviar mensagem de teste** para validar a configuração
-4. **Visualizar logs** de envios recentes
+Adicionar opcoes de notificacao diretamente no formulario de criacao de avisos, permitindo ao usuario escolher se deseja enviar via WhatsApp e/ou Email apos a publicacao.
 
 ---
 
-## Nova Rota: `/super-admin/whatsapp`
+## Problema Identificado: Erro de RLS
 
-### Acesso
-- Somente Super Admins (protegido pelo `SuperAdminGuard`)
-- Link adicionado no menu do `SuperAdminDashboard`
+O screenshot mostra um erro: "new row violates row-level security policy for table 'announcements'". Isso precisa ser corrigido antes de adicionar as novas funcionalidades.
+
+**Causa provavel:** A funcao `can_create_announcement` verifica se o usuario pode criar avisos, mas pode haver um problema na verificacao de permissoes para o usuario atual.
 
 ---
 
-## Layout da Página
+## Layout Proposto
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│  🔔 Super Admin                            [ Atualizar ] [Sair] │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  API WhatsApp (Zion Talk)                                       │
-│  Gerencie a integração de notificações via WhatsApp             │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ Status da API: 🟢 Configurada    [ Enviar Teste Global ] │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ─────────────────────────────────────────────────────────────  │
-│                                                                 │
-│  Condomínios                                                    │
-│                                                                 │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │ Nome              │ Plano  │ WhatsApp │ Ações              │ │
-│  ├───────────────────┼────────┼──────────┼────────────────────┤ │
-│  │ Vitrine Esplanada │ Free   │ 🟢 Ativo │ [Toggle] [Testar]  │ │
-│  │ Residencial Jardim│ Pro    │ ⚪ Inativo│ [Toggle] [Testar]  │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                                                                 │
-│  ─────────────────────────────────────────────────────────────  │
-│                                                                 │
-│  Logs de Envio Recentes                                         │
-│                                                                 │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │ Data/Hora   │ Condomínio  │ Telefone      │ Status         │ │
-│  ├─────────────┼─────────────┼───────────────┼────────────────┤ │
-│  │ 29/01 14:30 │ Vitrine     │ (11) 9999-999 │ ✅ Enviado     │ │
-│  │ 29/01 14:28 │ Vitrine     │ (11) 8888-888 │ ❌ Falhou      │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  Criar novo aviso                                          X │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Titulo do aviso *                                          │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │ Reforma da Piscina                                  │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  Categoria *                                                │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │ Informativo                                     [v] │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  Resumo curto (opcional)                                    │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │ Ficara Fechada                                      │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  Conteudo completo *                                        │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │ 10 dias                                             │    │
+│  │                                                     │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  [o] Fixar no topo        [o] Marcar como urgente           │
+│                                                             │
+│  ─────────────────────────────────────────────────────────  │
+│  Notificar moradores                                        │
+│  ─────────────────────────────────────────────────────────  │
+│                                                             │
+│  [v] Enviar via WhatsApp                                    │
+│      Notificar todos os moradores com telefone cadastrado   │
+│                                                             │
+│  [ ] Enviar via Email                                       │
+│      Notificar todos os moradores com email cadastrado      │
+│                                                             │
+│                              [ Cancelar ]  [ Publicar aviso]│
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Funcionalidades Detalhadas
+## Alteracoes no Formulario
 
-### 1. Status da API
-- Verifica se a `ZIONTALK_API_KEY` está configurada (via edge function de teste)
-- Mostra indicador visual: 🟢 Configurada / 🔴 Não configurada
-
-### 2. Tabela de Condomínios
-- Lista todos os condomínios com:
-  - Nome e plano
-  - Status atual do WhatsApp (`notification_whatsapp`)
-  - Toggle para ativar/desativar
-  - Botão "Testar" para envio de mensagem de teste
-
-### 3. Ação de Toggle
-- Atualiza `notification_whatsapp` na tabela `condominiums`
-- Feedback visual imediato com toast
-
-### 4. Envio de Teste
-- Cria uma edge function `test-whatsapp` que:
-  - Recebe um telefone de destino (input do super admin)
-  - Envia uma mensagem padrão de teste
-  - Retorna sucesso ou erro
-- Modal para inserir número de telefone antes de enviar
-
-### 5. Logs de Envio
-- Tabela mostrando registros da `whatsapp_logs`:
-  - Data/hora do envio
-  - Nome do condomínio
-  - Telefone do destinatário
-  - Status (enviado/falhou)
-  - Mensagem de erro (se houver)
-
----
-
-## Arquivos a Criar/Modificar
-
-### Novos Arquivos:
-1. `src/pages/super-admin/SuperAdminWhatsApp.tsx` - Página principal
-2. `supabase/functions/test-whatsapp/index.ts` - Edge function para teste
-
-### Arquivos Modificados:
-1. `src/App.tsx` - Adicionar rota `/super-admin/whatsapp`
-2. `src/pages/super-admin/SuperAdminDashboard.tsx` - Adicionar card de acesso
-
----
-
-## Detalhes Técnicos
-
-### Hook para Carregar Dados
-
+### Estado Adicional
 ```typescript
-// Buscar condomínios com status WhatsApp
-const { data: condominiums } = await supabase
+// Opcoes de notificacao
+const [sendWhatsApp, setSendWhatsApp] = useState(false);
+const [sendEmail, setSendEmail] = useState(false);
+const [notificationStatus, setNotificationStatus] = useState<{
+  whatsapp?: { sent: number; failed: number };
+  email?: { sent: number; failed: number };
+} | null>(null);
+```
+
+### Verificacao de Disponibilidade
+- Carregar configuracoes do condominio (`notification_whatsapp`, `notification_email`)
+- Desabilitar opcoes que nao estao habilitadas no condominio
+- Mostrar tooltip explicando que a opcao precisa ser habilitada nas configuracoes
+
+---
+
+## Fluxo de Publicacao Atualizado
+
+1. Usuario preenche o formulario
+2. Marca as opcoes de envio desejadas (WhatsApp/Email)
+3. Clica em "Publicar aviso"
+4. Sistema:
+   - Cria o aviso no banco de dados
+   - Se WhatsApp marcado: chama a edge function `send-whatsapp`
+   - Se Email marcado: chama a edge function `send-email` (nova)
+5. Exibe dialog de sucesso com resumo dos envios
+
+---
+
+## Arquivos a Modificar
+
+### 1. `src/pages/AdminCondominiumPage.tsx`
+- Adicionar estados para opcoes de envio
+- Carregar configuracoes do condominio (notification_whatsapp, notification_email)
+- Adicionar secao de notificacoes no formulario
+- Chamar funcoes de envio apos criacao do aviso
+
+### 2. Nova Edge Function: `supabase/functions/send-email/index.ts`
+- Buscar membros com email cadastrado
+- Gerar template de email baseado na categoria
+- Enviar usando Resend API
+- Registrar envios em tabela de logs
+
+---
+
+## Nova Tabela: email_logs
+
+Estrutura similar a `whatsapp_logs`:
+- id (uuid)
+- announcement_id (uuid, FK)
+- condominium_id (uuid, FK)
+- recipient_email (text)
+- recipient_name (text)
+- status (text: 'sent' | 'failed')
+- error_message (text)
+- sent_at (timestamp)
+- created_by (uuid, FK)
+
+---
+
+## Detalhes Tecnicos
+
+### Verificacao de Permissoes
+```typescript
+// Carregar condominio com configuracoes de notificacao
+const { data: condoData } = await supabase
   .from("condominiums")
-  .select("id, name, slug, plan, notification_whatsapp")
-  .order("name");
-
-// Buscar logs recentes
-const { data: logs } = await supabase
-  .from("whatsapp_logs")
-  .select(`
-    *,
-    condominiums:condominium_id (name)
-  `)
-  .order("sent_at", { ascending: false })
-  .limit(50);
+  .select("*, notification_whatsapp, notification_email")
+  .eq("id", condoId)
+  .single();
 ```
 
-### Toggle WhatsApp
-
-```typescript
-const toggleWhatsApp = async (condoId: string, enabled: boolean) => {
-  await supabase
-    .from("condominiums")
-    .update({ notification_whatsapp: enabled })
-    .eq("id", condoId);
-};
+### Secao de Notificacoes no Formulario
+```tsx
+{/* Secao de Notificacoes */}
+<div className="border-t pt-4 mt-4">
+  <Label className="text-sm font-medium mb-3 block">
+    Notificar moradores
+  </Label>
+  
+  <div className="space-y-3">
+    <div className="flex items-start gap-3">
+      <Checkbox 
+        id="send-whatsapp" 
+        checked={sendWhatsApp}
+        onCheckedChange={setSendWhatsApp}
+        disabled={!condominium?.notification_whatsapp}
+      />
+      <div className="flex-1">
+        <Label htmlFor="send-whatsapp" className="cursor-pointer flex items-center gap-2">
+          <MessageCircle className="w-4 h-4 text-green-600" />
+          Enviar via WhatsApp
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          {condominium?.notification_whatsapp 
+            ? "Notificar moradores com telefone cadastrado"
+            : "Habilite nas configuracoes do condominio"}
+        </p>
+      </div>
+    </div>
+    
+    <div className="flex items-start gap-3">
+      <Checkbox 
+        id="send-email" 
+        checked={sendEmail}
+        onCheckedChange={setSendEmail}
+        disabled={!condominium?.notification_email}
+      />
+      <div className="flex-1">
+        <Label htmlFor="send-email" className="cursor-pointer flex items-center gap-2">
+          <Mail className="w-4 h-4 text-blue-600" />
+          Enviar via Email
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          {condominium?.notification_email 
+            ? "Notificar moradores com email cadastrado"
+            : "Habilite nas configuracoes do condominio"}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
 ```
 
-### Edge Function: test-whatsapp
-
+### Logica de Envio Apos Criacao
 ```typescript
-// Recebe: { phone: string, condominiumId?: string }
-// Envia mensagem de teste via Zion Talk
-// Registra na whatsapp_logs com announcement_id = null
+// Apos criar o aviso com sucesso
+if (sendWhatsApp && condominium.notification_whatsapp) {
+  const whatsappResult = await sendToMembersWhatsApp(data, condominium, baseUrl);
+  // Armazenar resultado
+}
+
+if (sendEmail && condominium.notification_email) {
+  const emailResult = await sendToMembersEmail(data, condominium, baseUrl);
+  // Armazenar resultado
+}
 ```
 
 ---
 
-## Fluxo de Teste
+## Dependencia: API Key Resend
 
-1. Super Admin clica em "Testar" em um condomínio
-2. Abre modal pedindo número de telefone
-3. Ao confirmar, chama edge function `test-whatsapp`
-4. Exibe resultado (sucesso ou erro)
-5. Registra tentativa na tabela `whatsapp_logs`
+Para enviar emails, precisamos da chave da API Resend:
+- **RESEND_API_KEY** - sera solicitada antes de implementar
+
+---
+
+## Correcao do Erro de RLS
+
+Verificar se o usuario tem o role correto no condominio:
+1. Confirmar que o usuario esta autenticado
+2. Verificar se tem role de admin, syndic ou collaborator no condominio
+3. Garantir que `created_by` esta sendo preenchido corretamente com o profile.id
 
 ---
 
 ## Resumo das Mudanças
 
-| Arquivo | Tipo | Descrição |
+| Arquivo | Tipo | Descricao |
 |---------|------|-----------|
-| `src/pages/super-admin/SuperAdminWhatsApp.tsx` | Criar | Página completa de gerenciamento |
-| `supabase/functions/test-whatsapp/index.ts` | Criar | Edge function para teste de envio |
-| `src/App.tsx` | Modificar | Adicionar rota `/super-admin/whatsapp` |
-| `src/pages/super-admin/SuperAdminDashboard.tsx` | Modificar | Adicionar card "API WhatsApp" |
+| `src/pages/AdminCondominiumPage.tsx` | Modificar | Adicionar opcoes de envio WhatsApp/Email |
+| `supabase/functions/send-email/index.ts` | Criar | Edge function para envio de emails |
+| `src/hooks/useSendEmail.ts` | Criar | Hook para envio de emails |
+| Migration: email_logs | Criar | Tabela para registrar envios de email |
+

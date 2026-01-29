@@ -40,6 +40,7 @@ export default function SuperAdminUsers() {
   const { toast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [showPendingOnly, setShowPendingOnly] = useState(false);
   const [promotingUser, setPromotingUser] = useState<any>(null);
   const [demotingUser, setDemotingUser] = useState<any>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -47,10 +48,22 @@ export default function SuperAdminUsers() {
   const [managingRolesUser, setManagingRolesUser] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
 
-  const filteredUsers = users.filter(user =>
-    user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Count pending approvals
+  const pendingCount = users.filter(u => 
+    u.roles?.some(r => r.is_approved === false)
+  ).length;
+
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (showPendingOnly) {
+      return matchesSearch && user.roles?.some(r => r.is_approved === false);
+    }
+    
+    return matchesSearch;
+  });
 
   const handlePromote = async () => {
     if (!promotingUser || !currentProfile) return;
@@ -161,9 +174,9 @@ export default function SuperAdminUsers() {
 
         {/* Main Content */}
         <main className="container px-4 mx-auto py-8">
-          {/* Search */}
-          <div className="mb-6">
-            <div className="relative max-w-md">
+          {/* Search and Filters */}
+          <div className="mb-6 flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome ou email..."
@@ -172,6 +185,15 @@ export default function SuperAdminUsers() {
                 className="pl-10"
               />
             </div>
+            {pendingCount > 0 && (
+              <Button
+                variant={showPendingOnly ? "default" : "outline"}
+                onClick={() => setShowPendingOnly(!showPendingOnly)}
+                className="whitespace-nowrap"
+              >
+                Pendentes ({pendingCount})
+              </Button>
+            )}
           </div>
 
           {loading ? (

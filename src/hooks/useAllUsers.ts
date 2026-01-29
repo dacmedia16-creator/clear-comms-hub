@@ -6,6 +6,7 @@ interface UserRole {
   role: "admin" | "syndic" | "resident" | "collaborator";
   condominium_name: string;
   condominium_id: string;
+  is_approved: boolean;
 }
 
 interface Profile {
@@ -43,7 +44,7 @@ export function useAllUsers() {
         .from("super_admins")
         .select("user_id");
 
-      // Fetch user roles with condominium names
+      // Fetch user roles with condominium names (including is_approved)
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select(`
@@ -51,6 +52,7 @@ export function useAllUsers() {
           user_id,
           role,
           condominium_id,
+          is_approved,
           condominiums (name)
         `);
 
@@ -68,6 +70,7 @@ export function useAllUsers() {
             role: ur.role as UserRole["role"],
             condominium_id: ur.condominium_id,
             condominium_name: (ur.condominiums as any)?.name || "—",
+            is_approved: ur.is_approved ?? true,
           });
         }
       }

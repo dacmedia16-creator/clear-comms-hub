@@ -248,6 +248,7 @@ export type Database = {
           condominium_id: string
           created_at: string
           id: string
+          is_approved: boolean
           role: Database["public"]["Enums"]["app_role"]
           unit: string | null
           user_id: string
@@ -256,6 +257,7 @@ export type Database = {
           condominium_id: string
           created_at?: string
           id?: string
+          is_approved?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           unit?: string | null
           user_id: string
@@ -264,6 +266,7 @@ export type Database = {
           condominium_id?: string
           created_at?: string
           id?: string
+          is_approved?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           unit?: string | null
           user_id?: string

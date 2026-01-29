@@ -1,9 +1,10 @@
-import { Shield } from "lucide-react";
+import { Shield, Clock } from "lucide-react";
 
 interface UserRole {
   role: "admin" | "syndic" | "resident" | "collaborator";
   condominium_name: string;
   condominium_id: string;
+  is_approved?: boolean;
 }
 
 interface UserRoleBadgesProps {
@@ -43,23 +44,48 @@ export function UserRoleBadges({ isSuperAdmin, roles }: UserRoleBadgesProps) {
     );
   }
 
-  // Group roles by type
+  // Group approved roles by type
+  const approvedRoles = roles.filter(r => r.is_approved !== false);
+  const pendingRoles = roles.filter(r => r.is_approved === false);
+
   const roleGroups: Record<string, string[]> = {};
-  for (const r of roles) {
+  for (const r of approvedRoles) {
     if (!roleGroups[r.role]) {
       roleGroups[r.role] = [];
     }
     roleGroups[r.role].push(r.condominium_name);
   }
 
+  const pendingGroups: Record<string, string[]> = {};
+  for (const r of pendingRoles) {
+    if (!pendingGroups[r.role]) {
+      pendingGroups[r.role] = [];
+    }
+    pendingGroups[r.role].push(r.condominium_name);
+  }
+
   return (
     <div className="flex flex-wrap gap-1">
+      {/* Approved roles */}
       {Object.entries(roleGroups).map(([role, condos]) => (
         <span
           key={role}
           className={`text-xs px-2 py-1 rounded-full ${roleStyles[role] || "bg-muted text-muted-foreground"}`}
           title={condos.join(", ")}
         >
+          {roleLabels[role] || role}
+          {condos.length > 1 ? ` (${condos.length})` : ` (${condos[0]})`}
+        </span>
+      ))}
+      
+      {/* Pending roles */}
+      {Object.entries(pendingGroups).map(([role, condos]) => (
+        <span
+          key={`pending-${role}`}
+          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-amber-500/10 text-amber-600"
+          title={`Aguardando aprovação: ${condos.join(", ")}`}
+        >
+          <Clock className="w-3 h-3" />
           {roleLabels[role] || role}
           {condos.length > 1 ? ` (${condos.length})` : ` (${condos[0]})`}
         </span>

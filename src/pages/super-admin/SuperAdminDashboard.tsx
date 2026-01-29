@@ -7,6 +7,7 @@ import { useAllUsers } from "@/hooks/useAllUsers";
 import { useAllAnnouncements } from "@/hooks/useAllAnnouncements";
 import { Bell, Building2, Users, FileText, ArrowLeft, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { RefreshButton } from "@/components/RefreshButton";
 
 export default function SuperAdminDashboard() {
   const { signOut } = useAuth();
@@ -44,9 +45,12 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
 
-              <Button variant="ghost" size="sm" onClick={() => signOut()}>
-                Sair
-              </Button>
+              <div className="flex items-center gap-2">
+                <RefreshButton />
+                <Button variant="ghost" size="sm" onClick={() => signOut()}>
+                  Sair
+                </Button>
+              </div>
             </div>
           </div>
         </header>

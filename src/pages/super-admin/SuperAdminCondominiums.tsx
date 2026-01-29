@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Bell, Building2, Plus, ArrowLeft, Loader2, Pencil, Trash2, ExternalLink, Search, Users } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { RefreshButton } from "@/components/RefreshButton";
 
 export default function SuperAdminCondominiums() {
   const { condominiums, loading, refetch } = useAllCondominiums();
@@ -180,77 +181,81 @@ export default function SuperAdminCondominiums() {
                 </div>
               </div>
 
-              <Dialog open={createDialogOpen} onOpenChange={(open) => { setCreateDialogOpen(open); if (!open) resetForm(); }}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Novo
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-card">
-                  <DialogHeader>
-                    <DialogTitle>Criar Condomínio</DialogTitle>
-                    <DialogDescription>Crie um novo condomínio para qualquer usuário</DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleCreate} className="space-y-4 mt-4">
-                    <div className="space-y-2">
-                      <Label>Nome *</Label>
-                      <Input
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="Nome do condomínio"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Proprietário *</Label>
-                      <Select value={formData.owner_id} onValueChange={(v) => setFormData({ ...formData, owner_id: v })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o proprietário" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {users.map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.full_name || user.email || "Sem nome"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Plano</Label>
-                      <Select value={formData.plan} onValueChange={(v: any) => setFormData({ ...formData, plan: v })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="free">Free</SelectItem>
-                          <SelectItem value="starter">Starter</SelectItem>
-                          <SelectItem value="pro">Pro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Descrição</Label>
-                      <Textarea
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        placeholder="Descrição opcional"
-                        rows={3}
-                      />
-                    </div>
-                    <div className="flex justify-end gap-3 pt-4">
-                      <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
-                        Cancelar
-                      </Button>
-                      <Button type="submit" disabled={saving || !formData.name.trim() || !formData.owner_id}>
-                        {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Criar
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+              <div className="flex items-center gap-2">
+                <RefreshButton />
+
+                <Dialog open={createDialogOpen} onOpenChange={(open) => { setCreateDialogOpen(open); if (!open) resetForm(); }}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Novo
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-card">
+                    <DialogHeader>
+                      <DialogTitle>Criar Condomínio</DialogTitle>
+                      <DialogDescription>Crie um novo condomínio para qualquer usuário</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleCreate} className="space-y-4 mt-4">
+                      <div className="space-y-2">
+                        <Label>Nome *</Label>
+                        <Input
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          placeholder="Nome do condomínio"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Proprietário *</Label>
+                        <Select value={formData.owner_id} onValueChange={(v) => setFormData({ ...formData, owner_id: v })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o proprietário" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {users.map((user) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                {user.full_name || user.email || "Sem nome"}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Plano</Label>
+                        <Select value={formData.plan} onValueChange={(v: any) => setFormData({ ...formData, plan: v })}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="free">Free</SelectItem>
+                            <SelectItem value="starter">Starter</SelectItem>
+                            <SelectItem value="pro">Pro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Descrição</Label>
+                        <Textarea
+                          value={formData.description}
+                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                          placeholder="Descrição opcional"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-3 pt-4">
+                        <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                          Cancelar
+                        </Button>
+                        <Button type="submit" disabled={saving || !formData.name.trim() || !formData.owner_id}>
+                          {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                          Criar
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
           </div>
         </header>

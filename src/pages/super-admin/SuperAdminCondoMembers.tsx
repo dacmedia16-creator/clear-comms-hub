@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { RefreshButton } from "@/components/RefreshButton";
 
 const roleLabels: Record<string, string> = {
   admin: "Administrador",
@@ -142,13 +143,15 @@ export default function SuperAdminCondoMembers() {
                 </div>
               </div>
 
-              <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Adicionar
-                  </Button>
-                </DialogTrigger>
+              <div className="flex items-center gap-2">
+                <RefreshButton />
+                <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="bg-card">
                   <DialogHeader>
                     <DialogTitle>Adicionar Membro</DialogTitle>
@@ -208,8 +211,9 @@ export default function SuperAdminCondoMembers() {
                       </Button>
                     </div>
                   </form>
-                </DialogContent>
-              </Dialog>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
           </div>
         </header>

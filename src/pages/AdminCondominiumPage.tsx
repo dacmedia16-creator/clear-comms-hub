@@ -33,6 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ANNOUNCEMENT_CATEGORIES, AnnouncementCategory } from "@/lib/constants";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { RefreshButton } from "@/components/RefreshButton";
 
 interface Announcement {
   id: string;
@@ -252,12 +253,15 @@ export default function AdminCondominiumPage() {
               <h1 className="font-display font-bold text-lg truncate">{condominium.name}</h1>
               <p className="text-sm text-muted-foreground">Gerenciar avisos</p>
             </div>
-            <Button asChild variant="outline" size="sm">
-              <Link to={`/c/${condominium.slug}`} target="_blank">
-                <ExternalLink className="w-4 h-4 mr-1" />
-                Ver timeline
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              <RefreshButton />
+              <Button asChild variant="outline" size="sm">
+                <Link to={`/c/${condominium.slug}`} target="_blank">
+                  <ExternalLink className="w-4 h-4 mr-1" />
+                  Ver timeline
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </header>

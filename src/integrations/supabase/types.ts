@@ -115,6 +115,7 @@ export type Database = {
       condominiums: {
         Row: {
           address: string | null
+          auth_owner_id: string | null
           city: string | null
           code: number
           created_at: string
@@ -133,6 +134,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          auth_owner_id?: string | null
           city?: string | null
           code?: number
           created_at?: string
@@ -151,6 +153,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          auth_owner_id?: string | null
           city?: string | null
           code?: number
           created_at?: string

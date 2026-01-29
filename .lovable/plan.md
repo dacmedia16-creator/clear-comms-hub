@@ -1,52 +1,91 @@
 
 
-# Plano: Botao de Atualizar Sistema
+# Plano: Criar Usuario Colaborador
 
 ## Resumo
 
-Criar um botao de "Atualizar Sistema" que aparece em todas as paginas logadas, limpa o cache do React Query e recarrega todos os dados.
+Criar um novo tipo de papel "collaborator" (colaborador) que pode ser vinculado a um condominio e possui permissao para criar avisos, mas sem as demais permissoes de administracao.
 
 ---
 
-## Estrategia
+## Analise do Estado Atual
 
-Criar um componente reutilizavel `RefreshButton` que:
-1. Invalida todas as queries do React Query (limpa cache)
-2. Executa um reload da pagina para garantir dados frescos
-3. Aparece no header de todas as paginas logadas
+### Sistema de Roles Existente
 
----
+| Role | Descricao | Permissoes |
+|------|-----------|------------|
+| admin | Administrador do condominio | Gestao completa |
+| syndic | Sindico | Gestao completa |
+| resident | Morador | Apenas visualizacao |
 
-## Paginas que Receberao o Botao
+### RLS Policy para Criacao de Avisos
 
-| Pagina | Arquivo | Local |
-|--------|---------|-------|
-| Dashboard Usuario | `src/pages/DashboardPage.tsx` | Header, ao lado do botao de logout |
-| Admin Condominio | `src/pages/AdminCondominiumPage.tsx` | Header, ao lado do botao "Ver timeline" |
-| Super Admin Dashboard | `src/pages/super-admin/SuperAdminDashboard.tsx` | Header, ao lado do botao "Sair" |
-| Super Admin Condominios | `src/pages/super-admin/SuperAdminCondominiums.tsx` | Header |
-| Super Admin Usuarios | `src/pages/super-admin/SuperAdminUsers.tsx` | Header |
-| Super Admin Timelines | `src/pages/super-admin/SuperAdminTimelines.tsx` | Header |
-| Super Admin Membros | `src/pages/super-admin/SuperAdminCondoMembers.tsx` | Header |
-
----
-
-## Arquivos a Criar
-
-### 1. src/components/RefreshButton.tsx
-
-Componente reutilizavel com:
-- Icone `RefreshCcw` do Lucide
-- Animacao de rotacao durante o refresh
-- Limpa cache do React Query
-- Recarrega a pagina
-
-```typescript
-interface RefreshButtonProps {
-  variant?: "ghost" | "outline";
-  size?: "default" | "sm" | "icon";
-}
+A policy atual permite criar avisos se:
+```sql
+can_manage_condominium(condominium_id) OR is_super_admin()
 ```
+
+A funcao `can_manage_condominium` verifica:
+- Se e owner do condominio OU
+- Se tem role "admin" no condominio
+
+### O que Precisa Mudar
+
+1. Adicionar novo valor "collaborator" ao enum `app_role`
+2. Atualizar policies RLS para permitir colaboradores criarem avisos
+3. Atualizar interface do Super Admin para gerenciar colaboradores
+4. Criar pagina de acesso para colaboradores
+
+---
+
+## Implementacao
+
+### 1. Migracao SQL
+
+```sql
+-- Adicionar role collaborator
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'collaborator';
+
+-- Criar funcao para verificar se pode criar avisos
+CREATE OR REPLACE FUNCTION public.can_create_announcement(cond_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  RETURN 
+    public.can_manage_condominium(cond_id) OR 
+    public.has_condominium_role(cond_id, 'collaborator') OR
+    public.is_super_admin();
+END;
+$$;
+
+-- Atualizar policy de INSERT em announcements
+DROP POLICY IF EXISTS "Create announcements" ON announcements;
+
+CREATE POLICY "Create announcements" ON public.announcements
+FOR INSERT
+WITH CHECK (
+  (can_create_announcement(condominium_id) AND 
+   created_by = (SELECT id FROM profiles WHERE user_id = auth.uid()))
+);
+```
+
+### 2. Atualizar Hook useProfile
+
+Modificar para buscar condominios onde o usuario tem qualquer role (incluindo collaborator), nao apenas onde e owner.
+
+### 3. Atualizar Interface de Membros
+
+Adicionar "Colaborador" como opcao ao adicionar membros no painel Super Admin.
+
+### 4. Criar Pagina para Colaboradores
+
+Colaboradores devem ter acesso a uma interface simplificada para:
+- Ver condominios onde sao colaboradores
+- Criar avisos nesses condominios
+- Nao podem editar/excluir avisos de outros ou gerenciar membros
 
 ---
 
@@ -54,95 +93,93 @@ interface RefreshButtonProps {
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| `src/pages/DashboardPage.tsx` | Adicionar RefreshButton no header |
-| `src/pages/AdminCondominiumPage.tsx` | Adicionar RefreshButton no header |
-| `src/pages/super-admin/SuperAdminDashboard.tsx` | Adicionar RefreshButton no header |
-| `src/pages/super-admin/SuperAdminCondominiums.tsx` | Adicionar RefreshButton no header |
-| `src/pages/super-admin/SuperAdminUsers.tsx` | Adicionar RefreshButton no header |
-| `src/pages/super-admin/SuperAdminTimelines.tsx` | Adicionar RefreshButton no header |
-| `src/pages/super-admin/SuperAdminCondoMembers.tsx` | Adicionar RefreshButton no header |
+| `src/hooks/useProfile.ts` | Buscar condominios por role alem de ownership |
+| `src/hooks/useCondoMembers.ts` | Incluir collaborator no tipo |
+| `src/pages/super-admin/SuperAdminCondoMembers.tsx` | Adicionar opcao "Colaborador" |
+| `src/pages/AdminCondominiumPage.tsx` | Ajustar verificacao de permissao |
+
+## Arquivos a Criar
+
+| Arquivo | Descricao |
+|---------|-----------|
+| Nenhum novo arquivo necessario | Reutilizar estrutura existente |
+
+---
+
+## Fluxo do Colaborador
+
+```text
+1. Super Admin adiciona usuario como "Colaborador" em um condominio
+                          |
+                          v
+2. Colaborador faz login e ve o condominio no seu dashboard
+                          |
+                          v
+3. Colaborador acessa AdminCondominiumPage
+                          |
+                          v
+4. Colaborador pode criar novos avisos
+   (Nao pode editar/excluir avisos de outros, nem gerenciar membros)
+```
 
 ---
 
 ## Secao Tecnica
 
-### Componente RefreshButton
+### Diferenca entre Roles
+
+| Acao | Owner | Admin | Syndic | Collaborator | Resident |
+|------|-------|-------|--------|--------------|----------|
+| Criar avisos | Sim | Sim | Sim | Sim | Nao |
+| Editar avisos proprios | Sim | Sim | Sim | Sim | Nao |
+| Editar avisos de outros | Sim | Sim | Sim | Nao | Nao |
+| Excluir avisos | Sim | Sim | Sim | Nao | Nao |
+| Gerenciar membros | Sim | Sim | Nao | Nao | Nao |
+| Ver timeline | Sim | Sim | Sim | Sim | Sim |
+
+### Nova Funcao SQL
+
+```sql
+CREATE OR REPLACE FUNCTION public.can_create_announcement(cond_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  RETURN 
+    public.can_manage_condominium(cond_id) OR 
+    public.has_condominium_role(cond_id, 'collaborator') OR
+    public.is_super_admin();
+END;
+$$;
+```
+
+### Atualizacao do useProfile
 
 ```typescript
-import { RefreshCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { toast } from "@/hooks/use-toast";
-
-export function RefreshButton({ 
-  variant = "ghost", 
-  size = "icon" 
-}: RefreshButtonProps) {
-  const queryClient = useQueryClient();
-  const [refreshing, setRefreshing] = useState(false);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    
-    // Limpar todo o cache do React Query
-    await queryClient.invalidateQueries();
-    queryClient.clear();
-    
-    toast({
-      title: "Atualizando...",
-      description: "Recarregando dados do sistema",
-    });
-    
-    // Recarregar a pagina apos breve delay
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
-  };
-
-  return (
-    <Button 
-      variant={variant} 
-      size={size} 
-      onClick={handleRefresh}
-      disabled={refreshing}
-      title="Atualizar sistema"
-    >
-      <RefreshCcw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
-    </Button>
-  );
-}
+// Buscar condominios onde o usuario e owner OU tem um role
+const { data: condoData } = await supabase
+  .from("condominiums")
+  .select(`
+    *,
+    user_roles!inner(role)
+  `)
+  .or(`owner_id.eq.${profileData.id},user_roles.user_id.eq.${profileData.id}`);
 ```
 
-### Exemplo de Uso no Header
-
-```tsx
-<div className="flex items-center gap-2">
-  <RefreshButton />
-  <Button variant="ghost" size="icon" onClick={handleSignOut}>
-    <LogOut className="w-5 h-5" />
-  </Button>
-</div>
-```
-
----
-
-## Comportamento do Botao
-
-1. **Clique**: Usuario clica no botao de refresh
-2. **Animacao**: Icone comeca a girar
-3. **Cache**: React Query invalida todas as queries e limpa o cache
-4. **Toast**: Exibe mensagem "Atualizando..."
-5. **Reload**: Apos 500ms, recarrega a pagina com `window.location.reload()`
+Alternativa mais simples usando duas queries:
+1. Buscar condominios onde e owner
+2. Buscar condominios via user_roles
+3. Combinar resultados sem duplicatas
 
 ---
 
 ## Resultado Final
 
 Apos implementacao:
-- Todas as 7 paginas logadas terao o botao de atualizar
-- Botao aparece no header com icone de refresh
-- Ao clicar, limpa cache e recarrega a pagina
-- Animacao visual durante o processo
-- Toast confirmando a acao
+- Super Admin pode adicionar usuarios como "Colaborador" a qualquer condominio
+- Colaboradores veem os condominios no dashboard e podem criar avisos
+- Colaboradores NAO podem excluir avisos ou gerenciar membros
+- Sistema de roles fica mais flexivel para futuras expansoes
 

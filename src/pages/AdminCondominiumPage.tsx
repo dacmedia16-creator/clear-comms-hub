@@ -30,8 +30,11 @@ import {
   AlertTriangle,
   Clock,
   CheckCircle,
-  MessageCircle
+  MessageCircle,
+  Mail
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useSendWhatsApp } from "@/hooks/useSendWhatsApp";
 import { useToast } from "@/hooks/use-toast";
 import { ANNOUNCEMENT_CATEGORIES, AnnouncementCategory } from "@/lib/constants";
 import { format } from "date-fns";
@@ -56,6 +59,8 @@ interface Condominium {
   name: string;
   slug: string;
   description: string | null;
+  notification_whatsapp: boolean;
+  notification_email: boolean;
 }
 
 export default function AdminCondominiumPage() {
@@ -79,6 +84,12 @@ export default function AdminCondominiumPage() {
   const [isPinned, setIsPinned] = useState(false);
   const [isUrgent, setIsUrgent] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  // Notification options
+  const [sendWhatsApp, setSendWhatsApp] = useState(false);
+  const [sendEmail, setSendEmail] = useState(false);
+  
+  const { sendToMembers: sendWhatsAppToMembers } = useSendWhatsApp();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -163,6 +174,35 @@ export default function AdminCondominiumPage() {
       setAnnouncements((prev) => [data, ...prev]);
       setLastCreatedAnnouncement(data);
 
+      // Send notifications if selected
+      const baseUrl = window.location.origin;
+      
+      if (sendWhatsApp && condominium.notification_whatsapp) {
+        try {
+          const result = await sendWhatsAppToMembers(
+            { ...data, id: data.id },
+            { ...condominium, id: condominium.id },
+            baseUrl
+          );
+          if (result.sent > 0) {
+            toast({
+              title: "WhatsApp enviado",
+              description: `${result.sent} mensagens enviadas com sucesso.`,
+            });
+          }
+        } catch (whatsappError) {
+          console.error("Error sending WhatsApp:", whatsappError);
+        }
+      }
+
+      if (sendEmail && condominium.notification_email) {
+        toast({
+          title: "Email não configurado",
+          description: "A API de email ainda não foi configurada. Configure a chave RESEND_API_KEY.",
+          variant: "destructive",
+        });
+      }
+
       // Reset form
       setCreateDialogOpen(false);
       setTitle("");
@@ -171,6 +211,8 @@ export default function AdminCondominiumPage() {
       setCategory("informativo");
       setIsPinned(false);
       setIsUrgent(false);
+      setSendWhatsApp(false);
+      setSendEmail(false);
 
       // Show success dialog with share option
       setSuccessDialogOpen(true);
@@ -359,6 +401,57 @@ export default function AdminCondominiumPage() {
                     <Label htmlFor="urgent" className="cursor-pointer">
                       Marcar como urgente
                     </Label>
+                  </div>
+                </div>
+
+                {/* Notification Options */}
+                <div className="border-t pt-4 mt-2">
+                  <Label className="text-sm font-medium mb-3 block">
+                    Notificar moradores
+                  </Label>
+                  
+                  <div className="space-y-3">
+                    {/* WhatsApp */}
+                    <div className="flex items-start gap-3">
+                      <Checkbox 
+                        id="send-whatsapp" 
+                        checked={sendWhatsApp}
+                        onCheckedChange={(checked) => setSendWhatsApp(!!checked)}
+                        disabled={!condominium?.notification_whatsapp}
+                      />
+                      <div className="flex-1">
+                        <Label htmlFor="send-whatsapp" className="cursor-pointer flex items-center gap-2">
+                          <MessageCircle className="w-4 h-4 text-green-600" />
+                          Enviar via WhatsApp
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          {condominium?.notification_whatsapp 
+                            ? "Notificar moradores com telefone cadastrado"
+                            : "Habilite nas configurações do condomínio"}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Email */}
+                    <div className="flex items-start gap-3">
+                      <Checkbox 
+                        id="send-email" 
+                        checked={sendEmail}
+                        onCheckedChange={(checked) => setSendEmail(!!checked)}
+                        disabled={!condominium?.notification_email}
+                      />
+                      <div className="flex-1">
+                        <Label htmlFor="send-email" className="cursor-pointer flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-blue-600" />
+                          Enviar via Email
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          {condominium?.notification_email 
+                            ? "Notificar moradores com email cadastrado"
+                            : "Habilite nas configurações do condomínio"}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

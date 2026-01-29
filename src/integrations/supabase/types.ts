@@ -123,6 +123,7 @@ export type Database = {
           logo_url: string | null
           name: string
           notification_email: boolean
+          notification_sms: boolean | null
           notification_whatsapp: boolean
           owner_id: string
           plan: Database["public"]["Enums"]["plan_type"]
@@ -140,6 +141,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           notification_email?: boolean
+          notification_sms?: boolean | null
           notification_whatsapp?: boolean
           owner_id: string
           plan?: Database["public"]["Enums"]["plan_type"]
@@ -157,6 +159,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           notification_email?: boolean
+          notification_sms?: boolean | null
           notification_whatsapp?: boolean
           owner_id?: string
           plan?: Database["public"]["Enums"]["plan_type"]
@@ -206,6 +209,64 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      sms_logs: {
+        Row: {
+          announcement_id: string | null
+          condominium_id: string | null
+          created_by: string | null
+          error_message: string | null
+          id: string
+          recipient_name: string | null
+          recipient_phone: string
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          announcement_id?: string | null
+          condominium_id?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          recipient_name?: string | null
+          recipient_phone: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          announcement_id?: string | null
+          condominium_id?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          recipient_name?: string | null
+          recipient_phone?: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_logs_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_logs_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_logs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       super_admins: {
         Row: {

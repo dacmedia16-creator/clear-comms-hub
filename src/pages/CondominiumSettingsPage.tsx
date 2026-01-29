@@ -23,6 +23,7 @@ interface Condominium {
   plan: "free" | "starter" | "pro";
   notification_email: boolean;
   notification_whatsapp: boolean;
+  notification_sms: boolean;
 }
 
 export default function CondominiumSettingsPage() {
@@ -42,6 +43,7 @@ export default function CondominiumSettingsPage() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [notificationEmail, setNotificationEmail] = useState(true);
+  const [notificationSms, setNotificationSms] = useState(false);
   const [notificationWhatsapp, setNotificationWhatsapp] = useState(false);
 
   useEffect(() => {
@@ -75,6 +77,7 @@ export default function CondominiumSettingsPage() {
       setState(data.state || "");
       setNotificationEmail(data.notification_email);
       setNotificationWhatsapp(data.notification_whatsapp);
+      setNotificationSms(data.notification_sms ?? false);
     } catch (error: any) {
       console.error("Error fetching condominium:", error);
       toast({
@@ -110,6 +113,7 @@ export default function CondominiumSettingsPage() {
           state: state.trim() || null,
           notification_email: notificationEmail,
           notification_whatsapp: notificationWhatsapp,
+          notification_sms: notificationSms,
         })
         .eq("id", condoId);
 
@@ -274,6 +278,20 @@ export default function CondominiumSettingsPage() {
                   id="whatsapp-notification"
                   checked={notificationWhatsapp}
                   onCheckedChange={setNotificationWhatsapp}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="sms-notification">Notificação por SMS</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Enviar avisos por SMS para os moradores
+                  </p>
+                </div>
+                <Switch
+                  id="sms-notification"
+                  checked={notificationSms}
+                  onCheckedChange={setNotificationSms}
                 />
               </div>
             </CardContent>

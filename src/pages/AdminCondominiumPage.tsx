@@ -31,10 +31,12 @@ import {
   Clock,
   CheckCircle,
   MessageCircle,
-  Mail
+  Mail,
+  Smartphone
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSendWhatsApp } from "@/hooks/useSendWhatsApp";
+import { useSendSMS } from "@/hooks/useSendSMS";
 import { useToast } from "@/hooks/use-toast";
 import { ANNOUNCEMENT_CATEGORIES, AnnouncementCategory } from "@/lib/constants";
 import { format } from "date-fns";
@@ -61,6 +63,7 @@ interface Condominium {
   description: string | null;
   notification_whatsapp: boolean;
   notification_email: boolean;
+  notification_sms: boolean;
 }
 
 export default function AdminCondominiumPage() {
@@ -87,9 +90,11 @@ export default function AdminCondominiumPage() {
 
   // Notification options
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
+  const [sendSMS, setSendSMS] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
   
   const { sendToMembers: sendWhatsAppToMembers } = useSendWhatsApp();
+  const { sendToMembers: sendSMSToMembers } = useSendSMS();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -195,6 +200,24 @@ export default function AdminCondominiumPage() {
         }
       }
 
+      if (sendSMS && condominium.notification_sms) {
+        try {
+          const result = await sendSMSToMembers(
+            { ...data, id: data.id },
+            { ...condominium, id: condominium.id },
+            baseUrl
+          );
+          if (result.sent > 0) {
+            toast({
+              title: "SMS enviado",
+              description: `${result.sent} mensagens enviadas com sucesso.`,
+            });
+          }
+        } catch (smsError) {
+          console.error("Error sending SMS:", smsError);
+        }
+      }
+
       if (sendEmail && condominium.notification_email) {
         toast({
           title: "Email não configurado",
@@ -212,6 +235,7 @@ export default function AdminCondominiumPage() {
       setIsPinned(false);
       setIsUrgent(false);
       setSendWhatsApp(false);
+      setSendSMS(false);
       setSendEmail(false);
 
       // Show success dialog with share option
@@ -426,6 +450,27 @@ export default function AdminCondominiumPage() {
                         </Label>
                         <p className="text-xs text-muted-foreground">
                           {condominium?.notification_whatsapp 
+                            ? "Notificar moradores com telefone cadastrado"
+                            : "Habilite nas configurações do condomínio"}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* SMS */}
+                    <div className="flex items-start gap-3">
+                      <Checkbox 
+                        id="send-sms" 
+                        checked={sendSMS}
+                        onCheckedChange={(checked) => setSendSMS(!!checked)}
+                        disabled={!condominium?.notification_sms}
+                      />
+                      <div className="flex-1">
+                        <Label htmlFor="send-sms" className="cursor-pointer flex items-center gap-2">
+                          <Smartphone className="w-4 h-4 text-purple-600" />
+                          Enviar via SMS
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          {condominium?.notification_sms 
                             ? "Notificar moradores com telefone cadastrado"
                             : "Habilite nas configurações do condomínio"}
                         </p>

@@ -1,156 +1,108 @@
 
+
 # Adicionar Opções de Envio WhatsApp e Email no Formulário de Avisos
 
-## Visao Geral
+## Visão Geral
 
-Adicionar opcoes de notificacao diretamente no formulario de criacao de avisos, permitindo ao usuario escolher se deseja enviar via WhatsApp e/ou Email apos a publicacao.
-
----
-
-## Problema Identificado: Erro de RLS
-
-O screenshot mostra um erro: "new row violates row-level security policy for table 'announcements'". Isso precisa ser corrigido antes de adicionar as novas funcionalidades.
-
-**Causa provavel:** A funcao `can_create_announcement` verifica se o usuario pode criar avisos, mas pode haver um problema na verificacao de permissoes para o usuario atual.
+Adicionar checkboxes para selecionar se deseja enviar notificações via WhatsApp e/ou Email ao criar um aviso. As opções serão habilitadas/desabilitadas baseadas nas configurações do condomínio.
 
 ---
 
-## Layout Proposto
+## Alterações
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  Criar novo aviso                                          X │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Titulo do aviso *                                          │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │ Reforma da Piscina                                  │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                                                             │
-│  Categoria *                                                │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │ Informativo                                     [v] │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                                                             │
-│  Resumo curto (opcional)                                    │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │ Ficara Fechada                                      │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                                                             │
-│  Conteudo completo *                                        │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │ 10 dias                                             │    │
-│  │                                                     │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                                                             │
-│  [o] Fixar no topo        [o] Marcar como urgente           │
-│                                                             │
-│  ─────────────────────────────────────────────────────────  │
-│  Notificar moradores                                        │
-│  ─────────────────────────────────────────────────────────  │
-│                                                             │
-│  [v] Enviar via WhatsApp                                    │
-│      Notificar todos os moradores com telefone cadastrado   │
-│                                                             │
-│  [ ] Enviar via Email                                       │
-│      Notificar todos os moradores com email cadastrado      │
-│                                                             │
-│                              [ Cancelar ]  [ Publicar aviso]│
-└─────────────────────────────────────────────────────────────┘
+### 1. Atualizar Interface Condominium
+
+Adicionar campos de configuração de notificação:
+
+```typescript
+interface Condominium {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  notification_whatsapp: boolean;  // Novo
+  notification_email: boolean;      // Novo
+}
 ```
 
----
+### 2. Adicionar Estados de Notificação
 
-## Alteracoes no Formulario
-
-### Estado Adicional
 ```typescript
-// Opcoes de notificacao
+// Opções de notificação
 const [sendWhatsApp, setSendWhatsApp] = useState(false);
 const [sendEmail, setSendEmail] = useState(false);
-const [notificationStatus, setNotificationStatus] = useState<{
-  whatsapp?: { sent: number; failed: number };
-  email?: { sent: number; failed: number };
-} | null>(null);
+const [sendingNotifications, setSendingNotifications] = useState(false);
 ```
 
-### Verificacao de Disponibilidade
-- Carregar configuracoes do condominio (`notification_whatsapp`, `notification_email`)
-- Desabilitar opcoes que nao estao habilitadas no condominio
-- Mostrar tooltip explicando que a opcao precisa ser habilitada nas configuracoes
+### 3. Adicionar Seção no Formulário
 
----
+Após os switches de "Fixar no topo" e "Marcar como urgente", adicionar:
 
-## Fluxo de Publicacao Atualizado
+```text
+────────────────────────────────────────
+Notificar moradores
+────────────────────────────────────────
 
-1. Usuario preenche o formulario
-2. Marca as opcoes de envio desejadas (WhatsApp/Email)
-3. Clica em "Publicar aviso"
-4. Sistema:
-   - Cria o aviso no banco de dados
-   - Se WhatsApp marcado: chama a edge function `send-whatsapp`
-   - Se Email marcado: chama a edge function `send-email` (nova)
-5. Exibe dialog de sucesso com resumo dos envios
+[✓] Enviar via WhatsApp
+    Notificar moradores com telefone cadastrado
+
+[ ] Enviar via Email
+    Habilite nas configurações do condomínio
+```
+
+### 4. Lógica de Envio
+
+Após criar o aviso com sucesso, verificar se as opções foram marcadas e enviar:
+
+```typescript
+// Após criação do aviso
+if (sendWhatsApp && condominium.notification_whatsapp) {
+  await sendToMembersWhatsApp(data, condominium, baseUrl);
+}
+
+if (sendEmail && condominium.notification_email) {
+  // Preparado para quando API estiver configurada
+  await sendToMembersEmail(data, condominium, baseUrl);
+}
+```
+
+### 5. Atualizar Dialog de Sucesso
+
+Mostrar resumo das notificações enviadas no dialog de confirmação.
 
 ---
 
 ## Arquivos a Modificar
 
-### 1. `src/pages/AdminCondominiumPage.tsx`
-- Adicionar estados para opcoes de envio
-- Carregar configuracoes do condominio (notification_whatsapp, notification_email)
-- Adicionar secao de notificacoes no formulario
-- Chamar funcoes de envio apos criacao do aviso
-
-### 2. Nova Edge Function: `supabase/functions/send-email/index.ts`
-- Buscar membros com email cadastrado
-- Gerar template de email baseado na categoria
-- Enviar usando Resend API
-- Registrar envios em tabela de logs
+| Arquivo | Descrição |
+|---------|-----------|
+| `src/pages/AdminCondominiumPage.tsx` | Adicionar UI de notificação e lógica de envio |
+| `src/hooks/useSendEmail.ts` (Novo) | Hook para envio de emails (preparado para API) |
 
 ---
 
-## Nova Tabela: email_logs
+## Detalhes Técnicos
 
-Estrutura similar a `whatsapp_logs`:
-- id (uuid)
-- announcement_id (uuid, FK)
-- condominium_id (uuid, FK)
-- recipient_email (text)
-- recipient_name (text)
-- status (text: 'sent' | 'failed')
-- error_message (text)
-- sent_at (timestamp)
-- created_by (uuid, FK)
+### Interface Atualizada
 
----
+A query já busca `*` do condomínio, então os campos `notification_whatsapp` e `notification_email` já estão disponíveis - só precisa atualizar a interface TypeScript.
 
-## Detalhes Tecnicos
+### Seção de Notificação (JSX)
 
-### Verificacao de Permissoes
-```typescript
-// Carregar condominio com configuracoes de notificacao
-const { data: condoData } = await supabase
-  .from("condominiums")
-  .select("*, notification_whatsapp, notification_email")
-  .eq("id", condoId)
-  .single();
-```
-
-### Secao de Notificacoes no Formulario
 ```tsx
-{/* Secao de Notificacoes */}
+{/* Seção de Notificações */}
 <div className="border-t pt-4 mt-4">
   <Label className="text-sm font-medium mb-3 block">
     Notificar moradores
   </Label>
   
   <div className="space-y-3">
+    {/* WhatsApp */}
     <div className="flex items-start gap-3">
       <Checkbox 
         id="send-whatsapp" 
         checked={sendWhatsApp}
-        onCheckedChange={setSendWhatsApp}
+        onCheckedChange={(checked) => setSendWhatsApp(!!checked)}
         disabled={!condominium?.notification_whatsapp}
       />
       <div className="flex-1">
@@ -161,16 +113,17 @@ const { data: condoData } = await supabase
         <p className="text-xs text-muted-foreground">
           {condominium?.notification_whatsapp 
             ? "Notificar moradores com telefone cadastrado"
-            : "Habilite nas configuracoes do condominio"}
+            : "Habilite nas configurações do condomínio"}
         </p>
       </div>
     </div>
     
+    {/* Email */}
     <div className="flex items-start gap-3">
       <Checkbox 
         id="send-email" 
         checked={sendEmail}
-        onCheckedChange={setSendEmail}
+        onCheckedChange={(checked) => setSendEmail(!!checked)}
         disabled={!condominium?.notification_email}
       />
       <div className="flex-1">
@@ -181,7 +134,7 @@ const { data: condoData } = await supabase
         <p className="text-xs text-muted-foreground">
           {condominium?.notification_email 
             ? "Notificar moradores com email cadastrado"
-            : "Habilite nas configuracoes do condominio"}
+            : "Habilite nas configurações do condomínio"}
         </p>
       </div>
     </div>
@@ -189,44 +142,36 @@ const { data: condoData } = await supabase
 </div>
 ```
 
-### Logica de Envio Apos Criacao
-```typescript
-// Apos criar o aviso com sucesso
-if (sendWhatsApp && condominium.notification_whatsapp) {
-  const whatsappResult = await sendToMembersWhatsApp(data, condominium, baseUrl);
-  // Armazenar resultado
-}
+### Importações Adicionais
 
-if (sendEmail && condominium.notification_email) {
-  const emailResult = await sendToMembersEmail(data, condominium, baseUrl);
-  // Armazenar resultado
-}
+```typescript
+import { Checkbox } from "@/components/ui/checkbox";
+import { Mail } from "lucide-react";
+import { useSendWhatsApp } from "@/hooks/useSendWhatsApp";
+```
+
+### Fluxo de Criação Atualizado
+
+1. Usuário preenche formulário e marca opções de notificação
+2. Clica "Publicar aviso"
+3. Sistema cria o aviso no banco
+4. Se WhatsApp marcado e habilitado: chama `send-whatsapp` edge function
+5. Se Email marcado e habilitado: mostra toast informando que API não configurada (por enquanto)
+6. Exibe dialog de sucesso com resumo
+
+### Reset do Formulário
+
+Incluir reset das opções de notificação:
+
+```typescript
+// Reset form
+setSendWhatsApp(false);
+setSendEmail(false);
 ```
 
 ---
 
-## Dependencia: API Key Resend
+## Sobre o Email
 
-Para enviar emails, precisamos da chave da API Resend:
-- **RESEND_API_KEY** - sera solicitada antes de implementar
-
----
-
-## Correcao do Erro de RLS
-
-Verificar se o usuario tem o role correto no condominio:
-1. Confirmar que o usuario esta autenticado
-2. Verificar se tem role de admin, syndic ou collaborator no condominio
-3. Garantir que `created_by` esta sendo preenchido corretamente com o profile.id
-
----
-
-## Resumo das Mudanças
-
-| Arquivo | Tipo | Descricao |
-|---------|------|-----------|
-| `src/pages/AdminCondominiumPage.tsx` | Modificar | Adicionar opcoes de envio WhatsApp/Email |
-| `supabase/functions/send-email/index.ts` | Criar | Edge function para envio de emails |
-| `src/hooks/useSendEmail.ts` | Criar | Hook para envio de emails |
-| Migration: email_logs | Criar | Tabela para registrar envios de email |
+A funcionalidade de email ficará preparada na UI, mas mostrará mensagem informando que a API precisa ser configurada. Quando você fornecer a chave RESEND_API_KEY, implementaremos a edge function `send-email`.
 

@@ -233,6 +233,7 @@ export default function SuperAdminCondoMembers() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Usuário</TableHead>
+                    <TableHead>Telefone</TableHead>
                     <TableHead>Função</TableHead>
                     <TableHead>Adicionado em</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -241,7 +242,7 @@ export default function SuperAdminCondoMembers() {
                 <TableBody>
                   {members.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
                           <UserCircle className="w-12 h-12 opacity-30" />
                           <p>Nenhum membro cadastrado neste condomínio</p>
@@ -261,6 +262,9 @@ export default function SuperAdminCondoMembers() {
                               {member.profile?.email}
                             </div>
                           </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {member.profile?.phone || "—"}
                         </TableCell>
                         <TableCell>
                           <span

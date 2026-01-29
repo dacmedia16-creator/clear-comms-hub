@@ -1,0 +1,89 @@
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { AnnouncementForShare, CondominiumForShare } from "@/lib/whatsapp-templates";
+
+interface SendResult {
+  phone: string;
+  name: string | null;
+  success: boolean;
+  error?: string;
+}
+
+interface SendWhatsAppResponse {
+  total: number;
+  sent: number;
+  failed: number;
+  results: SendResult[];
+  message?: string;
+  error?: string;
+}
+
+export function useSendWhatsApp() {
+  const [sending, setSending] = useState(false);
+  const [lastResult, setLastResult] = useState<SendWhatsAppResponse | null>(null);
+
+  const sendToMembers = async (
+    announcement: AnnouncementForShare & { id: string },
+    condominium: CondominiumForShare & { id: string },
+    baseUrl: string
+  ): Promise<SendWhatsAppResponse> => {
+    setSending(true);
+    setLastResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+        body: {
+          announcement: {
+            id: announcement.id,
+            title: announcement.title,
+            summary: announcement.summary,
+            category: announcement.category,
+          },
+          condominium: {
+            id: condominium.id,
+            name: condominium.name,
+            slug: condominium.slug,
+          },
+          baseUrl,
+        },
+      });
+
+      if (error) {
+        console.error("Error invoking send-whatsapp:", error);
+        const errorResponse: SendWhatsAppResponse = {
+          total: 0,
+          sent: 0,
+          failed: 0,
+          results: [],
+          error: error.message || "Erro ao enviar mensagens",
+        };
+        setLastResult(errorResponse);
+        return errorResponse;
+      }
+
+      const result = data as SendWhatsAppResponse;
+      setLastResult(result);
+      return result;
+
+    } catch (err) {
+      console.error("Exception in sendToMembers:", err);
+      const errorResponse: SendWhatsAppResponse = {
+        total: 0,
+        sent: 0,
+        failed: 0,
+        results: [],
+        error: err instanceof Error ? err.message : "Erro desconhecido",
+      };
+      setLastResult(errorResponse);
+      return errorResponse;
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return {
+    sendToMembers,
+    sending,
+    lastResult,
+  };
+}

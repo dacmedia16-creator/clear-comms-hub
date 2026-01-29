@@ -178,6 +178,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          phone: string | null
           updated_at: string
           user_id: string
         }
@@ -187,6 +188,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          phone?: string | null
           updated_at?: string
           user_id: string
         }
@@ -196,6 +198,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          phone?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -270,6 +273,64 @@ export type Database = {
           {
             foreignKeyName: "user_roles_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_logs: {
+        Row: {
+          announcement_id: string | null
+          condominium_id: string | null
+          created_by: string | null
+          error_message: string | null
+          id: string
+          recipient_name: string | null
+          recipient_phone: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          announcement_id?: string | null
+          condominium_id?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          recipient_name?: string | null
+          recipient_phone: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          announcement_id?: string | null
+          condominium_id?: string | null
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          recipient_name?: string | null
+          recipient_phone?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_logs_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_logs_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_logs_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

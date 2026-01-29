@@ -81,8 +81,3 @@ export function generateWhatsAppMessage(
     .replace("{resumo}", announcement.summary || "Acesse o link para mais detalhes.")
     .replace("{link}", timelineUrl);
 }
-
-export function openWhatsAppShare(message: string): void {
-  const encodedMessage = encodeURIComponent(message);
-  window.open(`https://wa.me/?text=${encodedMessage}`, "_blank");
-}

@@ -270,18 +270,21 @@ export type Database = {
       }
       super_admins: {
         Row: {
+          auth_user_id: string | null
           created_at: string
           created_by: string | null
           id: string
           user_id: string
         }
         Insert: {
+          auth_user_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           user_id: string
         }
         Update: {
+          auth_user_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -306,6 +309,7 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          auth_user_id: string | null
           condominium_id: string
           created_at: string
           id: string
@@ -315,6 +319,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auth_user_id?: string | null
           condominium_id: string
           created_at?: string
           id?: string
@@ -324,6 +329,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auth_user_id?: string | null
           condominium_id?: string
           created_at?: string
           id?: string

@@ -184,7 +184,7 @@ export default function SignupResidentPage() {
         return;
       }
 
-      // 3. Link to condominium with resident role
+      // 3. Link to condominium with resident role (pending approval)
       const { error: roleError } = await supabase
         .from("user_roles")
         .insert({
@@ -192,6 +192,7 @@ export default function SignupResidentPage() {
           condominium_id: validCondo.id,
           role: "resident",
           unit: unit,
+          is_approved: false, // Pendente de aprovação pelo síndico
         });
 
       if (roleError) {
@@ -204,7 +205,7 @@ export default function SignupResidentPage() {
       } else {
         toast({
           title: "Conta criada com sucesso!",
-          description: `Você foi vinculado ao ${validCondo.name}.`,
+          description: `Aguarde a aprovação do síndico do ${validCondo.name} para acessar o condomínio.`,
         });
       }
 

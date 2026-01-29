@@ -6,6 +6,7 @@ export interface CondoMember {
   user_id: string;
   role: "admin" | "syndic" | "resident" | "collaborator";
   unit: string | null;
+  is_approved: boolean;
   created_at: string;
   profile: {
     id: string;
@@ -38,6 +39,7 @@ export function useCondoMembers(condoId: string) {
           user_id,
           role,
           unit,
+          is_approved,
           created_at,
           profiles:user_id (
             id,
@@ -56,6 +58,7 @@ export function useCondoMembers(condoId: string) {
         user_id: item.user_id,
         role: item.role,
         unit: item.unit,
+        is_approved: item.is_approved,
         created_at: item.created_at,
         profile: item.profiles,
       }));
@@ -158,6 +161,22 @@ export function useCondoMembers(condoId: string) {
     }
   };
 
+  const approveMember = async (memberId: string) => {
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ is_approved: true })
+        .eq("id", memberId);
+
+      if (error) throw error;
+      await fetchMembers();
+      return { success: true };
+    } catch (err: any) {
+      console.error("Error approving member:", err);
+      return { success: false, error: err.message };
+    }
+  };
+
   return {
     members,
     loading,
@@ -166,5 +185,6 @@ export function useCondoMembers(condoId: string) {
     addMember,
     createMember,
     removeMember,
+    approveMember,
   };
 }

@@ -14,7 +14,8 @@ import {
 import { useCondoMembers } from "@/hooks/useCondoMembers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle } from "lucide-react";
+import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
@@ -38,7 +39,7 @@ export default function CondoMembersPage() {
   const { condoId } = useParams<{ condoId: string }>();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { members, loading, createMember, removeMember } = useCondoMembers(condoId || "");
+  const { members, loading, createMember, removeMember, approveMember } = useCondoMembers(condoId || "");
   const { toast } = useToast();
 
   const [condoName, setCondoName] = useState<string>("");
@@ -132,6 +133,19 @@ export default function CondoMembersPage() {
     }
   };
 
+  const handleApproveMember = async (memberId: string, memberName: string) => {
+    const result = await approveMember(memberId);
+    if (result.success) {
+      toast({ title: `${memberName} foi aprovado(a) com sucesso!` });
+    } else {
+      toast({
+        title: "Erro ao aprovar membro",
+        description: result.error,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (authLoading || hasAccess === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -205,6 +219,7 @@ export default function CondoMembersPage() {
                   <TableHead>Telefone</TableHead>
                   <TableHead>Unidade</TableHead>
                   <TableHead>Função</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Adicionado em</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -212,7 +227,7 @@ export default function CondoMembersPage() {
               <TableBody>
                 {members.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       <div className="flex flex-col items-center gap-2">
                         <UserCircle className="w-12 h-12 opacity-30" />
                         <p>Nenhum morador cadastrado neste condomínio</p>
@@ -222,7 +237,7 @@ export default function CondoMembersPage() {
                   </TableRow>
                 ) : (
                   members.map((member) => (
-                    <TableRow key={member.id}>
+                    <TableRow key={member.id} className={!member.is_approved ? "bg-yellow-500/5" : ""}>
                       <TableCell>
                         <div>
                           <div className="font-medium">
@@ -246,22 +261,51 @@ export default function CondoMembersPage() {
                           {roleLabels[member.role]}
                         </span>
                       </TableCell>
+                      <TableCell>
+                        {member.is_approved ? (
+                          <Badge variant="default" className="bg-green-500/20 text-green-700 hover:bg-green-500/30">
+                            Aprovado
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-yellow-500 text-yellow-600 bg-yellow-500/10">
+                            Pendente
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            handleRemoveMember(
-                              member.id,
-                              member.profile?.full_name || member.profile?.email || "este membro"
-                            )
-                          }
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          {!member.is_approved && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                handleApproveMember(
+                                  member.id,
+                                  member.profile?.full_name || member.profile?.email || "Este membro"
+                                )
+                              }
+                              title="Aprovar membro"
+                            >
+                              <Check className="w-4 h-4 text-green-600" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              handleRemoveMember(
+                                member.id,
+                                member.profile?.full_name || member.profile?.email || "este membro"
+                              )
+                            }
+                            title="Remover membro"
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

@@ -1,135 +1,73 @@
 
-# Correção: Recursão Infinita nas Políticas RLS
+# Adicionar Botão "Moradores" no Card do Dashboard
 
-## Diagnóstico da Causa Raiz
+## Objetivo
+Adicionar um botão "Moradores" diretamente no card do condomínio no Dashboard, ao lado dos botões "Config" e "Ver timeline", para facilitar o acesso dos síndicos à lista de moradores.
 
-Após investigação detalhada, identifiquei o problema exato. A política RLS criada na última atualização causou **recursão infinita**:
+## Alteração Necessária
 
-### Cadeia de Recursão
+| Arquivo | Ação | Descrição |
+|---------|------|-----------|
+| `src/pages/DashboardPage.tsx` | Modificar | Adicionar ícone `Users` e botão "Moradores" |
+
+## Detalhes da Implementação
+
+### 1. Adicionar importação do ícone Users
+O ícone `Users` do lucide-react será adicionado às importações existentes.
+
+### 2. Adicionar botão "Moradores" na linha de botões
+O botão será adicionado na mesma linha do "Config" e "Ver timeline", visível apenas para usuários com permissão de acesso às configurações (owner, admin, syndic).
+
+### Layout Proposto
+
 ```text
-SELECT profiles
-    ↓
-Política: "Condo managers can view member profiles"
-    ↓
-Função: can_manage_condominium(ur.condominium_id)
-    ↓
-Função: is_condominium_owner(cond_id)
-    ↓
-JOIN public.profiles p ON p.id = c.owner_id ← ACIONA NOVAMENTE SELECT profiles
-    ↓
-RECURSÃO INFINITA!
+┌─────────────────────────────────────┐
+│  [ícone]                     Free   │
+│  Vitrine Esplanada                  │
+│  [Síndico]                          │
+│                                     │
+│  [====== Gerenciar avisos ======]   │
+│                                     │
+│  [Config] [Moradores] [Ver timeline]│
+└─────────────────────────────────────┘
 ```
 
-A função `is_condominium_owner()` faz um JOIN com a tabela `profiles` para verificar se o usuário é dono do condomínio. Quando isso acontece dentro de uma política RLS da própria tabela `profiles`, o PostgreSQL detecta a recursão e retorna erro.
+### Código a Modificar
 
-## Os Dados NÃO Foram Perdidos
+**Linha 330-346** - Adicionar botão "Moradores" entre "Config" e "Ver timeline":
 
-Os condomínios e usuários ainda existem no banco de dados. O problema é apenas de **permissão de leitura** (RLS). Prova: a timeline pública ainda funciona porque a tabela `announcements` não tem esse problema.
-
----
-
-## Solução Proposta
-
-### Estratégia: Adicionar auth_owner_id em condominiums
-
-Assim como já foi feito em `super_admins` e `user_roles` (que têm `auth_user_id`), vamos adicionar uma coluna `auth_owner_id` na tabela `condominiums` que referencia diretamente `auth.uid()`, evitando a necessidade de JOIN com `profiles`.
-
-### Alterações Necessárias
-
-| Arquivo/Recurso | Ação | Descrição |
-|-----------------|------|-----------|
-| Migration SQL | Criar | Adicionar coluna `auth_owner_id` em condominiums |
-| Migration SQL | Criar | Atualizar dados existentes com os auth_user_id corretos |
-| Migration SQL | Criar | Atualizar função `is_condominium_owner()` |
-| Migration SQL | Criar | Atualizar política "Condo managers can view member profiles" |
-| Migration SQL | Criar | Corrigir política "Users can view own roles" em user_roles |
-
----
-
-## Detalhes Técnicos
-
-### 1. Adicionar coluna auth_owner_id
-
-```sql
--- Adicionar coluna que referencia diretamente auth.users
-ALTER TABLE public.condominiums 
-ADD COLUMN auth_owner_id UUID REFERENCES auth.users(id);
-
--- Preencher com dados existentes
-UPDATE public.condominiums c
-SET auth_owner_id = p.user_id
-FROM public.profiles p
-WHERE c.owner_id = p.id;
+```tsx
+{canAccessSettings(condo.userRole) && (
+  <div className="flex gap-2">
+    <Button asChild variant="outline" className="flex-1">
+      <Link to={`/admin/${condo.id}/settings`}>
+        <Settings className="w-4 h-4 mr-1" />
+        Config
+      </Link>
+    </Button>
+    <Button asChild variant="outline" className="flex-1">
+      <Link to={`/admin/${condo.id}/members`}>
+        <Users className="w-4 h-4 mr-1" />
+        Moradores
+      </Link>
+    </Button>
+    <Button asChild variant="outline" className="flex-1">
+      <Link to={`/c/${condo.slug}`} target="_blank">
+        <ExternalLink className="w-4 h-4 mr-1" />
+        Ver timeline
+      </Link>
+    </Button>
+  </div>
+)}
 ```
 
-### 2. Atualizar função is_condominium_owner
+## Permissões
+O botão "Moradores" será visível apenas para:
+- **Proprietários** (owner)
+- **Administradores** (admin)  
+- **Síndicos** (syndic)
 
-```sql
-CREATE OR REPLACE FUNCTION public.is_condominium_owner(cond_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.condominiums c
-    WHERE c.id = cond_id 
-      AND c.auth_owner_id = auth.uid()
-  );
-$$;
-```
+Colaboradores e moradores não verão este botão.
 
-**Diferença:** Não faz mais JOIN com `profiles`, usa diretamente `auth_owner_id`.
-
-### 3. Corrigir política "Users can view own roles"
-
-```sql
--- Remover política atual que causa recursão
-DROP POLICY IF EXISTS "Users can view own roles" ON public.user_roles;
-
--- Criar nova política usando auth_user_id diretamente
-CREATE POLICY "Users can view own roles"
-ON public.user_roles FOR SELECT
-USING (auth_user_id = auth.uid());
-```
-
-### 4. Manter política de profiles (agora funciona)
-
-A política "Condo managers can view member profiles" continuará funcionando porque:
-- `can_manage_condominium()` → `is_condominium_owner()` agora usa `auth_owner_id`
-- Não há mais JOIN com `profiles`
-
----
-
-## Impacto da Correção
-
-### Antes (Problema)
-- Erro 500 em qualquer query que toque `profiles`
-- Dashboard vazio para todos os usuários
-- Listas de usuários e condomínios vazias
-
-### Depois (Corrigido)
-- Super Admin volta a ver todos os condomínios e usuários
-- Síndicos podem ver moradores dos seus condomínios
-- Todas as funcionalidades restauradas
-
----
-
-## Passos de Implementação
-
-1. **Migration SQL única** contendo todas as correções:
-   - Adicionar `auth_owner_id` em condominiums
-   - Preencher dados existentes
-   - Atualizar `is_condominium_owner()`
-   - Corrigir política de `user_roles`
-
-2. **Nenhuma alteração de código frontend necessária**
-   - O problema é 100% no banco de dados
-
----
-
-## Considerações de Segurança
-
-- A abordagem `auth_user_id` / `auth_owner_id` é o padrão recomendado para evitar recursão
-- Todas as funções de segurança continuam usando `SECURITY DEFINER`
-- Os dados sensíveis permanecem protegidos pelas políticas RLS
+## Resultado Esperado
+Síndicos poderão acessar a lista de moradores diretamente do Dashboard sem precisar entrar na página de gerenciamento de avisos primeiro.

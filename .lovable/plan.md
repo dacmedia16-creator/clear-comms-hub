@@ -1,185 +1,148 @@
 
 
-# Plano: Poderes Completos do Super Admin
+# Plano: Botao de Atualizar Sistema
 
 ## Resumo
 
-Implementar as funcionalidades completas do Super Admin conforme solicitado:
-
-1. Cadastrar e excluir condominios
-2. Cadastrar e excluir Sindicos e moradores
-3. Ver a Timeline de todos os condominios
+Criar um botao de "Atualizar Sistema" que aparece em todas as paginas logadas, limpa o cache do React Query e recarrega todos os dados.
 
 ---
 
-## Analise do Estado Atual
+## Estrategia
 
-### O que ja existe
-
-| Funcionalidade | Status |
-|----------------|--------|
-| Criar condominio | Implementado |
-| Excluir condominio | Implementado |
-| Editar condominio | Implementado |
-| Ver lista de usuarios | Implementado |
-| Promover/Remover Super Admin | Implementado |
-| Gerenciar sindicos/moradores | Nao existe |
-| Ver timelines de todos os condos | Parcial (link externo) |
-
-### O que precisa ser implementado
-
-1. **Gestao de Membros por Condominio**: Adicionar/remover sindicos e moradores vinculados a cada condominio
-2. **Visualizacao de Timelines**: Pagina para ver todas as timelines no painel Super Admin
+Criar um componente reutilizavel `RefreshButton` que:
+1. Invalida todas as queries do React Query (limpa cache)
+2. Executa um reload da pagina para garantir dados frescos
+3. Aparece no header de todas as paginas logadas
 
 ---
 
-## Implementacao
+## Paginas que Receberao o Botao
 
-### 1. Nova Pagina: Gerenciar Membros do Condominio
-
-Criar pagina `src/pages/super-admin/SuperAdminCondoMembers.tsx`
-
-**Funcionalidades:**
-- Listar todos os usuarios vinculados ao condominio (via tabela `user_roles`)
-- Adicionar novo membro (sindico ou morador)
-- Remover membro do condominio
-- Alterar role do membro (syndic <-> admin)
-
-**Fluxo de navegacao:**
-- Na tabela de condominios, adicionar botao "Membros" que leva para `/super-admin/condominiums/:condoId/members`
-
----
-
-### 2. Atualizar Tabela user_roles
-
-Adicionar role "resident" para moradores (atualmente so existe admin e syndic):
-
-```sql
-ALTER TYPE public.app_role ADD VALUE 'resident';
-```
-
----
-
-### 3. Nova Pagina: Ver Todas as Timelines
-
-Criar pagina `src/pages/super-admin/SuperAdminTimelines.tsx`
-
-**Funcionalidades:**
-- Lista de todos os condominios com link direto para cada timeline
-- Preview rapido dos avisos mais recentes de cada condominio
-- Contador de avisos por condominio
-
-**Adicionar card no dashboard Super Admin:**
-- "Ver Timelines" com estatisticas de avisos
-
----
-
-### 4. Atualizar Rotas
-
-```text
-/super-admin/condominiums/:condoId/members -> SuperAdminCondoMembers
-/super-admin/timelines -> SuperAdminTimelines
-```
-
----
-
-### 5. Atualizar Dashboard Super Admin
-
-Adicionar terceiro card para "Timelines" com:
-- Total de avisos na plataforma
-- Link para ver todas as timelines
+| Pagina | Arquivo | Local |
+|--------|---------|-------|
+| Dashboard Usuario | `src/pages/DashboardPage.tsx` | Header, ao lado do botao de logout |
+| Admin Condominio | `src/pages/AdminCondominiumPage.tsx` | Header, ao lado do botao "Ver timeline" |
+| Super Admin Dashboard | `src/pages/super-admin/SuperAdminDashboard.tsx` | Header, ao lado do botao "Sair" |
+| Super Admin Condominios | `src/pages/super-admin/SuperAdminCondominiums.tsx` | Header |
+| Super Admin Usuarios | `src/pages/super-admin/SuperAdminUsers.tsx` | Header |
+| Super Admin Timelines | `src/pages/super-admin/SuperAdminTimelines.tsx` | Header |
+| Super Admin Membros | `src/pages/super-admin/SuperAdminCondoMembers.tsx` | Header |
 
 ---
 
 ## Arquivos a Criar
 
-| Arquivo | Descricao |
-|---------|-----------|
-| `src/pages/super-admin/SuperAdminCondoMembers.tsx` | Gestao de sindicos/moradores por condominio |
-| `src/pages/super-admin/SuperAdminTimelines.tsx` | Visualizacao de todas as timelines |
-| `src/hooks/useCondoMembers.ts` | Hook para buscar membros de um condominio |
-| `src/hooks/useAllAnnouncements.ts` | Hook para buscar avisos de todos os condominios |
+### 1. src/components/RefreshButton.tsx
+
+Componente reutilizavel com:
+- Icone `RefreshCcw` do Lucide
+- Animacao de rotacao durante o refresh
+- Limpa cache do React Query
+- Recarrega a pagina
+
+```typescript
+interface RefreshButtonProps {
+  variant?: "ghost" | "outline";
+  size?: "default" | "sm" | "icon";
+}
+```
+
+---
 
 ## Arquivos a Modificar
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| `src/App.tsx` | Adicionar novas rotas |
-| `src/pages/super-admin/SuperAdminDashboard.tsx` | Adicionar card de Timelines |
-| `src/pages/super-admin/SuperAdminCondominiums.tsx` | Adicionar botao "Membros" na tabela |
-
----
-
-## Fluxo Visual
-
-```text
-Super Admin Dashboard
-    |
-    +-- Gerenciar Condominios
-    |       |
-    |       +-- [Por condominio] Gerenciar Membros
-    |               |
-    |               +-- Adicionar Sindico
-    |               +-- Adicionar Morador
-    |               +-- Remover Membro
-    |
-    +-- Gerenciar Usuarios (existente)
-    |       |
-    |       +-- Promover/Remover Super Admin
-    |
-    +-- Ver Timelines (NOVO)
-            |
-            +-- Lista de todos os condominios
-            +-- Link para cada timeline
-            +-- Estatisticas de avisos
-```
+| `src/pages/DashboardPage.tsx` | Adicionar RefreshButton no header |
+| `src/pages/AdminCondominiumPage.tsx` | Adicionar RefreshButton no header |
+| `src/pages/super-admin/SuperAdminDashboard.tsx` | Adicionar RefreshButton no header |
+| `src/pages/super-admin/SuperAdminCondominiums.tsx` | Adicionar RefreshButton no header |
+| `src/pages/super-admin/SuperAdminUsers.tsx` | Adicionar RefreshButton no header |
+| `src/pages/super-admin/SuperAdminTimelines.tsx` | Adicionar RefreshButton no header |
+| `src/pages/super-admin/SuperAdminCondoMembers.tsx` | Adicionar RefreshButton no header |
 
 ---
 
 ## Secao Tecnica
 
-### Migration SQL
-
-```sql
--- Adicionar role resident
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'resident';
-```
-
-### RLS Policies (ja existentes)
-
-As policies ja permitem Super Admin gerenciar user_roles:
-- `Insert roles`: `can_manage_condominium(condominium_id) OR is_super_admin()`
-- `Delete roles`: `can_manage_condominium(condominium_id) OR is_super_admin()`
-- `View roles`: `can_manage_condominium(condominium_id) OR is_super_admin()`
-
-### Estrutura do Hook useCondoMembers
+### Componente RefreshButton
 
 ```typescript
-interface Member {
-  id: string;
-  user_id: string;
-  role: 'admin' | 'syndic' | 'resident';
-  created_at: string;
-  profile: {
-    full_name: string | null;
-    email: string | null;
-  };
-}
+import { RefreshCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
 
-function useCondoMembers(condoId: string) {
-  // Buscar da tabela user_roles com join em profiles
-  // Retornar lista de membros
+export function RefreshButton({ 
+  variant = "ghost", 
+  size = "icon" 
+}: RefreshButtonProps) {
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    
+    // Limpar todo o cache do React Query
+    await queryClient.invalidateQueries();
+    queryClient.clear();
+    
+    toast({
+      title: "Atualizando...",
+      description: "Recarregando dados do sistema",
+    });
+    
+    // Recarregar a pagina apos breve delay
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  };
+
+  return (
+    <Button 
+      variant={variant} 
+      size={size} 
+      onClick={handleRefresh}
+      disabled={refreshing}
+      title="Atualizar sistema"
+    >
+      <RefreshCcw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
+    </Button>
+  );
 }
 ```
+
+### Exemplo de Uso no Header
+
+```tsx
+<div className="flex items-center gap-2">
+  <RefreshButton />
+  <Button variant="ghost" size="icon" onClick={handleSignOut}>
+    <LogOut className="w-5 h-5" />
+  </Button>
+</div>
+```
+
+---
+
+## Comportamento do Botao
+
+1. **Clique**: Usuario clica no botao de refresh
+2. **Animacao**: Icone comeca a girar
+3. **Cache**: React Query invalida todas as queries e limpa o cache
+4. **Toast**: Exibe mensagem "Atualizando..."
+5. **Reload**: Apos 500ms, recarrega a pagina com `window.location.reload()`
 
 ---
 
 ## Resultado Final
 
-Apos implementacao, o Super Admin podera:
-
-1. Criar e excluir condominios (ja funciona)
-2. Adicionar sindicos e moradores a qualquer condominio
-3. Remover sindicos e moradores de qualquer condominio
-4. Visualizar a timeline de todos os condominios diretamente do painel
+Apos implementacao:
+- Todas as 7 paginas logadas terao o botao de atualizar
+- Botao aparece no header com icone de refresh
+- Ao clicar, limpa cache e recarrega a pagina
+- Animacao visual durante o processo
+- Toast confirmando a acao
 

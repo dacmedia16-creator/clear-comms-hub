@@ -5,6 +5,7 @@ interface Condominium {
   id: string;
   name: string;
   slug: string;
+  code: number;
   description: string | null;
   logo_url: string | null;
   plan: "free" | "starter" | "pro";

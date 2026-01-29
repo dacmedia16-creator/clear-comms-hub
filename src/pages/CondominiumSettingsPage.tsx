@@ -19,6 +19,7 @@ interface Condominium {
   city: string | null;
   state: string | null;
   slug: string;
+  code: number;
   plan: "free" | "starter" | "pro";
   notification_email: boolean;
   notification_whatsapp: boolean;
@@ -287,6 +288,12 @@ export default function CondominiumSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-sm text-muted-foreground">Código do condomínio</span>
+                <code className="text-sm bg-primary/10 text-primary font-bold px-3 py-1 rounded">
+                  {condominium.code}
+                </code>
+              </div>
               <div className="flex justify-between items-center py-2 border-b border-border">
                 <span className="text-sm text-muted-foreground">Link da timeline</span>
                 <code className="text-sm bg-muted px-2 py-1 rounded">

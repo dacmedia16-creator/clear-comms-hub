@@ -1,149 +1,137 @@
 
 
-# Melhorar Tela de Usuários do Super Admin
+# Alterar Papel de Usuário por Condomínio
 
 ## Resumo
 
-Atualizar a página de Usuários (`/super-admin/users`) para:
-1. Mostrar os papéis de cada usuário (Morador, Síndico, Colaborador) com os condomínios associados
-2. Adicionar opção de editar informações do usuário (nome, email, telefone)
-3. Adicionar opção de excluir usuário da plataforma
+Permitir que o Super Admin altere o papel (role) de um usuário em um condomínio específico diretamente na tela de Usuários. O usuário poderá clicar no badge do papel e alterá-lo para outro tipo (Síndico, Morador, Administrador ou Colaborador).
 
 ---
 
-## Estrutura Atual
+## Abordagem
 
-A página mostra apenas:
-- Nome e email
-- Status: "Super Admin" ou "Usuário" (genérico)
-- Data de criação
-- Ações: Promover/Remover Super Admin
-
----
-
-## O Que Será Implementado
-
-### 1. Mostrar Papéis Reais do Usuário
-
-Na coluna "Status", mostrar badges com os papéis do usuário:
-- **Morador** (resident) - badge cinza
-- **Síndico** (syndic) - badge azul/accent
-- **Administrador** (admin) - badge verde
-- **Colaborador** (collaborator) - badge amarelo
-- **Super Admin** - badge vermelho (mantido)
-
-Se o usuário tiver papéis em múltiplos condomínios, mostrar um resumo (ex: "Síndico em 2 condos").
-
-### 2. Botão de Editar
-
-- Adicionar ícone de edição (lápis) na coluna de ações
-- Abrir um Dialog para editar:
-  - Nome completo
-  - Email
-  - Telefone
-
-### 3. Botão de Excluir
-
-- Adicionar ícone de lixeira na coluna de ações
-- Dialog de confirmação antes de excluir
-- Remover o perfil e todas as associações (user_roles)
+Vamos adicionar um dialog que mostra todos os papéis do usuário em diferentes condomínios, permitindo:
+1. Alterar o papel em cada condomínio
+2. Remover a associação do usuário de um condomínio específico
+3. Adicionar o usuário a um novo condomínio com um papel
 
 ---
 
 ## Alterações Necessárias
 
-### 1. Hook `useAllUsers.ts`
-- Buscar também os `user_roles` de cada usuário junto com o nome do condomínio
-- Estrutura atualizada:
+### 1. Migração de Banco de Dados
 
-```typescript
-interface UserRole {
-  role: "admin" | "syndic" | "resident" | "collaborator";
-  condominium_name: string;
-  condominium_id: string;
-}
-
-interface Profile {
-  // ...existentes
-  roles?: UserRole[];
-}
-```
-
-### 2. Componente `SuperAdminUsers.tsx`
-
-- Atualizar coluna Status para mostrar os papéis reais
-- Adicionar botões de Editar e Excluir
-- Criar Dialogs para:
-  - Edição de usuário (nome, email, telefone)
-  - Confirmação de exclusão
-
----
-
-## Segurança
-
-### Migração de Banco de Dados
-
-Será necessário adicionar política RLS para permitir que Super Admins:
-- Atualizem perfis de outros usuários
-- Excluam perfis
+Adicionar política RLS para permitir que Super Admins atualizem `user_roles`:
 
 ```sql
--- Super admins podem atualizar qualquer perfil
-CREATE POLICY "Super admins can update any profile"
-ON public.profiles
+CREATE POLICY "Super admins can update user roles"
+ON public.user_roles
 FOR UPDATE
 USING (is_super_admin())
 WITH CHECK (is_super_admin());
-
--- Super admins podem excluir perfis
-CREATE POLICY "Super admins can delete profiles"
-ON public.profiles
-FOR DELETE
-USING (is_super_admin());
 ```
+
+### 2. Novo Componente: `ManageUserRolesDialog.tsx`
+
+Um dialog que:
+- Lista todos os papéis do usuário em cada condomínio
+- Permite alterar o papel via select
+- Permite remover a associação
+- Permite adicionar nova associação (opcional)
+
+### 3. Atualizar `UserRoleBadges.tsx`
+
+Tornar os badges clicáveis (ou adicionar ícone de edição) para abrir o dialog de gerenciamento de papéis.
+
+### 4. Atualizar `SuperAdminUsers.tsx`
+
+- Integrar o novo dialog de gerenciamento de papéis
+- Adicionar estado para controlar qual usuário está sendo editado
 
 ---
 
 ## Interface Visual
 
-| Usuário | Status | Criado em | Ações |
-|---------|--------|-----------|-------|
-| Denis <br/> dacmedia16@gmail.com | 🔴 Super Admin | 29/01/2026 | — |
-| Carlos Silva <br/> sindico@example.com | 🔵 Síndico (Residencial X) | 29/01/2026 | ✏️ 🗑️ 🛡️ |
-| Morador Teste <br/> morador@example.com | ⚫ Morador (Residencial X) | 29/01/2026 | ✏️ 🗑️ 🛡️ |
+### Dialog de Gerenciar Papéis
 
-Legenda:
-- ✏️ = Editar
-- 🗑️ = Excluir
-- 🛡️ = Promover a Super Admin
+```text
+┌──────────────────────────────────────────────────────────┐
+│  Gerenciar Papéis de "João da Silva"                     │
+│                                                          │
+│  ┌─────────────────────────────────────────────────────┐ │
+│  │ Condomínio          Papel               Ação        │ │
+│  ├─────────────────────────────────────────────────────┤ │
+│  │ Vitrine Esplanada   [Síndico     ▼]    🗑️           │ │
+│  │ Residencial Sol     [Morador     ▼]    🗑️           │ │
+│  └─────────────────────────────────────────────────────┘ │
+│                                                          │
+│  [+ Adicionar a outro condomínio]                        │
+│                                                          │
+│                              [Cancelar]  [Salvar]        │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Fluxo de Funcionamento
+
+1. Super Admin clica no ícone de edição de papéis (novo botão) na linha do usuário
+2. Dialog abre mostrando todos os papéis atuais do usuário
+3. Super Admin pode:
+   - Alterar o papel via dropdown (Síndico, Morador, Admin, Colaborador)
+   - Remover a associação clicando no ícone de lixeira
+   - Adicionar nova associação selecionando condomínio e papel
+4. Ao clicar em "Salvar", as alterações são aplicadas
+5. Lista de usuários é atualizada
 
 ---
 
 ## Detalhes Técnicos
 
+### Arquivos a Criar
+
+**`src/components/super-admin/ManageUserRolesDialog.tsx`**
+- Props: user, roles, open, onOpenChange, onSuccess
+- Estado: lista editável de roles com mudanças pendentes
+- Funções: updateRole, removeRole, addRole, saveChanges
+
 ### Arquivos a Modificar
 
-1. **`src/hooks/useAllUsers.ts`**
-   - Adicionar join com `user_roles` e `condominiums`
-   - Retornar array de roles por usuário
+**`src/pages/super-admin/SuperAdminUsers.tsx`**
+- Adicionar estado `managingRolesUser`
+- Adicionar botão de gerenciar papéis (ícone Users ou Settings)
+- Integrar o ManageUserRolesDialog
 
-2. **`src/pages/super-admin/SuperAdminUsers.tsx`**
-   - Importar ícones adicionais (Pencil, Trash2)
-   - Adicionar estados para dialogs de editar/excluir
-   - Implementar funções de handleEdit e handleDelete
-   - Atualizar renderização da coluna Status
-   - Adicionar Dialogs de edição e exclusão
+**`src/hooks/useAllUsers.ts`**
+- Adicionar `role_id` na interface UserRole para poder atualizar/deletar
 
-3. **Migração SQL**
-   - Adicionar políticas RLS para UPDATE e DELETE em profiles
+### Migração SQL
 
-### Fluxo de Exclusão
+```sql
+-- Permitir que super admins atualizem user_roles
+CREATE POLICY "Super admins can update user roles"
+ON public.user_roles
+FOR UPDATE
+USING (is_super_admin())
+WITH CHECK (is_super_admin());
+```
 
-1. Usuário clica em excluir
-2. Dialog de confirmação aparece
-3. Ao confirmar:
-   - Deletar registros em `user_roles` (cascade automático por FK)
-   - Deletar registro em `super_admins` se existir
-   - Deletar perfil
-4. Refresh da lista
+### Estrutura de Dados Atualizada
+
+```typescript
+interface UserRole {
+  id: string;  // Novo: ID do registro em user_roles
+  role: "admin" | "syndic" | "resident" | "collaborator";
+  condominium_name: string;
+  condominium_id: string;
+}
+```
+
+---
+
+## Considerações de Segurança
+
+- Apenas Super Admins podem alterar papéis
+- Validação no banco via RLS
+- Não é possível alterar o próprio papel (proteção na UI)
 

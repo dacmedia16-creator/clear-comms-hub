@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, ArrowLeft, Loader2, Shield, ShieldOff, Search } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { RefreshButton } from "@/components/RefreshButton";
 
 export default function SuperAdminUsers() {
   const { users, loading, refetch } = useAllUsers();
@@ -111,6 +112,7 @@ export default function SuperAdminUsers() {
                   <span className="font-display text-xl font-bold text-foreground">Usuários</span>
                 </div>
               </div>
+              <RefreshButton />
             </div>
           </div>
         </header>

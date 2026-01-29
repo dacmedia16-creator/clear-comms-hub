@@ -7,6 +7,7 @@ import { useAllCondominiums } from "@/hooks/useAllCondominiums";
 import { FileText, ArrowLeft, Loader2, ExternalLink, Building2, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { RefreshButton } from "@/components/RefreshButton";
 
 const categoryLabels: Record<string, string> = {
   informativo: "Informativo",
@@ -58,6 +59,7 @@ export default function SuperAdminTimelines() {
                   </span>
                 </div>
               </div>
+              <RefreshButton />
             </div>
           </div>
         </header>

@@ -19,6 +19,7 @@ import { Bell, Building2, LogOut, Plus, FileText, Settings, Loader2, ExternalLin
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
+import { RefreshButton } from "@/components/RefreshButton";
 
 export default function DashboardPage() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -125,6 +126,7 @@ export default function DashboardPage() {
               <span className="text-sm text-muted-foreground hidden sm:block">
                 {profile?.full_name || profile?.email}
               </span>
+              <RefreshButton />
               <Button variant="ghost" size="icon" onClick={handleSignOut}>
                 <LogOut className="w-5 h-5" />
               </Button>

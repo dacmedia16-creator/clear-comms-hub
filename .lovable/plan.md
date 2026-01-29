@@ -1,88 +1,185 @@
 
 
-# Plano: Renomear Sistema para AVISO PRO
+# Plano: Poderes Completos do Super Admin
 
 ## Resumo
 
-Alterar o nome do sistema de **"AVISO CD"** para **"AVISO PRO"** em todos os arquivos do projeto.
+Implementar as funcionalidades completas do Super Admin conforme solicitado:
+
+1. Cadastrar e excluir condominios
+2. Cadastrar e excluir Sindicos e moradores
+3. Ver a Timeline de todos os condominios
 
 ---
+
+## Analise do Estado Atual
+
+### O que ja existe
+
+| Funcionalidade | Status |
+|----------------|--------|
+| Criar condominio | Implementado |
+| Excluir condominio | Implementado |
+| Editar condominio | Implementado |
+| Ver lista de usuarios | Implementado |
+| Promover/Remover Super Admin | Implementado |
+| Gerenciar sindicos/moradores | Nao existe |
+| Ver timelines de todos os condos | Parcial (link externo) |
+
+### O que precisa ser implementado
+
+1. **Gestao de Membros por Condominio**: Adicionar/remover sindicos e moradores vinculados a cada condominio
+2. **Visualizacao de Timelines**: Pagina para ver todas as timelines no painel Super Admin
+
+---
+
+## Implementacao
+
+### 1. Nova Pagina: Gerenciar Membros do Condominio
+
+Criar pagina `src/pages/super-admin/SuperAdminCondoMembers.tsx`
+
+**Funcionalidades:**
+- Listar todos os usuarios vinculados ao condominio (via tabela `user_roles`)
+- Adicionar novo membro (sindico ou morador)
+- Remover membro do condominio
+- Alterar role do membro (syndic <-> admin)
+
+**Fluxo de navegacao:**
+- Na tabela de condominios, adicionar botao "Membros" que leva para `/super-admin/condominiums/:condoId/members`
+
+---
+
+### 2. Atualizar Tabela user_roles
+
+Adicionar role "resident" para moradores (atualmente so existe admin e syndic):
+
+```sql
+ALTER TYPE public.app_role ADD VALUE 'resident';
+```
+
+---
+
+### 3. Nova Pagina: Ver Todas as Timelines
+
+Criar pagina `src/pages/super-admin/SuperAdminTimelines.tsx`
+
+**Funcionalidades:**
+- Lista de todos os condominios com link direto para cada timeline
+- Preview rapido dos avisos mais recentes de cada condominio
+- Contador de avisos por condominio
+
+**Adicionar card no dashboard Super Admin:**
+- "Ver Timelines" com estatisticas de avisos
+
+---
+
+### 4. Atualizar Rotas
+
+```text
+/super-admin/condominiums/:condoId/members -> SuperAdminCondoMembers
+/super-admin/timelines -> SuperAdminTimelines
+```
+
+---
+
+### 5. Atualizar Dashboard Super Admin
+
+Adicionar terceiro card para "Timelines" com:
+- Total de avisos na plataforma
+- Link para ver todas as timelines
+
+---
+
+## Arquivos a Criar
+
+| Arquivo | Descricao |
+|---------|-----------|
+| `src/pages/super-admin/SuperAdminCondoMembers.tsx` | Gestao de sindicos/moradores por condominio |
+| `src/pages/super-admin/SuperAdminTimelines.tsx` | Visualizacao de todas as timelines |
+| `src/hooks/useCondoMembers.ts` | Hook para buscar membros de um condominio |
+| `src/hooks/useAllAnnouncements.ts` | Hook para buscar avisos de todos os condominios |
 
 ## Arquivos a Modificar
 
-| Arquivo | Linha | Alteracao |
-|---------|-------|-----------|
-| `index.html` | 7, 12 | Alterar titulo e og:title para "AVISO PRO" |
-| `index.html` | 8, 13 | Atualizar descricoes meta tags |
-| `src/index.css` | 5 | Comentario: "AVISO PRO Design System" |
-| `src/components/landing/Header.tsx` | 18 | Logo texto: "AVISO PRO" |
-| `src/components/landing/Footer.tsx` | 15, 64 | Logo e copyright: "AVISO PRO" |
-| `src/pages/DashboardPage.tsx` | 113 | Logo no dashboard: "AVISO PRO" |
-| `src/pages/TimelinePage.tsx` | 344 | "Powered by AVISO PRO" |
-| `src/pages/AuthPage.tsx` | 84, 152 | Mensagens de boas-vindas e titulo do card |
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/App.tsx` | Adicionar novas rotas |
+| `src/pages/super-admin/SuperAdminDashboard.tsx` | Adicionar card de Timelines |
+| `src/pages/super-admin/SuperAdminCondominiums.tsx` | Adicionar botao "Membros" na tabela |
 
 ---
 
-## Detalhes das Alteracoes
+## Fluxo Visual
 
-### 1. index.html
-- `<title>AVISO PRO</title>`
-- `<meta name="description" content="AVISO PRO - Comunicacao oficial para condominios" />`
-- `<meta property="og:title" content="AVISO PRO" />`
-- `<meta property="og:description" content="AVISO PRO - Comunicacao oficial para condominios" />`
-
-### 2. src/index.css
-```css
-/* AVISO PRO Design System - Warm & Accessible */
-```
-
-### 3. src/components/landing/Header.tsx
-```jsx
-<span className="font-display text-xl font-bold text-foreground">AVISO PRO</span>
-```
-
-### 4. src/components/landing/Footer.tsx
-```jsx
-<span className="font-display text-xl font-bold">AVISO PRO</span>
-...
-<p>© {new Date().getFullYear()} AVISO PRO. Todos os direitos reservados.</p>
-```
-
-### 5. src/pages/DashboardPage.tsx
-```jsx
-<span className="font-display text-xl font-bold text-foreground">AVISO PRO</span>
-```
-
-### 6. src/pages/TimelinePage.tsx
-```jsx
-Powered by AVISO PRO
-```
-
-### 7. src/pages/AuthPage.tsx
-```jsx
-description: "Bem-vindo ao AVISO PRO.",
-...
-{mode === "signin" ? "Entrar no AVISO PRO" : "Criar sua conta"}
+```text
+Super Admin Dashboard
+    |
+    +-- Gerenciar Condominios
+    |       |
+    |       +-- [Por condominio] Gerenciar Membros
+    |               |
+    |               +-- Adicionar Sindico
+    |               +-- Adicionar Morador
+    |               +-- Remover Membro
+    |
+    +-- Gerenciar Usuarios (existente)
+    |       |
+    |       +-- Promover/Remover Super Admin
+    |
+    +-- Ver Timelines (NOVO)
+            |
+            +-- Lista de todos os condominios
+            +-- Link para cada timeline
+            +-- Estatisticas de avisos
 ```
 
 ---
 
-## Total de Alteracoes
+## Secao Tecnica
 
-- **6 arquivos** serao modificados
-- **10 ocorrencias** de "AVISO CD" serao substituidas por "AVISO PRO"
-- Meta tags do `index.html` serao atualizadas com nome e descricao corretos
+### Migration SQL
+
+```sql
+-- Adicionar role resident
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'resident';
+```
+
+### RLS Policies (ja existentes)
+
+As policies ja permitem Super Admin gerenciar user_roles:
+- `Insert roles`: `can_manage_condominium(condominium_id) OR is_super_admin()`
+- `Delete roles`: `can_manage_condominium(condominium_id) OR is_super_admin()`
+- `View roles`: `can_manage_condominium(condominium_id) OR is_super_admin()`
+
+### Estrutura do Hook useCondoMembers
+
+```typescript
+interface Member {
+  id: string;
+  user_id: string;
+  role: 'admin' | 'syndic' | 'resident';
+  created_at: string;
+  profile: {
+    full_name: string | null;
+    email: string | null;
+  };
+}
+
+function useCondoMembers(condoId: string) {
+  // Buscar da tabela user_roles com join em profiles
+  // Retornar lista de membros
+}
+```
 
 ---
 
 ## Resultado Final
 
-Apos a implementacao, o nome "AVISO PRO" aparecera em:
-- Titulo da aba do navegador
-- Header da landing page
-- Footer da landing page
-- Dashboard logado
-- Pagina de autenticacao
-- Timeline publica
-- Meta tags para compartilhamento social
+Apos implementacao, o Super Admin podera:
+
+1. Criar e excluir condominios (ja funciona)
+2. Adicionar sindicos e moradores a qualquer condominio
+3. Remover sindicos e moradores de qualquer condominio
+4. Visualizar a timeline de todos os condominios diretamente do painel
 

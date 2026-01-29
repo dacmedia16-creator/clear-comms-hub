@@ -26,12 +26,13 @@ import { useAllUsers } from "@/hooks/useAllUsers";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, ArrowLeft, Loader2, Shield, ShieldOff, Search, Pencil, Trash2 } from "lucide-react";
+import { Users, ArrowLeft, Loader2, Shield, ShieldOff, Search, Pencil, Trash2, Settings } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
 import { EditUserDialog } from "@/components/super-admin/EditUserDialog";
 import { UserRoleBadges } from "@/components/super-admin/UserRoleBadges";
+import { ManageUserRolesDialog } from "@/components/super-admin/ManageUserRolesDialog";
 
 export default function SuperAdminUsers() {
   const { users, loading, refetch } = useAllUsers();
@@ -43,6 +44,7 @@ export default function SuperAdminUsers() {
   const [demotingUser, setDemotingUser] = useState<any>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [deletingUser, setDeletingUser] = useState<any>(null);
+  const [managingRolesUser, setManagingRolesUser] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
 
   const filteredUsers = users.filter(user =>
@@ -223,9 +225,17 @@ export default function SuperAdminUsers() {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => setEditingUser(user)}
-                                  title="Editar"
+                                  title="Editar perfil"
                                 >
                                   <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setManagingRolesUser(user)}
+                                  title="Gerenciar papéis"
+                                >
+                                  <Settings className="w-4 h-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -268,6 +278,14 @@ export default function SuperAdminUsers() {
             </Card>
           )}
         </main>
+
+        {/* Manage User Roles Dialog */}
+        <ManageUserRolesDialog
+          user={managingRolesUser}
+          open={!!managingRolesUser}
+          onOpenChange={(open) => !open && setManagingRolesUser(null)}
+          onSuccess={refetch}
+        />
 
         {/* Edit User Dialog */}
         <EditUserDialog

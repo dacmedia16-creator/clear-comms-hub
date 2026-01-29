@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UserRole {
+  id: string;
   role: "admin" | "syndic" | "resident" | "collaborator";
   condominium_name: string;
   condominium_id: string;
@@ -46,6 +47,7 @@ export function useAllUsers() {
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select(`
+          id,
           user_id,
           role,
           condominium_id,
@@ -59,9 +61,10 @@ export function useAllUsers() {
       if (!rolesError && userRoles) {
         for (const ur of userRoles) {
           if (!rolesByUser[ur.user_id]) {
-            rolesByUser[ur.user_id] = [];
+          rolesByUser[ur.user_id] = [];
           }
           rolesByUser[ur.user_id].push({
+            id: ur.id,
             role: ur.role as UserRole["role"],
             condominium_id: ur.condominium_id,
             condominium_name: (ur.condominiums as any)?.name || "—",

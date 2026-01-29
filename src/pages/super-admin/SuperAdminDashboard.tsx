@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useAllCondominiums } from "@/hooks/useAllCondominiums";
 import { useAllUsers } from "@/hooks/useAllUsers";
+import { useAllAnnouncements } from "@/hooks/useAllAnnouncements";
 import { Bell, Building2, Users, FileText, ArrowLeft, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -11,8 +12,9 @@ export default function SuperAdminDashboard() {
   const { signOut } = useAuth();
   const { condominiums, loading: condosLoading } = useAllCondominiums();
   const { users, loading: usersLoading } = useAllUsers();
+  const { totalAnnouncements, loading: announcementsLoading } = useAllAnnouncements();
 
-  const loading = condosLoading || usersLoading;
+  const loading = condosLoading || usersLoading || announcementsLoading;
 
   const stats = {
     totalCondos: condominiums.length,
@@ -150,6 +152,31 @@ export default function SuperAdminDashboard() {
                       <Link to="/super-admin/users">
                         <Users className="w-4 h-4 mr-2" />
                         Ver Usuários
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center mb-2">
+                      <FileText className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="font-display">Ver Timelines</CardTitle>
+                    <CardDescription>
+                      Visualize todas as timelines de avisos dos condomínios
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                        Total de Avisos: {totalAnnouncements}
+                      </span>
+                    </div>
+                    <Button asChild className="w-full">
+                      <Link to="/super-admin/timelines">
+                        <FileText className="w-4 h-4 mr-2" />
+                        Ver Timelines
                       </Link>
                     </Button>
                   </CardContent>

@@ -301,7 +301,7 @@ export type Database = {
         | "convivencia"
         | "seguranca"
         | "urgente"
-      app_role: "admin" | "syndic"
+      app_role: "admin" | "syndic" | "resident"
       plan_type: "free" | "starter" | "pro"
     }
     CompositeTypes: {
@@ -438,7 +438,7 @@ export const Constants = {
         "seguranca",
         "urgente",
       ],
-      app_role: ["admin", "syndic"],
+      app_role: ["admin", "syndic", "resident"],
       plan_type: ["free", "starter", "pro"],
     },
   },

@@ -1,173 +1,102 @@
 
-# Fluxo de Aprovação de Moradores pelo Síndico
+# Adicionar Intervalo entre Envios de WhatsApp
 
-## Objetivo
-Implementar um sistema onde moradores que se cadastram ficam com status "pendente" até serem aprovados pelo síndico. Durante o período pendente:
-- O painel do morador fica travado (mostra tela de "Aguardando aprovação")
-- O morador NÃO recebe notificações de avisos (WhatsApp/SMS)
+## Problema
+O envio atual de mensagens WhatsApp é feito de forma sequencial sem nenhum intervalo entre os destinatários. Isso pode causar:
+- Bloqueio temporário pela API do ZionTalk/WhatsApp
+- Rate limiting por excesso de requisições
+- Falha em envios em massa
 
-## Alterações Necessárias
+## Solução
+Adicionar um delay aleatório entre 15 e 30 segundos entre cada envio de mensagem para evitar detecção como spam/bot.
 
-| Arquivo/Recurso | Ação | Descrição |
-|-----------------|------|-----------|
-| Migration SQL | Criar | Atualizar política RLS para moradores incluir `is_approved = false` |
-| `src/pages/auth/SignupResidentPage.tsx` | Modificar | Adicionar `is_approved: false` no insert |
-| `src/hooks/useCondoMembers.ts` | Modificar | Incluir campo `is_approved` na busca e interface |
-| `src/pages/CondoMembersPage.tsx` | Modificar | Adicionar coluna de status e botão de aprovar |
-| `supabase/functions/send-whatsapp/index.ts` | Modificar | Filtrar apenas membros aprovados |
-| `supabase/functions/send-sms/index.ts` | Modificar | Filtrar apenas membros aprovados |
+## Alteração Necessária
 
----
+| Arquivo | Ação | Descrição |
+|---------|------|-----------|
+| `supabase/functions/send-whatsapp/index.ts` | Modificar | Adicionar delay entre envios |
 
 ## Detalhes Técnicos
 
-### 1. Migration SQL - Atualizar Política RLS
-
-Modificar a política de auto-registro de moradores para exigir `is_approved = false`:
-
-```sql
--- Remover política atual
-DROP POLICY IF EXISTS "Users can self-register as resident" ON public.user_roles;
-
--- Criar nova política que exige is_approved = false
-CREATE POLICY "Users can self-register as resident"
-ON public.user_roles FOR INSERT
-WITH CHECK (
-  (role = 'resident'::app_role) 
-  AND (is_approved = false)
-  AND (user_id = (SELECT profiles.id FROM profiles WHERE profiles.user_id = auth.uid()))
-);
-```
-
-### 2. Cadastro de Moradores - Adicionar is_approved: false
-
-No arquivo `src/pages/auth/SignupResidentPage.tsx`, linha 188-195:
-
-```tsx
-// ANTES
-const { error: roleError } = await supabase
-  .from("user_roles")
-  .insert({
-    user_id: profile.id,
-    condominium_id: validCondo.id,
-    role: "resident",
-    unit: unit,
-  });
-
-// DEPOIS
-const { error: roleError } = await supabase
-  .from("user_roles")
-  .insert({
-    user_id: profile.id,
-    condominium_id: validCondo.id,
-    role: "resident",
-    unit: unit,
-    is_approved: false, // Pendente de aprovação
-  });
-```
-
-Também atualizar a mensagem de sucesso para informar que aguarda aprovação.
-
-### 3. Hook useCondoMembers - Incluir is_approved
-
-Adicionar `is_approved` na interface e na query:
+### Função de delay com intervalo aleatório
 
 ```typescript
-export interface CondoMember {
-  id: string;
-  user_id: string;
-  role: "admin" | "syndic" | "resident" | "collaborator";
-  unit: string | null;
-  is_approved: boolean; // NOVO
-  created_at: string;
-  profile: { ... } | null;
+// Gera delay aleatório entre min e max segundos
+function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
+  const ms = Math.floor(Math.random() * (maxSeconds - minSeconds + 1) + minSeconds) * 1000;
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 ```
 
-Adicionar função `approveMember`:
+### Modificação no loop de envio (linha 176-242)
 
 ```typescript
-const approveMember = async (memberId: string) => {
-  const { error } = await supabase
-    .from("user_roles")
-    .update({ is_approved: true })
-    .eq("id", memberId);
-  // ...
-};
+for (let i = 0; i < members.length; i++) {
+  const member = members[i];
+  const profile = member.profiles;
+  
+  // Aguardar intervalo ANTES do envio (exceto no primeiro)
+  if (i > 0) {
+    const delaySeconds = Math.floor(Math.random() * 16) + 15; // 15-30 segundos
+    console.log(`Aguardando ${delaySeconds}s antes do próximo envio...`);
+    await randomDelay(15, 30);
+  }
+  
+  // ... resto do código de envio ...
+}
 ```
 
-### 4. Página de Moradores - UI de Aprovação
-
-Adicionar coluna "Status" na tabela e botão de aprovar:
+## Fluxo de Envio
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│ Usuário     │ Telefone    │ Unidade │ Função  │ Status  │ Ações │
-├─────────────────────────────────────────────────────────────────┤
-│ João Silva  │ 11999...    │ A-101   │ Morador │ [Pend.] │ ✓ 🗑  │
-│ Maria Lima  │ 11888...    │ B-202   │ Morador │ [Aprov] │   🗑  │
-└─────────────────────────────────────────────────────────────────┘
-
-[Pend.] = Badge amarelo com botão de aprovar (✓)
-[Aprov] = Badge verde "Aprovado"
+┌─────────────────────────────────────────────────────────┐
+│ Membro 1: João Silva                                    │
+│ └─> Enviar mensagem ✓                                   │
+│     └─> Aguardar 15-30 segundos...                      │
+├─────────────────────────────────────────────────────────┤
+│ Membro 2: Maria Lima                                    │
+│ └─> Enviar mensagem ✓                                   │
+│     └─> Aguardar 15-30 segundos...                      │
+├─────────────────────────────────────────────────────────┤
+│ Membro 3: Pedro Santos                                  │
+│ └─> Enviar mensagem ✓                                   │
+│     └─> (último - sem delay)                            │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### 5. Edge Functions - Filtrar Membros Aprovados
+## Logs Adicionais
 
-No `send-whatsapp/index.ts` e `send-sms/index.ts`, adicionar filtro:
+O sistema irá registrar no console:
+- Tempo de delay antes de cada envio
+- Progresso: "Enviando para membro 2 de 10..."
 
-```typescript
-// ANTES
-const { data: membersData } = await supabase
-  .from('user_roles')
-  .select('user_id, profiles!inner(id, phone, full_name)')
-  .eq('condominium_id', condominium.id)
-  .not('profiles.phone', 'is', null);
+## Considerações Importantes
 
-// DEPOIS
-const { data: membersData } = await supabase
-  .from('user_roles')
-  .select('user_id, is_approved, profiles!inner(id, phone, full_name)')
-  .eq('condominium_id', condominium.id)
-  .eq('is_approved', true) // NOVO: apenas membros aprovados
-  .not('profiles.phone', 'is', null);
-```
+### Tempo Total de Execução
+- Para 10 moradores: ~3-5 minutos
+- Para 50 moradores: ~15-25 minutos
+- Para 100 moradores: ~30-50 minutos
 
----
+### Edge Function Timeout
+Edge Functions têm timeout padrão de 60 segundos. Para condomínios com muitos moradores, será necessário:
+1. Usar background tasks com `EdgeRuntime.waitUntil()`
+2. Retornar resposta imediata ao frontend
+3. Processar envios em segundo plano
 
-## Fluxo do Usuário
+## Implementação Proposta
 
-### Morador se cadastra:
-1. Preenche formulário com código do condomínio
-2. Conta é criada com `is_approved = false`
-3. Dashboard mostra tela "Aguardando aprovação" (já existe: `PendingApprovalScreen`)
+A função será modificada para:
+1. Retornar resposta imediata ao frontend com status "processando"
+2. Executar os envios em background usando `EdgeRuntime.waitUntil()`
+3. Usar delay de 15-30 segundos entre cada envio
 
-### Síndico aprova:
-1. Acessa Dashboard → clica em "Moradores"
-2. Vê lista com moradores pendentes destacados em amarelo
-3. Clica no botão ✓ para aprovar
-4. Status muda para "Aprovado" (verde)
-
-### Após aprovação:
-1. Morador atualiza a página (ou clica "Verificar status")
-2. Dashboard carrega normalmente
-3. Passa a receber notificações de novos avisos
-
----
-
-## Mensagens de Feedback
-
-| Ação | Mensagem |
-|------|----------|
-| Cadastro do morador | "Sua conta foi criada! Aguarde a aprovação do síndico para acessar o condomínio." |
-| Síndico aprova | "Morador aprovado com sucesso!" |
-| Morador pendente | Tela com ícone de relógio e texto "Aguardando aprovação do síndico" |
-
----
+Isso garante que:
+- O frontend não fica travado esperando todos os envios
+- Os envios são processados de forma segura sem bloqueio
+- O usuário recebe feedback imediato de que o processo iniciou
 
 ## Resultado Esperado
-
-- Moradores novos entram no sistema como "pendentes"
-- Síndico tem controle sobre quem pode acessar o condomínio
-- Apenas moradores aprovados recebem notificações
-- O fluxo já existente para síndicos pendentes é reutilizado para moradores
+- Mensagens enviadas de forma espaçada (15-30s entre cada)
+- Menor risco de bloqueio pela API do WhatsApp
+- Logs detalhados do progresso de envio
+- Frontend recebe resposta imediata sem timeout

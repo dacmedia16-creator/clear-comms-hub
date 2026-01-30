@@ -707,23 +707,10 @@ export default function AdminCondominiumPage() {
               </div>
             )}
 
-            <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-              <Button
-                variant="outline"
-                onClick={() => setSuccessDialogOpen(false)}
-                className="w-full sm:w-auto"
-              >
+            <DialogFooter className="sm:justify-center">
+              <Button variant="outline" onClick={() => setSuccessDialogOpen(false)}>
                 Fechar
               </Button>
-              {lastCreatedAnnouncement && (
-                <SendWhatsAppButton
-                  announcement={{ ...lastCreatedAnnouncement, id: lastCreatedAnnouncement.id }}
-                  condominium={{ ...condominium, id: condominium.id }}
-                  variant="default"
-                  size="default"
-                  showLabel
-                />
-              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>

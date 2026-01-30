@@ -1,29 +1,60 @@
 
 
-# Correção do Envio de SMS - SMSFire API
+# Correção do Envio de SMS - Atualização para API v3
 
-## Problema Identificado
+## Análise da Documentação SMSFire
 
-Os logs mostram um erro de DNS:
-```
-dns error: failed to lookup address information: Name or service not known
-```
+Após estudar a documentação oficial (https://docs.smsfire.com.br), identifiquei que:
 
-A causa raiz são **URLs incorretas** e **autenticação no formato errado**.
+1. **A API v2 está obsoleta** e será desativada até o final do primeiro trimestre de 2026
+2. **A API v3 é a recomendada** desde dezembro de 2025
+3. A autenticação da API v3 é **diferente** da v2
 
 ---
 
-## Problemas no Código Atual
+## Diferenças entre as versões
 
-| Problema | Código Atual (Errado) | Correto (Documentação Oficial) |
-|----------|----------------------|-------------------------------|
-| URL test-sms | `api.smsfire.com.br/v3/sms/send` | `api-v2.smsfire.com.br/sms/send/individual` |
-| URL send-sms | `api-v3.smsfire.com.br/sms/send/individual` | `api-v2.smsfire.com.br/sms/send/individual` |
-| Autenticação | Headers `Username` e `Api_Token` separados | Header `Authorization: Basic <TOKEN>` |
+| Aspecto | API v2 (Obsoleta/Atual) | API v3 (Recomendada) |
+|---------|------------------------|---------------------|
+| URL Base | `api-v2.smsfire.com.br` | `api-v3.smsfire.com.br` |
+| Autenticação | `Authorization: Basic <base64>` | Headers separados |
+| Credenciais | Usuário + Senha do portal | Usuário + TOKEN (gerado no painel) |
+| Endpoint SMS | `/sms/send/individual` | `/sms/send/individual` |
+| Método | GET com query params | GET com query params |
 
-A documentação oficial mostra que:
-- O endpoint correto é: `https://api-v2.smsfire.com.br/sms/send/individual`
-- A autenticação usa `Authorization: Basic` com token Base64 de `usuario:senha`
+---
+
+## Formato de Autenticação da API v3
+
+A API v3 usa **headers separados** (não Basic Auth):
+
+```text
+Headers:
+  Username: seu_usuario
+  Api_Token: seu_token
+```
+
+O **Api_Token** não é a senha do portal! É um token específico que deve ser obtido em:
+**Configurações da conta > Tokens** no portal beta.smsfire.com.br
+
+---
+
+## Exemplo de Requisição (Documentação Oficial)
+
+```javascript
+var options = {
+  method: 'GET',
+  url: 'https://api-v3.smsfire.com.br/sms/send/individual',
+  params: {
+    to: '5511944556677',
+    text: 'hello'
+  },
+  headers: {
+    Username: 'seu_usuario', 
+    Api_Token: 'seu_token'
+  }
+};
+```
 
 ---
 
@@ -31,63 +62,51 @@ A documentação oficial mostra que:
 
 ### 1. Atualizar `supabase/functions/test-sms/index.ts`
 
-Mudar de:
-```typescript
-const response = await fetch('https://api.smsfire.com.br/v3/sms/send', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Username': SMSFIRE_USERNAME,
-    'Api_Token': SMSFIRE_API_TOKEN,
-  },
-  body: JSON.stringify({
-    to: formattedPhone,
-    from: 'Condominio',
-    text: TEST_MESSAGE,
-  }),
-});
-```
+Mudar de API v2 (Basic Auth) para API v3 (Headers separados):
 
-Para:
 ```typescript
-// Gerar token Base64 para autenticação
+// ANTES (v2 - obsoleto)
 const token = btoa(`${SMSFIRE_USERNAME}:${SMSFIRE_API_TOKEN}`);
-
-// URL correta com parâmetros na query string (método GET)
 const url = new URL('https://api-v2.smsfire.com.br/sms/send/individual');
+const response = await fetch(url.toString(), {
+  method: 'GET',
+  headers: { 'Authorization': `Basic ${token}` },
+});
+
+// DEPOIS (v3 - recomendado)
+const url = new URL('https://api-v3.smsfire.com.br/sms/send/individual');
 url.searchParams.set('to', formattedPhone);
 url.searchParams.set('text', TEST_MESSAGE);
 
 const response = await fetch(url.toString(), {
   method: 'GET',
   headers: {
-    'Authorization': `Basic ${token}`,
+    'Username': SMSFIRE_USERNAME,
+    'Api_Token': SMSFIRE_API_TOKEN,
   },
 });
 ```
 
 ### 2. Atualizar `supabase/functions/send-sms/index.ts`
 
-Mesma correção:
-- Trocar `api-v3.smsfire.com.br` por `api-v2.smsfire.com.br`
-- Usar `Authorization: Basic` com token Base64
-- Manter método GET com parâmetros na query string
+Mesma correção - trocar para API v3 com headers separados.
 
 ---
 
-## Secrets
+## Secrets - Ação Importante
 
-Os secrets atuais continuam funcionando, mas com interpretação diferente:
+O secret `SMSFIRE_API_TOKEN` precisa conter o **TOKEN da API v3**, não a senha do portal:
 
-| Secret | Uso Atual | Uso Correto |
-|--------|----------|-------------|
-| `SMSFIRE_USERNAME` | Usuário de login no SMSFire | Usuário de login no SMSFire |
-| `SMSFIRE_API_TOKEN` | Token separado | **Senha** do SMSFire (não token API!) |
+| Secret | Valor Atual | Valor Correto |
+|--------|-------------|---------------|
+| `SMSFIRE_USERNAME` | Usuário do portal | Usuário do portal |
+| `SMSFIRE_API_TOKEN` | `5er3asyg` (senha?) | **Token gerado** no painel v3 |
 
-De acordo com a documentação:
-> "Os dados de usuário e senha que formam o seu token, são os mesmos que você utiliza para acessar o portal web."
-
-Pode ser necessário atualizar `SMSFIRE_API_TOKEN` para conter a **senha** do portal SMSFire em vez de um token API.
+Para obter o token correto:
+1. Acesse https://beta.smsfire.com.br
+2. Vá em **Configurações** (menu lateral)
+3. Localize a seção **Tokens** ou **API Token**
+4. Copie o token gerado
 
 ---
 
@@ -95,34 +114,16 @@ Pode ser necessário atualizar `SMSFIRE_API_TOKEN` para conter a **senha** do po
 
 | Arquivo | Mudança |
 |---------|---------|
-| `supabase/functions/test-sms/index.ts` | Corrigir URL e formato de autenticação |
-| `supabase/functions/send-sms/index.ts` | Corrigir URL e formato de autenticação |
+| `supabase/functions/test-sms/index.ts` | Atualizar para API v3 com headers Username/Api_Token |
+| `supabase/functions/send-sms/index.ts` | Atualizar para API v3 com headers Username/Api_Token |
 
 ---
 
-## Fluxo de Autenticação Correto
+## Resumo
 
-```text
-┌─────────────────────────────────────────────────────┐
-│  1. Obter credenciais do ambiente                   │
-│     SMSFIRE_USERNAME = "usuario"                    │
-│     SMSFIRE_API_TOKEN = "senha"                     │
-├─────────────────────────────────────────────────────┤
-│  2. Gerar token Base64                              │
-│     token = base64("usuario:senha")                 │
-│     → "dXN1YXJpbzpzZW5oYQ=="                        │
-├─────────────────────────────────────────────────────┤
-│  3. Fazer requisição GET com query params           │
-│     GET /sms/send/individual?to=5511...&text=...    │
-│     Header: Authorization: Basic dXN1YXJpbzpzZW5oYQ==│
-└─────────────────────────────────────────────────────┘
-```
+A implementação atual está usando API v2 (obsoleta) com Basic Auth. Preciso:
 
----
-
-## Checklist Pós-Implementação
-
-- [ ] Verificar se `SMSFIRE_API_TOKEN` contém a **senha** do portal (não um token API separado)
-- [ ] Testar conexão SMS no painel Super Admin > Notificações
-- [ ] Enviar SMS de teste para confirmar funcionamento
+1. Atualizar as edge functions para usar API v3
+2. Trocar autenticação Basic Auth para headers `Username` e `Api_Token`
+3. Você precisa obter o **Token API v3** no portal beta.smsfire.com.br e atualizar o secret `SMSFIRE_API_TOKEN`
 

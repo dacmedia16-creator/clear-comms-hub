@@ -1,10 +1,14 @@
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Skeleton } from "@/components/ui/skeleton";
+
+import timelineImg from "@/assets/screenshots/timeline.png";
+import filtersImg from "@/assets/screenshots/filters.png";
+import dashboardImg from "@/assets/screenshots/dashboard.png";
+import whatsappImg from "@/assets/screenshots/whatsapp.png";
 
 interface FeatureItem {
   title: string;
   description: string;
-  imagePlaceholder: string;
+  image: string;
   imageAlt: string;
 }
 
@@ -13,45 +17,31 @@ const features: FeatureItem[] = [
     title: "Timeline Cronológica",
     description:
       "Todos os avisos do condomínio organizados por data, do mais recente ao mais antigo. Moradores acompanham tudo em um só lugar, sem perder nenhuma informação importante.",
-    imagePlaceholder: "Timeline de avisos",
+    image: timelineImg,
     imageAlt: "Screenshot da timeline de avisos do sistema",
   },
   {
     title: "Filtros por Categoria",
     description:
       "Informativo, Financeiro, Manutenção, Convivência, Segurança ou Urgente. Encontre rapidamente o que procura com filtros visuais e intuitivos.",
-    imagePlaceholder: "Filtros de categoria",
+    image: filtersImg,
     imageAlt: "Screenshot dos filtros por categoria",
   },
   {
     title: "Dashboard do Síndico",
     description:
       "Painel completo para criar, editar e gerenciar todos os comunicados. Visualize estatísticas de leitura e gerencie membros do condomínio.",
-    imagePlaceholder: "Dashboard administrativo",
+    image: dashboardImg,
     imageAlt: "Screenshot do dashboard do síndico",
   },
   {
     title: "Notificações Instantâneas",
     description:
       "WhatsApp e e-mail avisam automaticamente sobre novos comunicados. Moradores ficam informados em tempo real, onde estiverem.",
-    imagePlaceholder: "Notificação WhatsApp",
+    image: whatsappImg,
     imageAlt: "Exemplo de notificação via WhatsApp",
   },
 ];
-
-function FeaturePlaceholder({ text }: { text: string }) {
-  return (
-    <div className="relative w-full h-full bg-gradient-to-br from-muted to-muted/50 rounded-xl border border-border flex items-center justify-center">
-      <div className="text-center p-8">
-        <Skeleton className="w-16 h-16 rounded-lg mx-auto mb-4" />
-        <p className="text-muted-foreground text-sm font-medium">{text}</p>
-        <p className="text-muted-foreground/60 text-xs mt-1">
-          Imagem em breve
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export function FeatureShowcase() {
   return (
@@ -92,7 +82,7 @@ export function FeatureShowcase() {
                   </p>
                 </div>
 
-                {/* Image placeholder */}
+                {/* Image */}
                 <div
                   className={`${
                     isEven ? "lg:order-2" : "lg:order-1"
@@ -105,7 +95,12 @@ export function FeatureShowcase() {
                       <div className="w-3 h-3 rounded-full bg-primary/60" />
                     </div>
                     <AspectRatio ratio={16 / 9}>
-                      <FeaturePlaceholder text={feature.imagePlaceholder} />
+                      <img
+                        src={feature.image}
+                        alt={feature.imageAlt}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
                     </AspectRatio>
                   </div>
                 </div>

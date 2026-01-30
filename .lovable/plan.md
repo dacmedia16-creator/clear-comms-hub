@@ -1,40 +1,98 @@
 
-
-# Correção da Mensagem de Teste SMS
-
-## Status Atual
-
-✅ **Autenticação API v3 funcionando!** - O erro "Invalid login or password" foi resolvido
-⚠️ **Erro "Invalid Text"** - A SMSFire está rejeitando a mensagem de teste
+# Correção: Síndico não consegue criar novo morador
 
 ## Problema Identificado
 
-A mensagem atual contém caracteres especiais que podem não ser suportados:
+O erro "new row violates row-level security policy for table 'profiles'" ocorre porque:
 
-```typescript
-const TEST_MESSAGE = `[TESTE] Sistema de SMS funcionando! Se voce recebeu esta mensagem, a integracao SMSFire esta OK.`;
+| Situação | Resultado |
+|----------|-----------|
+| Código atual | `createMember()` tenta inserir diretamente na tabela `profiles` |
+| Política RLS | INSERT em `profiles` só permite `is_super_admin()` |
+| Síndico | Não é super admin, então a inserção é **bloqueada** |
+
+---
+
+## Solução Proposta
+
+Criar uma **Edge Function** que use `service_role` para criar o perfil e o vínculo com o condomínio. Isso contorna a restrição RLS de forma segura, pois a edge function:
+
+1. Verifica se o usuário logado pode gerenciar o condomínio
+2. Só então cria o profile e user_role usando privilégios elevados
+
+---
+
+## Arquivos a Criar
+
+| Arquivo | Descrição |
+|---------|-----------|
+| `supabase/functions/create-member/index.ts` | Edge function para criar morador |
+
+---
+
+## Arquivos a Modificar
+
+| Arquivo | Modificação |
+|---------|-------------|
+| `src/hooks/useCondoMembers.ts` | Alterar `createMember()` para chamar a edge function |
+
+---
+
+## Implementação da Edge Function
+
+A função irá:
+
+1. Receber: `condominiumId`, `fullName`, `phone`, `email`, `unit`, `role`
+2. Validar se o usuário autenticado pode gerenciar o condomínio
+3. Criar um profile na tabela `profiles` usando service role
+4. Criar o `user_role` vinculando ao condomínio
+5. Retornar sucesso ou erro
+
+```text
+Fluxo:
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│   Frontend      │────▶│  Edge Function   │────▶│  Database       │
+│  (Síndico)      │     │  (service_role)  │     │  (RLS bypass)   │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+        │                       │                        │
+    JWT Token           Verifica permissão          INSERT profiles
+                        via can_manage_condo        INSERT user_roles
 ```
 
-Caracteres problemáticos:
-- Colchetes `[ ]`
-- Exclamação `!`
-- Possível problema de encoding
+---
 
-## Solução
+## Modificação no Hook
 
-Simplificar a mensagem de teste removendo caracteres especiais:
+No `useCondoMembers.ts`, a função `createMember` passará a chamar:
 
 ```typescript
-const TEST_MESSAGE = `TESTE - Sistema de SMS funcionando. Integracao SMSFire confirmada.`;
+const { data, error } = await supabase.functions.invoke('create-member', {
+  body: {
+    condominiumId: condoId,
+    fullName: memberData.fullName,
+    phone: memberData.phone,
+    email: memberData.email,
+    unit: memberData.unit,
+    role: memberData.role,
+  }
+});
 ```
 
-## Arquivo a Modificar
+---
 
-| Arquivo | Mudança |
-|---------|---------|
-| `supabase/functions/test-sms/index.ts` | Simplificar TEXT_MESSAGE sem caracteres especiais |
+## Por que esta solução é segura?
 
-## Resumo da Correção
+1. **Autenticação**: A edge function recebe o token JWT do usuário
+2. **Autorização**: Verifica `can_manage_condominium()` antes de criar
+3. **Service Role**: Só é usado após validação de permissão
+4. **Auditoria**: O profile criado fica vinculado ao condomínio
 
-Apenas uma pequena alteração na linha 15 do arquivo `test-sms/index.ts` para usar uma mensagem mais simples e compatível com a API SMSFire.
+---
 
+## Resumo das Mudanças
+
+| Componente | Estado Atual | Estado Novo |
+|------------|--------------|-------------|
+| `createMember()` | INSERT direto via cliente | Chamada à edge function |
+| Edge Function | Não existe | `create-member` com service_role |
+| Síndico | ❌ Erro RLS | ✅ Consegue criar moradores |

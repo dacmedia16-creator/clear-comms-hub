@@ -31,11 +31,12 @@ interface AddMemberDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   availableUsers: User[];
-  onAddExisting: (userId: string, role: Role, unit: string) => Promise<{ success: boolean; error?: string }>;
+  onAddExisting: (userId: string, role: Role, block: string, unit: string) => Promise<{ success: boolean; error?: string }>;
   onCreateNew: (data: {
     fullName: string;
     phone: string;
     email: string;
+    block: string;
     unit: string;
     role: Role;
   }) => Promise<{ success: boolean; error?: string }>;
@@ -56,11 +57,13 @@ export function AddMemberDialog({
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [block, setBlock] = useState("");
   const [unit, setUnit] = useState("");
   const [role, setRole] = useState<Role>("resident");
 
   // Form state for existing user
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [existingBlock, setExistingBlock] = useState("");
   const [existingUnit, setExistingUnit] = useState("");
   const [existingRole, setExistingRole] = useState<Role>("resident");
 
@@ -68,9 +71,11 @@ export function AddMemberDialog({
     setFullName("");
     setPhone("");
     setEmail("");
+    setBlock("");
     setUnit("");
     setRole("resident");
     setSelectedUserId("");
+    setExistingBlock("");
     setExistingUnit("");
     setExistingRole("resident");
     setError(null);
@@ -98,8 +103,12 @@ export function AddMemberDialog({
       setError("Email inválido");
       return;
     }
+    if (!block.trim()) {
+      setError("Bloco/Torre é obrigatório");
+      return;
+    }
     if (!unit.trim()) {
-      setError("Bloco e Unidade é obrigatório");
+      setError("Unidade/Apt é obrigatório");
       return;
     }
 
@@ -108,6 +117,7 @@ export function AddMemberDialog({
       fullName: fullName.trim(),
       phone: phone.trim(),
       email: email.trim(),
+      block: block.trim(),
       unit: unit.trim(),
       role,
     });
@@ -128,9 +138,17 @@ export function AddMemberDialog({
       setError("Selecione um usuário");
       return;
     }
+    if (!existingBlock.trim()) {
+      setError("Bloco/Torre é obrigatório");
+      return;
+    }
+    if (!existingUnit.trim()) {
+      setError("Unidade/Apt é obrigatório");
+      return;
+    }
 
     setSaving(true);
-    const result = await onAddExisting(selectedUserId, existingRole, existingUnit.trim());
+    const result = await onAddExisting(selectedUserId, existingRole, existingBlock.trim(), existingUnit.trim());
     setSaving(false);
 
     if (result.success) {
@@ -168,35 +186,49 @@ export function AddMemberDialog({
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefone *</Label>
-                <Input
-                  id="phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+55 11 99999-9999"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Telefone *</Label>
+                  <Input
+                    id="phone"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+55 11 99999-9999"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="joao@email.com"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="joao@email.com"
-                />
-              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="block">Bloco/Torre *</Label>
+                  <Input
+                    id="block"
+                    value={block}
+                    onChange={(e) => setBlock(e.target.value)}
+                    placeholder="A, Torre 1, Bloco B"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="unit">Bloco e Unidade *</Label>
-                <Input
-                  id="unit"
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  placeholder="Bloco A, Apt 101"
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="unit">Unidade/Apt *</Label>
+                  <Input
+                    id="unit"
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    placeholder="101, 202, Casa 5"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -254,14 +286,26 @@ export function AddMemberDialog({
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="existingUnit">Bloco e Unidade</Label>
-                <Input
-                  id="existingUnit"
-                  value={existingUnit}
-                  onChange={(e) => setExistingUnit(e.target.value)}
-                  placeholder="Bloco A, Apt 101"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="existingBlock">Bloco/Torre *</Label>
+                  <Input
+                    id="existingBlock"
+                    value={existingBlock}
+                    onChange={(e) => setExistingBlock(e.target.value)}
+                    placeholder="A, Torre 1, Bloco B"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="existingUnit">Unidade/Apt *</Label>
+                  <Input
+                    id="existingUnit"
+                    value={existingUnit}
+                    onChange={(e) => setExistingUnit(e.target.value)}
+                    placeholder="101, 202, Casa 5"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">

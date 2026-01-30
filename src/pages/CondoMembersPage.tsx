@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCondoMembers, getMemberDisplayName, getMemberEmail, getMemberPhone } from "@/hooks/useCondoMembers";
+import { useCondoMembers, getMemberDisplayName, getMemberEmail, getMemberPhone, getMemberLocation } from "@/hooks/useCondoMembers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check, Bell, Settings, FileText, Upload } from "lucide-react";
@@ -119,6 +119,7 @@ export default function CondoMembersPage() {
     fullName: string;
     phone: string;
     email: string;
+    block: string;
     unit: string;
     role: "admin" | "syndic" | "resident" | "collaborator";
   }) => {
@@ -272,6 +273,7 @@ export default function CondoMembersPage() {
                 const displayName = getMemberDisplayName(member);
                 const email = getMemberEmail(member);
                 const phone = getMemberPhone(member);
+                const location = getMemberLocation(member);
                 
                 return (
                   <MobileCardItem
@@ -289,9 +291,9 @@ export default function CondoMembersPage() {
                         <span className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}>
                           {roleLabels[member.role]}
                         </span>
-                        {member.unit && (
+                        {location && (
                           <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                            {member.unit}
+                            {location}
                           </span>
                         )}
                         {member.is_approved ? (
@@ -365,6 +367,7 @@ export default function CondoMembersPage() {
                     const displayName = getMemberDisplayName(member);
                     const email = getMemberEmail(member);
                     const phone = getMemberPhone(member);
+                    const location = getMemberLocation(member);
                     
                     return (
                       <TableRow key={member.id} className={!member.is_approved ? "bg-yellow-500/5" : ""}>
@@ -380,7 +383,7 @@ export default function CondoMembersPage() {
                           {phone || "—"}
                         </TableCell>
                         <TableCell className="text-sm">
-                          {member.unit || "—"}
+                          {location}
                         </TableCell>
                         <TableCell>
                           <span

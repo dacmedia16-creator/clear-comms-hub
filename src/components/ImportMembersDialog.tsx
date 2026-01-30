@@ -26,6 +26,7 @@ export interface ParsedMember {
   fullName: string;
   phone: string;
   email: string;
+  block: string;
   unit: string;
   role: "admin" | "syndic" | "resident" | "collaborator";
   isValid: boolean;
@@ -65,18 +66,21 @@ function validateMember(row: any[]): ParsedMember {
   const fullName = (row[0] || "").toString().trim();
   const phone = (row[1] || "").toString().trim();
   const email = (row[2] || "").toString().trim();
-  const unit = (row[3] || "").toString().trim();
-  const roleStr = (row[4] || "").toString().trim();
+  const block = (row[3] || "").toString().trim();
+  const unit = (row[4] || "").toString().trim();
+  const roleStr = (row[5] || "").toString().trim();
   
   if (fullName.length < 2) errors.push("Nome inválido");
   if (!phone) errors.push("Telefone obrigatório");
   if (!email.includes("@")) errors.push("Email inválido");
+  if (!block) errors.push("Bloco obrigatório");
   if (!unit) errors.push("Unidade obrigatória");
   
   return {
     fullName,
     phone,
     email,
+    block,
     unit,
     role: parseRole(roleStr),
     isValid: errors.length === 0,
@@ -158,9 +162,9 @@ export function ImportMembersDialog({
 
   const downloadTemplate = useCallback(() => {
     const ws = XLSX.utils.aoa_to_sheet([
-      ["Nome Completo", "Telefone", "Email", "Bloco e Unidade", "Função"],
-      ["João da Silva", "11999999999", "joao@email.com", "Bloco A, Apt 101", "morador"],
-      ["Maria Santos", "11988888888", "maria@email.com", "Bloco B, Apt 202", "morador"],
+      ["Nome Completo", "Telefone", "Email", "Bloco/Torre", "Unidade/Apt", "Função"],
+      ["João da Silva", "11999999999", "joao@email.com", "A", "101", "morador"],
+      ["Maria Santos", "11988888888", "maria@email.com", "B", "202", "morador"],
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Moradores");
@@ -195,7 +199,7 @@ export function ImportMembersDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5" />
@@ -278,6 +282,7 @@ export function ImportMembersDialog({
                       <TableHead>Nome</TableHead>
                       <TableHead>Telefone</TableHead>
                       <TableHead>Email</TableHead>
+                      <TableHead>Bloco</TableHead>
                       <TableHead>Unidade</TableHead>
                       <TableHead>Função</TableHead>
                     </TableRow>
@@ -303,6 +308,9 @@ export function ImportMembersDialog({
                         </TableCell>
                         <TableCell>
                           {member.email || <span className="text-destructive">—</span>}
+                        </TableCell>
+                        <TableCell>
+                          {member.block || <span className="text-destructive">—</span>}
                         </TableCell>
                         <TableCell>
                           {member.unit || <span className="text-destructive">—</span>}

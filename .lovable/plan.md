@@ -1,57 +1,58 @@
 
 
-# Corrigir URLs do Zoho para Dominio Brasileiro
+# Reverter URLs do Zoho para Domínio Global
 
 ## Problema Identificado
-A Edge Function `send-email` esta usando os endpoints globais do Zoho (`.com`), mas sua conta Zoho e do Brasil (`.com.br`). Isso causa o erro `invalid_client` porque o servidor Zoho brasileiro nao reconhece tokens gerados para o servidor global.
 
-## Alteracoes Necessarias
+A screenshot confirma que o painel Zoho Mail está em `mailadmin.zoho.com` (domínio global), não `zoho.com.br`. A alteração anterior para `.com.br` causou erro de DNS porque esse endpoint não existe ou não é válido para sua conta.
+
+## Alterações Necessárias
 
 ### Arquivo: `supabase/functions/send-email/index.ts`
 
-**Alteracao 1 - Linha 157**
-Trocar a URL de renovacao de token:
-- De: `https://accounts.zoho.com/oauth/v2/token`
-- Para: `https://accounts.zoho.com.br/oauth/v2/token`
+**Alteração 1 - Função renewZohoAccessToken**
+Reverter a URL de renovação de token:
+- De: `https://accounts.zoho.com.br/oauth/v2/token`
+- Para: `https://accounts.zoho.com/oauth/v2/token`
 
-**Alteracao 2 - Linha 199**
-Trocar a URL da API de email:
-- De: `https://mail.zoho.com/api/accounts/...`
-- Para: `https://mail.zoho.com.br/api/accounts/...`
+**Alteração 2 - Função sendZohoEmail**
+Reverter a URL da API de email:
+- De: `https://mail.zoho.com.br/api/accounts/...`
+- Para: `https://mail.zoho.com/api/accounts/...`
 
 ## Resultado Esperado
-Apos a correcao, a Edge Function usara os endpoints corretos do Zoho Brasil, permitindo a renovacao do access_token e o envio de emails com sucesso.
 
-## Secao Tecnica
+Após reverter para o domínio global `.com`, a Edge Function poderá:
+1. Resolver corretamente o DNS dos servidores Zoho
+2. Renovar o access_token via OAuth
+3. Enviar emails pela API do Zoho Mail
 
-### Fluxo de Autenticacao Corrigido
+## Seção Técnica
 
-```text
-+-------------------+     +------------------------+     +------------------------+
-|   Edge Function   | --> | accounts.zoho.com.br   | --> |  mail.zoho.com.br      |
-|   send-email      |     | /oauth/v2/token        |     |  /api/accounts/...     |
-+-------------------+     +------------------------+     +------------------------+
-        |                           |                            |
-        | refresh_token             | access_token               | send email
-        | client_id                 | (valido 1h)                |
-        | client_secret             |                            |
+### Diagnóstico do Erro
+
+O erro nos logs era:
+```
+dns error: failed to lookup address information: Name or service not known
 ```
 
-### Codigo Atualizado
+Isso ocorreu porque `accounts.zoho.com.br` não é um endpoint válido. A interface pode mostrar `.com.br` para usuários brasileiros, mas a API usa o domínio global `.com`.
 
-**Funcao `renewZohoAccessToken` (linha 157):**
+### Código a ser Revertido
+
+**Função `renewZohoAccessToken`:**
 ```typescript
-const tokenUrl = `https://accounts.zoho.com.br/oauth/v2/token?` +
+const tokenUrl = `https://accounts.zoho.com/oauth/v2/token?` +
   `refresh_token=${ZOHO_REFRESH_TOKEN}&` +
   `grant_type=refresh_token&` +
   `client_id=${ZOHO_CLIENT_ID}&` +
   `client_secret=${ZOHO_CLIENT_SECRET}`;
 ```
 
-**Funcao `sendZohoEmail` (linha 199):**
+**Função `sendZohoEmail`:**
 ```typescript
 const response = await fetch(
-  `https://mail.zoho.com.br/api/accounts/${ZOHO_ACCOUNT_ID}/messages`,
+  `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages`,
   ...
 );
 ```

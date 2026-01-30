@@ -1,78 +1,45 @@
 
-# Adicionar Animacao de Entrada Suave no Chat
+# Criar Página de Demonstração
 
-## Resumo
+## Problema Identificado
 
-Melhorar a animacao de abertura do chatbot para uma experiencia mais fluida e profissional. Atualmente o chat usa apenas opacity e translate-y basicos. Vamos adicionar animacoes escalonadas (staggered) e efeitos de spring para um visual mais moderno.
+O botão "Ver demonstração" na landing page está linkando para `/demo`, porém:
+1. Não existe uma página `DemoPage.tsx`
+2. Não existe uma rota `/demo` no `App.tsx`
 
-## Melhorias Planejadas
+Por isso, ao clicar no botão, o usuário é redirecionado para a página NotFound.
 
-### 1. Animacao do Painel Principal
-- Combinacao de scale + opacity + translate para efeito "pop-in"
-- Timing com cubic-bezier para sensacao de spring
-- Duracao aumentada para 400ms
+## Solução Proposta
 
-### 2. Animacoes Escalonadas (Staggered)
-- Header aparece primeiro
-- Area de mensagens aparece com delay
-- Formulario de input aparece por ultimo
-- Cria sensacao de "construcao" do painel
+Criar uma página de demonstração que mostre o sistema em ação, permitindo que visitantes vejam como funciona sem precisar criar uma conta.
 
-### 3. Animacao do Botao Flutuante
-- Efeito pulse sutil quando fechado (chamar atencao)
-- Transicao suave do icone (MessageCircle -> X)
+## O que a Página de Demonstração Terá
 
-## Implementacao Tecnica
+### Opção A: Timeline de Exemplo
+Mostrar uma timeline fictícia de um condomínio de exemplo ("Condomínio Jardins Demo") com avisos de amostra para que o visitante veja exatamente como os moradores visualizam os comunicados.
 
-### Arquivo a Modificar
+### Conteúdo da Demo
+- Header com navegação de volta para a landing page
+- Timeline com 4-5 avisos de exemplo (diferentes categorias)
+- Filtros de categoria funcionando
+- Banner convidando a criar conta própria
 
-| Arquivo | Acao |
+## Arquivos a Criar/Modificar
+
+| Arquivo | Ação |
 |---------|------|
-| `src/components/landing/SalesChatbot.tsx` | Atualizar animacoes |
+| `src/pages/DemoPage.tsx` | Criar |
+| `src/App.tsx` | Adicionar rota /demo |
 
-### Detalhes das Animacoes
+## Dados de Exemplo
 
-**Painel Principal:**
-```text
-Fechado -> Aberto
-- scale: 0.95 -> 1
-- opacity: 0 -> 1
-- translateY: 20px -> 0
-- Timing: cubic-bezier(0.34, 1.56, 0.64, 1) (efeito spring)
-```
-
-**Elementos Internos (staggered):**
-```text
-Header:    delay 0ms
-Messages:  delay 100ms  
-Input:     delay 200ms
-```
-
-**Botao Flutuante:**
-```text
-- Pulse animation quando fechado
-- Scale transition no hover
-- Rotacao suave do icone
-```
-
-### Codigo das Animacoes
-
-Adicionar classes CSS customizadas com keyframes:
-
-```text
-@keyframes chat-panel-enter
-  0%:   opacity: 0, scale: 0.95, translateY: 20px
-  100%: opacity: 1, scale: 1, translateY: 0
-
-@keyframes chat-content-enter
-  0%:   opacity: 0, translateY: 10px
-  100%: opacity: 1, translateY: 0
-```
-
-Usar Tailwind arbitrary values para aplicar:
-- `animate-[chat-panel-enter_0.4s_cubic-bezier(0.34,1.56,0.64,1)]`
-- Delays via `[animation-delay:100ms]`
+A página mostrará avisos fictícios como:
+- Urgente: Manutenção dos elevadores
+- Financeiro: Boleto disponível
+- Informativo: Assembleia geral
+- Obras: Reforma da piscina
+- Segurança: Novo sistema de portaria
 
 ## Resultado Esperado
 
-O chatbot tera uma animacao de abertura mais elegante e profissional, com elementos aparecendo de forma escalonada e um efeito de "spring" que da sensacao de responsividade e qualidade ao produto.
+Visitantes poderão ver uma demonstração real do sistema antes de criar uma conta, aumentando a confiança e a taxa de conversão.

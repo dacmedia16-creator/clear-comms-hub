@@ -30,11 +30,6 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/#pricing" className="text-background/70 hover:text-background transition-colors">
-                  Planos e Preços
-                </Link>
-              </li>
-              <li>
                 <Link to="/#features" className="text-background/70 hover:text-background transition-colors">
                   Funcionalidades
                 </Link>

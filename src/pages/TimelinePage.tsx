@@ -17,11 +17,60 @@ import {
   AlertTriangle,
   Clock,
   Filter,
-  X
+  X,
+  Paperclip,
+  FileText,
+  Image,
+  FileSpreadsheet,
+  File,
+  Download,
+  Eye
 } from "lucide-react";
 import { ANNOUNCEMENT_CATEGORIES, AnnouncementCategory } from "@/lib/constants";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+function getFileIcon(fileType: string | null, fileName: string) {
+  const name = fileName.toLowerCase();
+  
+  if (fileType === "application/pdf" || name.endsWith(".pdf")) {
+    return <FileText className="w-4 h-4 text-red-500" />;
+  }
+  if (fileType?.startsWith("image/")) {
+    return <Image className="w-4 h-4 text-blue-500" />;
+  }
+  if (
+    fileType?.includes("spreadsheet") ||
+    fileType?.includes("excel") ||
+    name.endsWith(".xls") ||
+    name.endsWith(".xlsx")
+  ) {
+    return <FileSpreadsheet className="w-4 h-4 text-green-500" />;
+  }
+  if (
+    fileType?.includes("document") ||
+    fileType?.includes("word") ||
+    name.endsWith(".doc") ||
+    name.endsWith(".docx")
+  ) {
+    return <FileText className="w-4 h-4 text-blue-600" />;
+  }
+  return <File className="w-4 h-4 text-muted-foreground" />;
+}
+
+interface Attachment {
+  id: string;
+  file_name: string;
+  file_url: string;
+  file_type: string | null;
+  file_size: number | null;
+}
 
 interface Announcement {
   id: string;
@@ -32,6 +81,7 @@ interface Announcement {
   is_pinned: boolean;
   is_urgent: boolean;
   published_at: string;
+  attachments?: Attachment[];
 }
 
 interface Condominium {
@@ -76,10 +126,19 @@ export default function TimelinePage() {
 
         setCondominium(condoData);
 
-        // Load announcements
+        // Load announcements with attachments
         const { data: announcementsData, error: announcementsError } = await supabase
           .from("announcements")
-          .select("*")
+          .select(`
+            *,
+            attachments (
+              id,
+              file_name,
+              file_url,
+              file_type,
+              file_size
+            )
+          `)
           .eq("condominium_id", condoData.id)
           .order("is_pinned", { ascending: false })
           .order("published_at", { ascending: false });
@@ -321,6 +380,63 @@ export default function TimelinePage() {
                         <div className="prose prose-sm max-w-none text-foreground pt-4 whitespace-pre-wrap">
                           {announcement.content}
                         </div>
+
+                        {/* Attachments */}
+                        {announcement.attachments && announcement.attachments.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-border">
+                            <div className="flex items-center gap-2 text-sm font-medium mb-3">
+                              <Paperclip className="w-4 h-4" />
+                              <span>Anexos ({announcement.attachments.length})</span>
+                            </div>
+                            <div className="space-y-2">
+                              {announcement.attachments.map((attachment) => {
+                                const isImage = attachment.file_type?.startsWith("image/");
+                                return (
+                                  <div
+                                    key={attachment.id}
+                                    className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
+                                  >
+                                    {getFileIcon(attachment.file_type, attachment.file_name)}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium truncate">{attachment.file_name}</p>
+                                      {attachment.file_size && (
+                                        <p className="text-xs text-muted-foreground">
+                                          {formatFileSize(attachment.file_size)}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      {isImage && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          asChild
+                                          className="h-8"
+                                        >
+                                          <a href={attachment.file_url} target="_blank" rel="noopener noreferrer">
+                                            <Eye className="w-4 h-4 mr-1" />
+                                            Ver
+                                          </a>
+                                        </Button>
+                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        asChild
+                                        className="h-8"
+                                      >
+                                        <a href={attachment.file_url} download={attachment.file_name}>
+                                          <Download className="w-4 h-4 mr-1" />
+                                          Baixar
+                                        </a>
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
                     </CollapsibleContent>
                   </Collapsible>

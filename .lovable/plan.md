@@ -1,77 +1,58 @@
 
 
-# Corrigir Erro invalid_client na Integracao Zoho Mail
+# Corrigir URLs do Zoho para Dominio Brasileiro
 
-## Diagnostico
+## Problema Identificado
+A Edge Function `send-email` esta usando os endpoints globais do Zoho (`.com`), mas sua conta Zoho e do Brasil (`.com.br`). Isso causa o erro `invalid_client` porque o servidor Zoho brasileiro nao reconhece tokens gerados para o servidor global.
 
-O erro `invalid_client` ocorre quando o Zoho nao reconhece as credenciais Client ID e Client Secret. Os logs mostram:
+## Alteracoes Necessarias
 
-```
-[Zoho] No access_token in response: { error: "invalid_client" }
-```
+### Arquivo: `supabase/functions/send-email/index.ts`
 
-Isso significa que os valores salvos nos segredos do backend nao correspondem exatamente aos valores do Zoho API Console.
+**Alteracao 1 - Linha 157**
+Trocar a URL de renovacao de token:
+- De: `https://accounts.zoho.com/oauth/v2/token`
+- Para: `https://accounts.zoho.com.br/oauth/v2/token`
 
-## Causa Provavel
+**Alteracao 2 - Linha 199**
+Trocar a URL da API de email:
+- De: `https://mail.zoho.com/api/accounts/...`
+- Para: `https://mail.zoho.com.br/api/accounts/...`
 
-Quando os segredos foram atualizados, pode ter ocorrido:
-1. Espaco em branco extra no inicio ou fim dos valores
-2. Caracter invisivel copiado junto com o texto
-3. Valores truncados ou incompletos
-
-## Plano de Correcao
-
-### Passo 1: Verificar Dominio Zoho
-
-Confirmar qual dominio Zoho o usuario utiliza:
-- Se `zoho.com.br` ou `zoho.eu`, a Edge Function precisa ser atualizada para usar as URLs corretas
-
-### Passo 2: Atualizar Edge Function (se necessario)
-
-Se o dominio nao for `.com`, modificar as URLs na Edge Function:
-- Token URL: `accounts.zoho.{dominio}/oauth/v2/token`
-- Mail API: `mail.zoho.{dominio}/api/accounts/...`
-
-### Passo 3: Re-inserir Credenciais
-
-Solicitar ao usuario que insira novamente as credenciais, copiando diretamente do Zoho API Console:
-- ZOHO_CLIENT_ID
-- ZOHO_CLIENT_SECRET
-- ZOHO_REFRESH_TOKEN
-
-### Passo 4: Testar Novamente
-
-Executar um teste de envio de email para validar a integracao.
+## Resultado Esperado
+Apos a correcao, a Edge Function usara os endpoints corretos do Zoho Brasil, permitindo a renovacao do access_token e o envio de emails com sucesso.
 
 ## Secao Tecnica
 
-### Dominios Zoho por Regiao
+### Fluxo de Autenticacao Corrigido
 
-| Regiao | Dominio OAuth | Dominio Mail API |
-|--------|---------------|------------------|
-| EUA/Global | accounts.zoho.com | mail.zoho.com |
-| Europa | accounts.zoho.eu | mail.zoho.eu |
-| Brasil | accounts.zoho.com.br | mail.zoho.com.br |
-| India | accounts.zoho.in | mail.zoho.in |
-
-### Modificacao na Edge Function
-
-Se o usuario usar dominio brasileiro, a funcao `renewZohoAccessToken` deve usar:
-
-```typescript
-const tokenUrl = `https://accounts.zoho.com.br/oauth/v2/token?...`
+```text
++-------------------+     +------------------------+     +------------------------+
+|   Edge Function   | --> | accounts.zoho.com.br   | --> |  mail.zoho.com.br      |
+|   send-email      |     | /oauth/v2/token        |     |  /api/accounts/...     |
++-------------------+     +------------------------+     +------------------------+
+        |                           |                            |
+        | refresh_token             | access_token               | send email
+        | client_id                 | (valido 1h)                |
+        | client_secret             |                            |
 ```
 
-E a funcao `sendZohoEmail` deve usar:
+### Codigo Atualizado
 
+**Funcao `renewZohoAccessToken` (linha 157):**
+```typescript
+const tokenUrl = `https://accounts.zoho.com.br/oauth/v2/token?` +
+  `refresh_token=${ZOHO_REFRESH_TOKEN}&` +
+  `grant_type=refresh_token&` +
+  `client_id=${ZOHO_CLIENT_ID}&` +
+  `client_secret=${ZOHO_CLIENT_SECRET}`;
+```
+
+**Funcao `sendZohoEmail` (linha 199):**
 ```typescript
 const response = await fetch(
   `https://mail.zoho.com.br/api/accounts/${ZOHO_ACCOUNT_ID}/messages`,
   ...
-)
+);
 ```
-
-### Alternativa: Variavel de Ambiente
-
-Criar um novo segredo `ZOHO_DOMAIN` para configurar o dominio dinamicamente sem alterar o codigo.
 

@@ -1,39 +1,47 @@
 
-# Remover Valores/Preços do Site
+# Adicionar Logo na Barra de Navegacao
 
 ## Objetivo
-Remover toda exibição de preços e valores monetários das páginas públicas do site.
+Substituir o icone atual (Bell/sino) pelo logo personalizado enviado na barra de navegacao do site.
 
 ---
 
-## Arquivos a Modificar
+## Passos de Implementacao
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/pages/Index.tsx` | Remover a seção de Pricing |
-| `src/components/landing/Header.tsx` | Remover link "Planos" do menu |
-| `src/components/landing/Footer.tsx` | Remover link "Planos e Preços" |
+### 1. Copiar a Imagem para o Projeto
+Copiar o arquivo `user-uploads://image-25.png` para `src/assets/logo.png`
 
----
+### 2. Atualizar o Header.tsx
 
-## Detalhes das Alterações
+**Alteracoes:**
+- Importar a imagem do logo como modulo ES6
+- Substituir a `<div>` com o icone Bell por uma tag `<img>` com o logo
 
-### 1. Index.tsx
-Remover a seção de pricing:
+**Codigo atual (linhas 14-18):**
 ```jsx
-// REMOVER:
-<section id="pricing">
-  <Pricing />
-</section>
+<Link to="/" className="flex items-center gap-2">
+  <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+    <Bell className="w-5 h-5 text-primary-foreground" />
+  </div>
+  <span className="font-display text-xl font-bold text-foreground">AVISO PRO</span>
+</Link>
 ```
 
-### 2. Header.tsx
-Remover os links para "#pricing" no menu desktop e mobile.
+**Codigo atualizado:**
+```jsx
+import logo from "@/assets/logo.png";
 
-### 3. Footer.tsx
-Remover o link "Planos e Preços" da lista de links do Produto.
+<Link to="/" className="flex items-center gap-2">
+  <img src={logo} alt="AVISO PRO" className="w-9 h-9 rounded-lg" />
+  <span className="font-display text-xl font-bold text-foreground">AVISO PRO</span>
+</Link>
+```
 
 ---
 
-## Nota
-O arquivo `src/lib/constants.ts` e `src/components/landing/Pricing.tsx` serão mantidos no código para uso interno/administrativo, apenas não serão exibidos publicamente.
+## Resumo
+
+| Tarefa | Arquivo |
+|--------|---------|
+| Copiar logo | `src/assets/logo.png` |
+| Importar e usar logo | `src/components/landing/Header.tsx` |

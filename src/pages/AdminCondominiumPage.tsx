@@ -49,6 +49,7 @@ import { RefreshButton } from "@/components/RefreshButton";
 import { SendWhatsAppButton } from "@/components/SendWhatsAppButton";
 import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { FileUpload } from "@/components/FileUpload";
 
 interface Announcement {
   id: string;
@@ -102,6 +103,7 @@ export default function AdminCondominiumPage() {
   const [isPinned, setIsPinned] = useState(false);
   const [isUrgent, setIsUrgent] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // Notification options
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
@@ -192,6 +194,35 @@ export default function AdminCondominiumPage() {
 
       if (error) throw error;
 
+      // Upload attachments
+      if (selectedFiles.length > 0) {
+        for (const file of selectedFiles) {
+          const fileExt = file.name.split('.').pop();
+          const filePath = `${data.id}/${crypto.randomUUID()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from("attachments")
+            .upload(filePath, file);
+
+          if (uploadError) {
+            console.error("Error uploading file:", uploadError);
+            continue;
+          }
+
+          const { data: urlData } = supabase.storage
+            .from("attachments")
+            .getPublicUrl(filePath);
+
+          await supabase.from("attachments").insert({
+            announcement_id: data.id,
+            file_name: file.name,
+            file_url: urlData.publicUrl,
+            file_type: file.type,
+            file_size: file.size,
+          });
+        }
+      }
+
       setAnnouncements((prev) => [data, ...prev]);
       setLastCreatedAnnouncement(data);
 
@@ -260,6 +291,7 @@ export default function AdminCondominiumPage() {
       setCategory("informativo");
       setIsPinned(false);
       setIsUrgent(false);
+      setSelectedFiles([]);
       setSendWhatsApp(false);
       setSendSMS(false);
       setSendEmail(false);
@@ -458,6 +490,16 @@ export default function AdminCondominiumPage() {
                       Marcar como urgente
                     </Label>
                   </div>
+                </div>
+
+                {/* File Attachments */}
+                <div className="space-y-2">
+                  <Label>Anexos (opcional)</Label>
+                  <FileUpload
+                    files={selectedFiles}
+                    onFilesChange={setSelectedFiles}
+                    maxSizeMB={5}
+                  />
                 </div>
 
                 {/* Notification Options */}

@@ -1,90 +1,127 @@
 
 
-# Melhorar Seção de Funcionalidades com Imagens do Sistema
+# Criar IA de Atendimento e Vendas
 
 ## Resumo
 
-Redesenhar a seção de Features para incluir capturas de tela reais do sistema, tornando-a mais visual e convincente para novos visitantes.
+Implementar um chatbot inteligente na landing page que responde duvidas dos visitantes e ajuda a vender o sistema AVISO PRO. O chatbot vai aparecer como um botao flutuante no canto inferior direito da pagina.
 
-## Abordagem Proposta
+## Funcionalidades
 
-### Opção 1: Layout Alternado com Screenshots (Recomendado)
+O chatbot tera conhecimento sobre:
+- Funcionalidades do sistema (timeline, filtros, dashboard, notificacoes)
+- Planos e precos (Starter R$29/mes, Pro R$79/mes)
+- Como funciona o sistema (4 passos)
+- Beneficios para sindicos e moradores
+- Perguntas frequentes sobre comunicacao em condominios
 
-Transformar a seção de funcionalidades em um layout alternado onde cada feature importante tem uma imagem do sistema ao lado da descrição:
+O assistente sera treinado para:
+- Responder duvidas de forma clara e amigavel
+- Destacar beneficios do produto
+- Direcionar usuarios para criar conta quando apropriado
+- Comparar planos e ajudar na decisao
+
+## Interface do Usuario
 
 ```text
-+---------------------------+    +---------------------------+
-|                           |    |                           |
-|  [IMAGEM DA TIMELINE]     |    |  Titulo da Feature        |
-|                           |    |  Descricao detalhada      |
-|                           |    |                           |
-+---------------------------+    +---------------------------+
-
-+---------------------------+    +---------------------------+
-|                           |    |                           |
-|  Titulo da Feature        |    |  [IMAGEM DOS FILTROS]     |
-|  Descricao detalhada      |    |                           |
-|                           |    |                           |
-+---------------------------+    +---------------------------+
++--------------------------------------------------+
+|                                                  |
+|                  Landing Page                    |
+|                                                  |
+|                                                  |
+|                                                  |
+|                                                  |
+|                                                  |
+|                                          +------+|
+|                                          |  AI  ||
++------------------------------------------+------++
+                                           |
+                                           v
+                              +------------------------+
+                              |  Ola! Sou o assistente |
+                              |  virtual do AVISO PRO  |
+                              |                        |
+                              |  [Campo de mensagem]   |
+                              +------------------------+
 ```
 
-### Opcion 2: Manter Grid Atual com Thumbnails
+## Arquitetura Tecnica
 
-Adicionar pequenas imagens/thumbnails em cada card de feature, mantendo o layout de grid atual.
+### Componentes a Criar
 
-## Proximos Passos
+1. **Edge Function `sales-chat`**
+   - Recebe mensagens do usuario
+   - Usa Lovable AI (gemini-3-flash-preview)
+   - System prompt com informacoes do produto
+   - Retorna resposta em streaming
 
-**Voce precisa fornecer as imagens do sistema.** Pode fazer isso de duas formas:
+2. **Componente `SalesChatbot.tsx`**
+   - Botao flutuante para abrir/fechar
+   - Interface de chat com historico
+   - Streaming de respostas token por token
+   - Design responsivo (mobile-friendly)
 
-1. **Fazer upload via chat**: Tire screenshots das telas principais (timeline, dashboard, filtros, notificacoes) e envie aqui no chat
-2. **Indicar quais telas quer mostrar**: Me diga quais funcionalidades quer destacar e eu posso abrir o sistema no navegador para capturar
+3. **Hook `useSalesChat.ts`**
+   - Gerencia estado das mensagens
+   - Lida com streaming SSE
+   - Controla loading states
 
-## Telas Sugeridas para Captura
+### Fluxo de Dados
 
-1. **Timeline de avisos** - Mostrando cards de avisos com categorias coloridas
-2. **Filtros por categoria** - Barra de filtros horizontal
-3. **Dashboard do sindico** - Painel de gerenciamento
-4. **Card de aviso expandido** - Detalhes de um comunicado
-5. **Notificacao WhatsApp** - Simulacao ou exemplo
-
-## Secao Tecnica
-
-### Estrutura do Novo Componente
-
-```tsx
-// Novo componente FeatureShowcase.tsx
-interface FeatureShowcaseItem {
-  title: string;
-  description: string;
-  image: string;
-  imageAlt: string;
-}
-
-// Layout alternado com AspectRatio para manter proporcoes
-<div className="grid lg:grid-cols-2 gap-8 items-center">
-  <div className="order-2 lg:order-1">
-    <h3>Titulo</h3>
-    <p>Descricao</p>
-  </div>
-  <div className="order-1 lg:order-2">
-    <AspectRatio ratio={16/9}>
-      <img src={feature.image} />
-    </AspectRatio>
-  </div>
-</div>
+```text
+Usuario digita pergunta
+         |
+         v
+  SalesChatbot.tsx
+         |
+         v
+  useSalesChat.ts
+         |
+         v
+  Edge Function (sales-chat)
+         |
+         v
+  Lovable AI Gateway
+         |
+         v
+  Resposta em streaming
 ```
 
-### Armazenamento de Imagens
+### System Prompt da IA
 
-As imagens enviadas serao salvas na pasta `public/screenshots/` ou utilizadas diretamente do upload.
+A IA tera conhecimento de:
+- Nome do produto: AVISO PRO
+- Proposta de valor: Centralizar comunicacao oficial de condominios
+- Planos: Starter (R$29, 50 avisos/mes, email) e Pro (R$79, ilimitado, WhatsApp)
+- Funcionalidades: Timeline, Filtros, Dashboard, Notificacoes WhatsApp/Email
+- Publico-alvo: Sindicos, administradores, moradores
+- Diferenciais: Simplicidade, sem login para moradores, timeline publica
 
-### Otimizacoes
+### Arquivos a Criar/Modificar
 
-- Usar lazy loading para imagens
-- Adicionar sombra e borda para parecer uma janela de app
-- Animacao de fade-in ao rolar a pagina
+| Arquivo | Acao |
+|---------|------|
+| `supabase/functions/sales-chat/index.ts` | Criar |
+| `supabase/config.toml` | Adicionar funcao |
+| `src/components/landing/SalesChatbot.tsx` | Criar |
+| `src/hooks/useSalesChat.ts` | Criar |
+| `src/pages/Index.tsx` | Adicionar componente |
+
+### Detalhes de Implementacao
+
+**Edge Function:**
+- Model: `google/gemini-3-flash-preview` (rapido e eficiente)
+- Streaming: true (resposta em tempo real)
+- CORS habilitado para chamadas do frontend
+
+**Frontend:**
+- Botao com icone de mensagem (MessageCircle)
+- Painel de chat com animacao slide-up
+- Campo de input com envio via Enter ou botao
+- Mensagens com diferenciacao visual (user vs AI)
+- Indicador de "digitando" durante streaming
 
 ## Resultado Esperado
 
-Uma secao de features mais visual e profissional que mostra o produto real, aumentando a conversao de visitantes.
+Visitantes da landing page poderao tirar duvidas em tempo real sobre o produto, aumentando a taxa de conversao e reduzindo barreiras para a compra.
 

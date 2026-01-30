@@ -38,6 +38,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSendWhatsApp } from "@/hooks/useSendWhatsApp";
 import { useSendSMS } from "@/hooks/useSendSMS";
+import { useSendEmail } from "@/hooks/useSendEmail";
 import { useToast } from "@/hooks/use-toast";
 import { ANNOUNCEMENT_CATEGORIES, AnnouncementCategory } from "@/lib/constants";
 import { format } from "date-fns";
@@ -96,6 +97,7 @@ export default function AdminCondominiumPage() {
   
   const { sendToMembers: sendWhatsAppToMembers } = useSendWhatsApp();
   const { sendToMembers: sendSMSToMembers } = useSendSMS();
+  const { sendToMembers: sendEmailToMembers } = useSendEmail();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -220,11 +222,21 @@ export default function AdminCondominiumPage() {
       }
 
       if (sendEmail && condominium.notification_email) {
-        toast({
-          title: "Email não configurado",
-          description: "A API de email ainda não foi configurada. Configure a chave RESEND_API_KEY.",
-          variant: "destructive",
-        });
+        try {
+          const result = await sendEmailToMembers(
+            { ...data, id: data.id },
+            { ...condominium, id: condominium.id },
+            baseUrl
+          );
+          if (result.total > 0) {
+            toast({
+              title: "Emails em envio",
+              description: `Enviando para ${result.total} moradores em segundo plano.`,
+            });
+          }
+        } catch (emailError) {
+          console.error("Error sending email:", emailError);
+        }
       }
 
       // Reset form

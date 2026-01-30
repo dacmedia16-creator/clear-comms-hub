@@ -14,7 +14,7 @@ import {
 import { useCondoMembers, getMemberDisplayName, getMemberEmail, getMemberPhone } from "@/hooks/useCondoMembers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check, Bell, Settings, FileText } from "lucide-react";
+import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check, Bell, Settings, FileText, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,6 +23,7 @@ import { AddMemberDialog } from "@/components/super-admin/AddMemberDialog";
 import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
 import { MobileCardItem } from "@/components/mobile/MobileCardItem";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ImportMembersDialog, ParsedMember } from "@/components/ImportMembersDialog";
 
 const roleLabels: Record<string, string> = {
   admin: "Administrador",
@@ -42,13 +43,14 @@ export default function CondoMembersPage() {
   const { condoId } = useParams<{ condoId: string }>();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { members, loading, createMember, removeMember, approveMember } = useCondoMembers(condoId || "");
+  const { members, loading, createMember, removeMember, approveMember, importMembers } = useCondoMembers(condoId || "");
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
   const [condoName, setCondoName] = useState<string>("");
   const [condoSlug, setCondoSlug] = useState<string>("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
 
   // Nav items for syndic
@@ -162,6 +164,23 @@ export default function CondoMembersPage() {
     }
   };
 
+  const handleImportMembers = async (members: ParsedMember[]) => {
+    const result = await importMembers(members);
+    if (result.success > 0) {
+      toast({
+        title: "Importação concluída!",
+        description: `${result.success} morador(es) importado(s) com sucesso${result.failed > 0 ? `, ${result.failed} falha(s)` : ""}`,
+      });
+    } else if (result.failed > 0) {
+      toast({
+        title: "Erro na importação",
+        description: `Nenhum morador foi importado. ${result.failed} falha(s).`,
+        variant: "destructive",
+      });
+    }
+    return result;
+  };
+
   if (authLoading || hasAccess === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -201,6 +220,10 @@ export default function CondoMembersPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                <Upload className="w-4 h-4 mr-2" />
+                Importar
+              </Button>
               <RefreshButton />
               <Button onClick={() => setAddDialogOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
@@ -210,6 +233,13 @@ export default function CondoMembersPage() {
           </div>
         </div>
       </header>
+
+      {/* Import Members Dialog */}
+      <ImportMembersDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImport={handleImportMembers}
+      />
 
       {/* Add Member Dialog - only create new, no existing users list */}
       <AddMemberDialog

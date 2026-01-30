@@ -196,6 +196,31 @@ export function useCondoMembers(condoId: string) {
     }
   };
 
+  const importMembers = async (
+    membersData: Array<{
+      fullName: string;
+      phone: string;
+      email: string;
+      unit: string;
+      role: "admin" | "syndic" | "resident" | "collaborator";
+    }>
+  ): Promise<{ success: number; failed: number }> => {
+    let success = 0;
+    let failed = 0;
+
+    for (const memberData of membersData) {
+      const result = await createMember(memberData);
+      if (result.success) {
+        success++;
+      } else {
+        failed++;
+      }
+    }
+
+    await fetchMembers();
+    return { success, failed };
+  };
+
   return {
     members,
     loading,
@@ -205,6 +230,7 @@ export function useCondoMembers(condoId: string) {
     createMember,
     removeMember,
     approveMember,
+    importMembers,
   };
 }
 

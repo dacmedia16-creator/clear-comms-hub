@@ -1,59 +1,110 @@
 
+# Remover Referências a "Grátis" do Site
 
-# Reverter URLs do Zoho para Domínio Global
+## Resumo
 
-## Problema Identificado
+Remover todas as menções sobre começar grátis, plano gratuito e termos relacionados das páginas públicas do site (landing page).
 
-A screenshot confirma que o painel Zoho Mail está em `mailadmin.zoho.com` (domínio global), não `zoho.com.br`. A alteração anterior para `.com.br` causou erro de DNS porque esse endpoint não existe ou não é válido para sua conta.
+## Arquivos a Modificar
 
-## Alterações Necessárias
+### 1. src/components/landing/Hero.tsx
+- **Linha 37**: Alterar botão "Começar gratuitamente" para "Começar agora"
+- **Linha 51**: Remover o item "Gratuito para começar" da lista de benefícios
+- **Linha 55**: Remover "Sem cartão de crédito" (implica gratuidade)
 
-### Arquivo: `supabase/functions/send-email/index.ts`
+### 2. src/components/landing/Pricing.tsx
+- **Linha 15**: Alterar subtítulo "Comece gratuitamente. Evolua conforme sua necessidade." para algo como "Escolha o plano ideal para seu condomínio."
+- **Linhas 20-44**: Remover completamente o card do plano gratuito (Free Plan)
+- **Linha 42**: Remover botão "Começar grátis"
+- Ajustar o grid de 3 colunas para 2 colunas (somente Starter e Pro)
 
-**Alteração 1 - Função renewZohoAccessToken**
-Reverter a URL de renovação de token:
-- De: `https://accounts.zoho.com.br/oauth/v2/token`
-- Para: `https://accounts.zoho.com/oauth/v2/token`
+### 3. src/pages/Index.tsx
+- **Linhas 37-38**: Alterar texto "Comece gratuitamente hoje. Sem cartão de crédito, sem compromisso." para algo como "Configure em minutos e transforme a comunicação do seu condomínio."
 
-**Alteração 2 - Função sendZohoEmail**
-Reverter a URL da API de email:
-- De: `https://mail.zoho.com.br/api/accounts/...`
-- Para: `https://mail.zoho.com/api/accounts/...`
+### 4. src/lib/constants.ts
+- **Linhas 51-57**: Remover o plano `free` do objeto `PLANS` (manter apenas `starter` e `pro`)
 
 ## Resultado Esperado
 
-Após reverter para o domínio global `.com`, a Edge Function poderá:
-1. Resolver corretamente o DNS dos servidores Zoho
-2. Renovar o access_token via OAuth
-3. Enviar emails pela API do Zoho Mail
+- Seção de preços mostrará apenas 2 planos: Inicial (R$ 29) e Profissional (R$ 79)
+- Todos os CTAs dirão "Começar agora" ou "Escolher plano"
+- Nenhuma menção a gratuidade nas páginas públicas
 
-## Seção Técnica
+## Seção Tecnica
 
-### Diagnóstico do Erro
+### Alteracoes Detalhadas
 
-O erro nos logs era:
-```
-dns error: failed to lookup address information: Name or service not known
-```
+**Hero.tsx - Botoes e beneficios:**
+```tsx
+// Antes
+<Link to="/auth/signup">
+  Começar gratuitamente
+  <ArrowRight />
+</Link>
 
-Isso ocorreu porque `accounts.zoho.com.br` não é um endpoint válido. A interface pode mostrar `.com.br` para usuários brasileiros, mas a API usa o domínio global `.com`.
-
-### Código a ser Revertido
-
-**Função `renewZohoAccessToken`:**
-```typescript
-const tokenUrl = `https://accounts.zoho.com/oauth/v2/token?` +
-  `refresh_token=${ZOHO_REFRESH_TOKEN}&` +
-  `grant_type=refresh_token&` +
-  `client_id=${ZOHO_CLIENT_ID}&` +
-  `client_secret=${ZOHO_CLIENT_SECRET}`;
+// Depois
+<Link to="/auth/signup">
+  Começar agora
+  <ArrowRight />
+</Link>
 ```
 
-**Função `sendZohoEmail`:**
-```typescript
-const response = await fetch(
-  `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages`,
+**Hero.tsx - Remover itens de beneficios:**
+```tsx
+// Remover estas linhas (48-56):
+<div className="flex items-center gap-2">
+  <CheckCircle className="w-4 h-4 text-primary" />
+  <span>Gratuito para começar</span>
+</div>
+<div className="flex items-center gap-2">
+  <CheckCircle className="w-4 h-4 text-primary" />
+  <span>Sem cartão de crédito</span>
+</div>
+
+// Manter apenas:
+<div className="flex items-center gap-2">
+  <CheckCircle className="w-4 h-4 text-primary" />
+  <span>Configuração em 2 minutos</span>
+</div>
+```
+
+**Pricing.tsx - Grid e planos:**
+```tsx
+// Antes
+<div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+  {/* Free Plan */}
   ...
-);
+  {/* Starter Plan */}
+  ...
+  {/* Pro Plan */}
+  ...
+</div>
+
+// Depois
+<div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+  {/* Starter Plan - Highlighted */}
+  ...
+  {/* Pro Plan */}
+  ...
+</div>
 ```
 
+**constants.ts - Remover plano free:**
+```typescript
+// Antes
+export const PLANS = {
+  free: { ... },
+  starter: { ... },
+  pro: { ... },
+}
+
+// Depois
+export const PLANS = {
+  starter: { ... },
+  pro: { ... },
+}
+```
+
+### Observacao Importante
+
+O plano "free" e usado internamente no sistema (super-admin, banco de dados). Se for necessario manter compatibilidade com dados existentes, podemos manter a constante `free` em `PLANS` mas simplesmente nao exibi-la na UI publica. Isso evita quebrar funcionalidades administrativas.

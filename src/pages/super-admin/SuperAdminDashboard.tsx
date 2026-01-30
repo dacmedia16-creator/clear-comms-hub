@@ -5,9 +5,18 @@ import { Button } from "@/components/ui/button";
 import { useAllCondominiums } from "@/hooks/useAllCondominiums";
 import { useAllUsers } from "@/hooks/useAllUsers";
 import { useAllAnnouncements } from "@/hooks/useAllAnnouncements";
-import { Bell, Building2, Users, FileText, ArrowLeft, Loader2, MessageSquare } from "lucide-react";
+import { Bell, Building2, Users, FileText, ArrowLeft, Loader2, MessageSquare, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshButton } from "@/components/RefreshButton";
+import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
+
+const superAdminNavItems: MobileNavItem[] = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/super-admin" },
+  { icon: Building2, label: "Condos", path: "/super-admin/condominiums" },
+  { icon: Users, label: "Usuários", path: "/super-admin/users" },
+  { icon: FileText, label: "Timelines", path: "/super-admin/timelines" },
+  { icon: MessageSquare, label: "WhatsApp", path: "/super-admin/whatsapp" },
+];
 
 export default function SuperAdminDashboard() {
   const { signOut } = useAuth();
@@ -28,7 +37,7 @@ export default function SuperAdminDashboard() {
 
   return (
     <SuperAdminGuard>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background has-bottom-nav">
         {/* Header */}
         <header className="sticky top-0 z-50 bg-card border-b border-border">
           <div className="container px-4 mx-auto">
@@ -214,6 +223,8 @@ export default function SuperAdminDashboard() {
             </>
           )}
         </main>
+
+        <MobileBottomNav items={superAdminNavItems} />
       </div>
     </SuperAdminGuard>
   );

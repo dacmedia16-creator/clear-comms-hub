@@ -33,7 +33,11 @@ import {
   Send,
   RefreshCw,
   Wifi,
-  WifiOff
+  WifiOff,
+  Building2,
+  Users,
+  FileText,
+  LayoutDashboard
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshButton } from "@/components/RefreshButton";
@@ -41,6 +45,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
+import { MobileCardItem } from "@/components/mobile/MobileCardItem";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const superAdminNavItems: MobileNavItem[] = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/super-admin" },
+  { icon: Building2, label: "Condos", path: "/super-admin/condominiums" },
+  { icon: Users, label: "Usuários", path: "/super-admin/users" },
+  { icon: FileText, label: "Timelines", path: "/super-admin/timelines" },
+  { icon: MessageSquare, label: "WhatsApp", path: "/super-admin/whatsapp" },
+];
 
 interface Condominium {
   id: string;
@@ -71,6 +86,7 @@ function formatPhoneBR(value: string): string {
 
 export default function SuperAdminWhatsApp() {
   const { signOut } = useAuth();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   const [condominiums, setCondominiums] = useState<Condominium[]>([]);
   const [logs, setLogs] = useState<WhatsAppLog[]>([]);
@@ -236,7 +252,7 @@ export default function SuperAdminWhatsApp() {
 
   return (
     <SuperAdminGuard>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background has-bottom-nav">
         {/* Header */}
         <header className="sticky top-0 z-50 bg-card border-b border-border">
           <div className="container px-4 mx-auto">
@@ -501,6 +517,8 @@ export default function SuperAdminWhatsApp() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <MobileBottomNav items={superAdminNavItems} />
       </div>
     </SuperAdminGuard>
   );

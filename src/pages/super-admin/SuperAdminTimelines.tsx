@@ -4,10 +4,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useAllAnnouncements } from "@/hooks/useAllAnnouncements";
 import { useAllCondominiums } from "@/hooks/useAllCondominiums";
-import { FileText, ArrowLeft, Loader2, ExternalLink, Building2, Bell } from "lucide-react";
+import { FileText, ArrowLeft, Loader2, ExternalLink, Building2, Bell, Users, MessageSquare, LayoutDashboard } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
+import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
+
+const superAdminNavItems: MobileNavItem[] = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/super-admin" },
+  { icon: Building2, label: "Condos", path: "/super-admin/condominiums" },
+  { icon: Users, label: "Usuários", path: "/super-admin/users" },
+  { icon: FileText, label: "Timelines", path: "/super-admin/timelines" },
+  { icon: MessageSquare, label: "WhatsApp", path: "/super-admin/whatsapp" },
+];
 
 const categoryLabels: Record<string, string> = {
   informativo: "Informativo",
@@ -38,7 +47,7 @@ export default function SuperAdminTimelines() {
 
   return (
     <SuperAdminGuard>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background has-bottom-nav">
         {/* Header */}
         <header className="sticky top-0 z-50 bg-card border-b border-border">
           <div className="container px-4 mx-auto">
@@ -164,6 +173,8 @@ export default function SuperAdminTimelines() {
             </div>
           )}
         </main>
+
+        <MobileBottomNav items={superAdminNavItems} />
       </div>
     </SuperAdminGuard>
   );

@@ -16,6 +16,8 @@ interface Announcement {
   title: string;
   summary: string | null;
   category: string;
+  target_blocks?: string[] | null;
+  target_units?: string[] | null;
 }
 
 interface Condominium {
@@ -40,6 +42,8 @@ interface ContactInfo {
 interface MemberRow {
   user_id: string | null;
   member_id: string | null;
+  block: string | null;
+  unit: string | null;
   profiles: ContactInfo | null;
   condo_members: ContactInfo | null;
 }
@@ -47,6 +51,8 @@ interface MemberRow {
 interface UnifiedMember {
   phone: string;
   full_name: string | null;
+  block: string | null;
+  unit: string | null;
 }
 
 const WHATSAPP_TEMPLATES: Record<string, string> = {
@@ -234,7 +240,7 @@ serve(async (req) => {
     const { data: rolesData, error: membersError } = await supabase
       .from('user_roles')
       .select(`
-        user_id, member_id,
+        user_id, member_id, block, unit,
         profiles:user_id (id, phone, full_name, email),
         condo_members:member_id (id, phone, full_name, email)
       `)
@@ -252,26 +258,42 @@ serve(async (req) => {
     const memberRows = rolesData as unknown as MemberRow[];
 
     // Unify members from both sources, filtering those with valid phone numbers
-    const members: UnifiedMember[] = memberRows
+    let members: UnifiedMember[] = memberRows
       .map(role => {
         const source = role.profiles || role.condo_members;
         if (!source || !source.phone) return null;
         return {
           phone: source.phone,
           full_name: source.full_name,
+          block: role.block,
+          unit: role.unit,
         };
       })
       .filter((m): m is UnifiedMember => m !== null);
 
+    // Apply targeting filters
+    const hasBlockFilter = announcement.target_blocks && announcement.target_blocks.length > 0;
+    const hasUnitFilter = announcement.target_units && announcement.target_units.length > 0;
+
+    if (hasBlockFilter) {
+      console.log(`Filtering by blocks: ${announcement.target_blocks!.join(', ')}`);
+      members = members.filter(m => m.block && announcement.target_blocks!.includes(m.block));
+    }
+
+    if (hasUnitFilter) {
+      console.log(`Filtering by units: ${announcement.target_units!.join(', ')}`);
+      members = members.filter(m => m.unit && announcement.target_units!.includes(m.unit));
+    }
+
     if (members.length === 0) {
-      console.log("No members with phone numbers found");
+      console.log("No members with phone numbers found after filtering");
       return new Response(
-        JSON.stringify({ total: 0, sent: 0, failed: 0, results: [], message: "Nenhum membro com telefone cadastrado" }),
+        JSON.stringify({ total: 0, sent: 0, failed: 0, results: [], message: "Nenhum membro encontrado com os critérios selecionados" }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Found ${members.length} members with phone numbers (from profiles + condo_members)`);
+    console.log(`Found ${members.length} members with phone numbers after filtering`);
 
     // Generate message based on template
     const message = generateMessage(announcement, condominium, baseUrl);

@@ -15,6 +15,8 @@ interface Announcement {
   title: string;
   summary: string | null;
   category: string;
+  target_blocks?: string[] | null;
+  target_units?: string[] | null;
 }
 
 interface Condominium {
@@ -39,6 +41,8 @@ interface ContactInfo {
 interface MemberRow {
   user_id: string | null;
   member_id: string | null;
+  block: string | null;
+  unit: string | null;
   profiles: ContactInfo | null;
   condo_members: ContactInfo | null;
 }
@@ -46,6 +50,8 @@ interface MemberRow {
 interface UnifiedMember {
   email: string;
   full_name: string | null;
+  block: string | null;
+  unit: string | null;
 }
 
 const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
@@ -382,7 +388,7 @@ serve(async (req) => {
     const { data: rolesData, error: membersError } = await supabase
       .from('user_roles')
       .select(`
-        user_id, member_id,
+        user_id, member_id, block, unit,
         profiles:user_id (id, phone, full_name, email),
         condo_members:member_id (id, phone, full_name, email)
       `)
@@ -400,26 +406,42 @@ serve(async (req) => {
     const memberRows = rolesData as unknown as MemberRow[];
 
     // Unify members from both sources, filtering those with valid email addresses
-    const validMembers: UnifiedMember[] = memberRows
+    let validMembers: UnifiedMember[] = memberRows
       .map(role => {
         const source = role.profiles || role.condo_members;
         if (!source || !source.email || source.email.trim() === '') return null;
         return {
           email: source.email,
           full_name: source.full_name,
+          block: role.block,
+          unit: role.unit,
         };
       })
       .filter((m): m is UnifiedMember => m !== null);
 
+    // Apply targeting filters
+    const hasBlockFilter = announcement.target_blocks && announcement.target_blocks.length > 0;
+    const hasUnitFilter = announcement.target_units && announcement.target_units.length > 0;
+
+    if (hasBlockFilter) {
+      console.log(`Filtering by blocks: ${announcement.target_blocks!.join(', ')}`);
+      validMembers = validMembers.filter(m => m.block && announcement.target_blocks!.includes(m.block));
+    }
+
+    if (hasUnitFilter) {
+      console.log(`Filtering by units: ${announcement.target_units!.join(', ')}`);
+      validMembers = validMembers.filter(m => m.unit && announcement.target_units!.includes(m.unit));
+    }
+
     if (validMembers.length === 0) {
-      console.log("No members with email addresses found");
+      console.log("No members with email addresses found after filtering");
       return new Response(
-        JSON.stringify({ total: 0, sent: 0, failed: 0, results: [], message: "Nenhum membro com email cadastrado" }),
+        JSON.stringify({ total: 0, sent: 0, failed: 0, results: [], message: "Nenhum membro encontrado com os critérios selecionados" }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Found ${validMembers.length} members with email addresses (from profiles + condo_members)`);
+    console.log(`Found ${validMembers.length} members with email addresses after filtering`);
 
     // Start background processing with delays
     EdgeRuntime.waitUntil(

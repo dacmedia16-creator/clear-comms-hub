@@ -35,7 +35,8 @@ import {
   Smartphone,
   Users,
   Settings,
-  FileText
+  FileText,
+  Building2
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSendWhatsApp } from "@/hooks/useSendWhatsApp";
@@ -50,6 +51,9 @@ import { SendWhatsAppButton } from "@/components/SendWhatsAppButton";
 import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { FileUpload } from "@/components/FileUpload";
+import { useCondoBlocks } from "@/hooks/useCondoBlocks";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
 
 interface Announcement {
   id: string;
@@ -104,6 +108,14 @@ export default function AdminCondominiumPage() {
   const [isUrgent, setIsUrgent] = useState(false);
   const [creating, setCreating] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
+  // Recipient targeting
+  const [recipientType, setRecipientType] = useState<"all" | "blocks" | "units">("all");
+  const [selectedBlocks, setSelectedBlocks] = useState<string[]>([]);
+  const [targetUnits, setTargetUnits] = useState("");
+
+  // Fetch available blocks for targeting
+  const { blocks } = useCondoBlocks(condoId || "");
 
   // Notification options
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
@@ -176,6 +188,14 @@ export default function AdminCondominiumPage() {
 
       if (!profile) throw new Error("Perfil não encontrado");
 
+      // Prepare targeting arrays
+      const targetBlocksArray = recipientType === "blocks" && selectedBlocks.length > 0 
+        ? selectedBlocks 
+        : null;
+      const targetUnitsArray = recipientType === "units" && targetUnits.trim()
+        ? targetUnits.split(",").map(u => u.trim()).filter(Boolean)
+        : null;
+
       // Create announcement
       const { data, error } = await supabase
         .from("announcements")
@@ -188,6 +208,8 @@ export default function AdminCondominiumPage() {
           is_pinned: isPinned,
           is_urgent: isUrgent || category === "urgente",
           created_by: profile.id,
+          target_blocks: targetBlocksArray,
+          target_units: targetUnitsArray,
         })
         .select()
         .single();
@@ -232,14 +254,14 @@ export default function AdminCondominiumPage() {
       if (sendWhatsApp && condominium.notification_whatsapp) {
         try {
           const result = await sendWhatsAppToMembers(
-            { ...data, id: data.id },
+            { ...data, id: data.id, target_blocks: targetBlocksArray, target_units: targetUnitsArray },
             { ...condominium, id: condominium.id },
             baseUrl
           );
-          if (result.sent > 0) {
+          if (result.total > 0) {
             toast({
-              title: "WhatsApp enviado",
-              description: `${result.sent} mensagens enviadas com sucesso.`,
+              title: "WhatsApp em envio",
+              description: `Enviando para ${result.total} moradores em segundo plano.`,
             });
           }
         } catch (whatsappError) {
@@ -250,7 +272,7 @@ export default function AdminCondominiumPage() {
       if (sendSMS && condominium.notification_sms) {
         try {
           const result = await sendSMSToMembers(
-            { ...data, id: data.id },
+            { ...data, id: data.id, target_blocks: targetBlocksArray, target_units: targetUnitsArray },
             { ...condominium, id: condominium.id },
             baseUrl
           );
@@ -268,7 +290,7 @@ export default function AdminCondominiumPage() {
       if (sendEmail && condominium.notification_email) {
         try {
           const result = await sendEmailToMembers(
-            { ...data, id: data.id },
+            { ...data, id: data.id, target_blocks: targetBlocksArray, target_units: targetUnitsArray },
             { ...condominium, id: condominium.id },
             baseUrl
           );
@@ -292,6 +314,9 @@ export default function AdminCondominiumPage() {
       setIsPinned(false);
       setIsUrgent(false);
       setSelectedFiles([]);
+      setRecipientType("all");
+      setSelectedBlocks([]);
+      setTargetUnits("");
       setSendWhatsApp(false);
       setSendSMS(false);
       setSendEmail(false);
@@ -500,6 +525,78 @@ export default function AdminCondominiumPage() {
                     onFilesChange={setSelectedFiles}
                     maxSizeMB={5}
                   />
+                </div>
+
+                {/* Recipient Targeting */}
+                <div className="border-t pt-4 mt-2">
+                  <Label className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <Building2 className="w-4 h-4" />
+                    Destinatários
+                  </Label>
+                  
+                  <RadioGroup 
+                    value={recipientType} 
+                    onValueChange={(v) => setRecipientType(v as "all" | "blocks" | "units")}
+                    className="space-y-3"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="all" id="recipient-all" />
+                      <Label htmlFor="recipient-all" className="cursor-pointer font-normal">
+                        Todos os moradores
+                      </Label>
+                    </div>
+                    
+                    <div className="flex items-start space-x-2">
+                      <RadioGroupItem value="blocks" id="recipient-blocks" className="mt-1" />
+                      <div className="flex-1">
+                        <Label htmlFor="recipient-blocks" className="cursor-pointer font-normal">
+                          Blocos específicos
+                        </Label>
+                        {recipientType === "blocks" && blocks.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {blocks.map((block) => (
+                              <Badge
+                                key={block}
+                                variant={selectedBlocks.includes(block) ? "default" : "outline"}
+                                className="cursor-pointer"
+                                onClick={() => {
+                                  setSelectedBlocks(prev =>
+                                    prev.includes(block)
+                                      ? prev.filter(b => b !== block)
+                                      : [...prev, block]
+                                  );
+                                }}
+                              >
+                                {block}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        {recipientType === "blocks" && blocks.length === 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Nenhum bloco cadastrado ainda.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start space-x-2">
+                      <RadioGroupItem value="units" id="recipient-units" className="mt-1" />
+                      <div className="flex-1">
+                        <Label htmlFor="recipient-units" className="cursor-pointer font-normal">
+                          Unidades específicas
+                        </Label>
+                        {recipientType === "units" && (
+                          <Input
+                            placeholder="101, 102, 203..."
+                            value={targetUnits}
+                            onChange={(e) => setTargetUnits(e.target.value)}
+                            className="mt-2"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </RadioGroup>
                 </div>
 
                 {/* Notification Options */}

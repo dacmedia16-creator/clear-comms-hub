@@ -26,9 +26,6 @@ export function Header() {
             <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
               Como funciona
             </a>
-            <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
-              Planos
-            </a>
           </nav>
 
           {/* Desktop CTA */}
@@ -72,13 +69,6 @@ export function Header() {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Como funciona
-              </a>
-              <a 
-                href="#pricing" 
-                className="text-muted-foreground hover:text-foreground transition-colors py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Planos
               </a>
               <div className="flex flex-col gap-3 pt-4 border-t border-border">
                 <Button asChild variant="outline" className="w-full touch-target">

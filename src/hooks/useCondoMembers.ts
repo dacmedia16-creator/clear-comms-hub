@@ -229,6 +229,52 @@ export function useCondoMembers(condoId: string) {
     return { success, failed };
   };
 
+  const updateMember = async (
+    roleId: string,
+    updates: {
+      fullName?: string;
+      phone?: string;
+      email?: string;
+      block: string;
+      unit: string;
+    }
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const member = members.find(m => m.id === roleId);
+      if (!member) {
+        return { success: false, error: "Membro não encontrado" };
+      }
+
+      // 1. Update user_roles (block, unit) - always allowed for managers
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .update({ block: updates.block, unit: updates.unit })
+        .eq("id", roleId);
+
+      if (roleError) throw roleError;
+
+      // 2. If it's a condo_member, also update personal data
+      if (member.member_id && (updates.fullName || updates.phone !== undefined || updates.email !== undefined)) {
+        const { error: memberError } = await supabase
+          .from("condo_members")
+          .update({
+            full_name: updates.fullName || member.condo_member?.full_name || "",
+            phone: updates.phone || null,
+            email: updates.email || null,
+          })
+          .eq("id", member.member_id);
+
+        if (memberError) throw memberError;
+      }
+
+      await fetchMembers();
+      return { success: true };
+    } catch (err: any) {
+      console.error("Error updating member:", err);
+      return { success: false, error: err.message };
+    }
+  };
+
   return {
     members,
     loading,
@@ -239,6 +285,7 @@ export function useCondoMembers(condoId: string) {
     removeMember,
     approveMember,
     importMembers,
+    updateMember,
   };
 }
 

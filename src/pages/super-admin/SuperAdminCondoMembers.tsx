@@ -11,11 +11,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCondoMembers, getMemberDisplayName, getMemberEmail, getMemberPhone, getMemberLocation } from "@/hooks/useCondoMembers";
+import { useCondoMembers, getMemberDisplayName, getMemberEmail, getMemberPhone, getMemberLocation, CondoMember } from "@/hooks/useCondoMembers";
 import { useAllUsers } from "@/hooks/useAllUsers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Building2, FileText, Bell, LayoutDashboard } from "lucide-react";
+import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Building2, FileText, Bell, LayoutDashboard, Pencil } from "lucide-react";
+import { EditMemberDialog, UpdateMemberData } from "@/components/EditMemberDialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
@@ -48,13 +49,15 @@ const roleColors: Record<string, string> = {
 
 export default function SuperAdminCondoMembers() {
   const { condoId } = useParams<{ condoId: string }>();
-  const { members, loading, addMember, createMember, removeMember } = useCondoMembers(condoId || "");
+  const { members, loading, addMember, createMember, removeMember, updateMember } = useCondoMembers(condoId || "");
   const { users } = useAllUsers();
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
   const [condoName, setCondoName] = useState<string>("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<CondoMember | null>(null);
 
   // Get condominium info
   useEffect(() => {
@@ -125,6 +128,25 @@ export default function SuperAdminCondoMembers() {
     }
   };
 
+  const handleEditMember = (member: CondoMember) => {
+    setEditingMember(member);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveMember = async (roleId: string, data: UpdateMemberData) => {
+    const result = await updateMember(roleId, data);
+    if (result.success) {
+      toast({ title: "Morador atualizado com sucesso!" });
+    } else {
+      toast({
+        title: "Erro ao atualizar morador",
+        description: result.error,
+        variant: "destructive",
+      });
+    }
+    return result;
+  };
+
   return (
     <SuperAdminGuard>
       <div className="min-h-screen bg-background has-bottom-nav">
@@ -170,6 +192,14 @@ export default function SuperAdminCondoMembers() {
           availableUsers={availableUsers}
           onAddExisting={handleAddExisting}
           onCreateNew={handleCreateNew}
+        />
+
+        {/* Edit Member Dialog */}
+        <EditMemberDialog
+          member={editingMember}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onSave={handleSaveMember}
         />
 
         {/* Main Content */}
@@ -219,15 +249,24 @@ export default function SuperAdminCondoMembers() {
                         </>
                       }
                       actions={
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            handleRemoveMember(member.id, displayName)
-                          }
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditMember(member)}
+                          >
+                            <Pencil className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              handleRemoveMember(member.id, displayName)
+                            }
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
                       }
                     >
                       {phone && (
@@ -297,13 +336,24 @@ export default function SuperAdminCondoMembers() {
                             {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveMember(member.id, displayName)}
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditMember(member)}
+                                title="Editar membro"
+                              >
+                                <Pencil className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveMember(member.id, displayName)}
+                                title="Remover membro"
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );

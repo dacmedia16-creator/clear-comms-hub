@@ -16,6 +16,13 @@ interface SendWhatsAppResponse {
   results: SendResult[];
   message?: string;
   error?: string;
+  status?: string;
+}
+
+interface AnnouncementWithTargeting extends AnnouncementForShare {
+  id: string;
+  target_blocks?: string[] | null;
+  target_units?: string[] | null;
 }
 
 export function useSendWhatsApp() {
@@ -23,7 +30,7 @@ export function useSendWhatsApp() {
   const [lastResult, setLastResult] = useState<SendWhatsAppResponse | null>(null);
 
   const sendToMembers = async (
-    announcement: AnnouncementForShare & { id: string },
+    announcement: AnnouncementWithTargeting,
     condominium: CondominiumForShare & { id: string },
     baseUrl: string
   ): Promise<SendWhatsAppResponse> => {
@@ -38,6 +45,8 @@ export function useSendWhatsApp() {
             title: announcement.title,
             summary: announcement.summary,
             category: announcement.category,
+            target_blocks: announcement.target_blocks || null,
+            target_units: announcement.target_units || null,
           },
           condominium: {
             id: condominium.id,

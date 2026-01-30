@@ -6,6 +6,8 @@ interface AnnouncementForEmail {
   title: string;
   summary: string | null;
   category: string;
+  target_blocks?: string[] | null;
+  target_units?: string[] | null;
 }
 
 interface CondominiumForEmail {
@@ -41,6 +43,8 @@ export function useSendEmail() {
             title: announcement.title,
             summary: announcement.summary,
             category: announcement.category,
+            target_blocks: announcement.target_blocks || null,
+            target_units: announcement.target_units || null,
           },
           condominium: {
             id: condominium.id,

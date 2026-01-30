@@ -3,14 +3,23 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface CondoMember {
   id: string;
-  user_id: string;
+  user_id: string | null;
+  member_id: string | null;
   role: "admin" | "syndic" | "resident" | "collaborator";
   unit: string | null;
   is_approved: boolean;
   created_at: string;
+  // Profile data (for authenticated users)
   profile: {
     id: string;
     full_name: string | null;
+    email: string | null;
+    phone: string | null;
+  } | null;
+  // Condo member data (for manually added members)
+  condo_member: {
+    id: string;
+    full_name: string;
     email: string | null;
     phone: string | null;
   } | null;
@@ -37,11 +46,18 @@ export function useCondoMembers(condoId: string) {
         .select(`
           id,
           user_id,
+          member_id,
           role,
           unit,
           is_approved,
           created_at,
           profiles:user_id (
+            id,
+            full_name,
+            email,
+            phone
+          ),
+          condo_members:member_id (
             id,
             full_name,
             email,
@@ -56,11 +72,13 @@ export function useCondoMembers(condoId: string) {
       const formattedMembers: CondoMember[] = (data || []).map((item: any) => ({
         id: item.id,
         user_id: item.user_id,
+        member_id: item.member_id,
         role: item.role,
         unit: item.unit,
         is_approved: item.is_approved,
         created_at: item.created_at,
         profile: item.profiles,
+        condo_member: item.condo_members,
       }));
 
       setMembers(formattedMembers);
@@ -136,12 +154,24 @@ export function useCondoMembers(condoId: string) {
 
   const removeMember = async (memberId: string) => {
     try {
+      // First get the role to check if it has a member_id (condo_member)
+      const roleToDelete = members.find(m => m.id === memberId);
+      
       const { error } = await supabase
         .from("user_roles")
         .delete()
         .eq("id", memberId);
 
       if (error) throw error;
+      
+      // If this was a condo_member (not a profile), also delete the condo_member record
+      if (roleToDelete?.member_id) {
+        await supabase
+          .from("condo_members")
+          .delete()
+          .eq("id", roleToDelete.member_id);
+      }
+      
       await fetchMembers();
       return { success: true };
     } catch (err: any) {
@@ -176,4 +206,25 @@ export function useCondoMembers(condoId: string) {
     removeMember,
     approveMember,
   };
+}
+
+// Helper function to get display name from a member (works for both profile and condo_member)
+export function getMemberDisplayName(member: CondoMember): string {
+  if (member.profile?.full_name) return member.profile.full_name;
+  if (member.condo_member?.full_name) return member.condo_member.full_name;
+  return "—";
+}
+
+// Helper function to get email from a member
+export function getMemberEmail(member: CondoMember): string | null {
+  if (member.profile?.email) return member.profile.email;
+  if (member.condo_member?.email) return member.condo_member.email;
+  return null;
+}
+
+// Helper function to get phone from a member
+export function getMemberPhone(member: CondoMember): string | null {
+  if (member.profile?.phone) return member.profile.phone;
+  if (member.condo_member?.phone) return member.condo_member.phone;
+  return null;
 }

@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
@@ -52,6 +52,7 @@ const App = () => (
             <Route path="/super-admin/users" element={<SuperAdminUsers />} />
             <Route path="/super-admin/timelines" element={<SuperAdminTimelines />} />
             <Route path="/super-admin/notifications" element={<SuperAdminNotifications />} />
+            <Route path="/super-admin/whatsapp" element={<Navigate to="/super-admin/notifications" replace />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

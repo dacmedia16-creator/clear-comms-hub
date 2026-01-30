@@ -1,102 +1,193 @@
 
-# Adicionar Intervalo entre Envios de WhatsApp
 
-## Problema
-O envio atual de mensagens WhatsApp é feito de forma sequencial sem nenhum intervalo entre os destinatários. Isso pode causar:
-- Bloqueio temporário pela API do ZionTalk/WhatsApp
-- Rate limiting por excesso de requisições
-- Falha em envios em massa
+# Integração da API Zoho Mail para Notificações de Avisos
 
-## Solução
-Adicionar um delay aleatório entre 15 e 30 segundos entre cada envio de mensagem para evitar detecção como spam/bot.
+## Objetivo
+Configurar a API Zoho Mail para enviar emails aos moradores quando um novo aviso for publicado, similar às notificações existentes de WhatsApp e SMS.
 
-## Alteração Necessária
+## Pré-requisitos - Configuração no Zoho Developer Console
 
-| Arquivo | Ação | Descrição |
-|---------|------|-----------|
-| `supabase/functions/send-whatsapp/index.ts` | Modificar | Adicionar delay entre envios |
+Antes de implementar, você precisa criar a aplicação OAuth no Zoho. Siga estes passos:
 
-## Detalhes Técnicos
+### 1. Registrar Aplicação OAuth
 
-### Função de delay com intervalo aleatório
+1. Acesse: https://accounts.zoho.com/developerconsole
+2. Clique em **GET STARTED**
+3. Selecione **Self Client** (aplicação standalone para backend)
+4. Preencha:
+   - **Client Name**: `ClearComms Email Sender`
+   - **Homepage URL**: `https://clear-comms-hub.lovable.app`
+5. Clique em **CREATE**
+6. Anote o **Client ID** e **Client Secret** gerados
 
-```typescript
-// Gera delay aleatório entre min e max segundos
-function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
-  const ms = Math.floor(Math.random() * (maxSeconds - minSeconds + 1) + minSeconds) * 1000;
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-```
+### 2. Gerar Refresh Token
 
-### Modificação no loop de envio (linha 176-242)
-
-```typescript
-for (let i = 0; i < members.length; i++) {
-  const member = members[i];
-  const profile = member.profiles;
-  
-  // Aguardar intervalo ANTES do envio (exceto no primeiro)
-  if (i > 0) {
-    const delaySeconds = Math.floor(Math.random() * 16) + 15; // 15-30 segundos
-    console.log(`Aguardando ${delaySeconds}s antes do próximo envio...`);
-    await randomDelay(15, 30);
-  }
-  
-  // ... resto do código de envio ...
-}
-```
-
-## Fluxo de Envio
+1. Na mesma tela do Developer Console, clique em **Generate Code**
+2. Em **Scope**, digite: `ZohoMail.messages.CREATE,ZohoMail.accounts.READ`
+3. Em **Time Duration**, selecione: **10 minutes**
+4. Em **Scope Description**, digite: `Envio de emails de notificação`
+5. Clique em **CREATE**
+6. Copie o **code** gerado
+7. Faça uma requisição POST (pode usar Postman ou navegador):
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│ Membro 1: João Silva                                    │
-│ └─> Enviar mensagem ✓                                   │
-│     └─> Aguardar 15-30 segundos...                      │
-├─────────────────────────────────────────────────────────┤
-│ Membro 2: Maria Lima                                    │
-│ └─> Enviar mensagem ✓                                   │
-│     └─> Aguardar 15-30 segundos...                      │
-├─────────────────────────────────────────────────────────┤
-│ Membro 3: Pedro Santos                                  │
-│ └─> Enviar mensagem ✓                                   │
-│     └─> (último - sem delay)                            │
-└─────────────────────────────────────────────────────────┘
+https://accounts.zoho.com/oauth/v2/token?code={SEU_CODE}&grant_type=authorization_code&client_id={SEU_CLIENT_ID}&client_secret={SEU_CLIENT_SECRET}
 ```
 
-## Logs Adicionais
+8. Anote o **refresh_token** da resposta (não expira)
 
-O sistema irá registrar no console:
-- Tempo de delay antes de cada envio
-- Progresso: "Enviando para membro 2 de 10..."
+### 3. Obter Account ID
 
-## Considerações Importantes
+1. Com o access_token obtido, faça GET para:
 
-### Tempo Total de Execução
-- Para 10 moradores: ~3-5 minutos
-- Para 50 moradores: ~15-25 minutos
-- Para 100 moradores: ~30-50 minutos
+```text
+https://mail.zoho.com/api/accounts
+Authorization: Zoho-oauthtoken {access_token}
+```
 
-### Edge Function Timeout
-Edge Functions têm timeout padrão de 60 segundos. Para condomínios com muitos moradores, será necessário:
-1. Usar background tasks com `EdgeRuntime.waitUntil()`
-2. Retornar resposta imediata ao frontend
-3. Processar envios em segundo plano
+2. Anote o **accountId** retornado
 
-## Implementação Proposta
+---
 
-A função será modificada para:
-1. Retornar resposta imediata ao frontend com status "processando"
-2. Executar os envios em background usando `EdgeRuntime.waitUntil()`
-3. Usar delay de 15-30 segundos entre cada envio
+## Alterações no Sistema
 
-Isso garante que:
-- O frontend não fica travado esperando todos os envios
-- Os envios são processados de forma segura sem bloqueio
-- O usuário recebe feedback imediato de que o processo iniciou
+| Arquivo/Recurso | Acao | Descricao |
+|-----------------|------|-----------|
+| Migration SQL | Criar | Tabela `email_logs` para registrar envios |
+| Secrets | Adicionar | 4 segredos Zoho OAuth |
+| `supabase/functions/send-email/index.ts` | Criar | Edge Function para envio de emails |
+| `supabase/config.toml` | Modificar | Registrar nova funcao |
+| `src/hooks/useSendEmail.ts` | Criar | Hook para disparar envio |
+| UI de Avisos | Modificar | Adicionar botao "Enviar por Email" |
 
-## Resultado Esperado
-- Mensagens enviadas de forma espaçada (15-30s entre cada)
-- Menor risco de bloqueio pela API do WhatsApp
-- Logs detalhados do progresso de envio
-- Frontend recebe resposta imediata sem timeout
+---
+
+## Detalhes Tecnicos
+
+### 1. Tabela email_logs
+
+```sql
+CREATE TABLE public.email_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  announcement_id UUID REFERENCES public.announcements(id),
+  condominium_id UUID REFERENCES public.condominiums(id),
+  recipient_email TEXT NOT NULL,
+  recipient_name TEXT,
+  status TEXT DEFAULT 'pending',
+  error_message TEXT,
+  sent_at TIMESTAMPTZ DEFAULT now(),
+  created_by UUID REFERENCES public.profiles(id)
+);
+
+ALTER TABLE public.email_logs ENABLE ROW LEVEL SECURITY;
+```
+
+### 2. Segredos Necessarios
+
+| Segredo | Descricao |
+|---------|-----------|
+| `ZOHO_CLIENT_ID` | Client ID da aplicacao OAuth |
+| `ZOHO_CLIENT_SECRET` | Client Secret da aplicacao |
+| `ZOHO_REFRESH_TOKEN` | Refresh token (nao expira) |
+| `ZOHO_ACCOUNT_ID` | ID da conta de email |
+| `ZOHO_FROM_EMAIL` | Email remetente (ex: avisos@seudominio.com) |
+
+### 3. Edge Function send-email
+
+A funcao implementara:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Receber dados do aviso e condominio                      │
+├─────────────────────────────────────────────────────────────┤
+│ 2. Renovar access_token usando refresh_token                │
+│    POST accounts.zoho.com/oauth/v2/token                    │
+├─────────────────────────────────────────────────────────────┤
+│ 3. Buscar membros aprovados com email cadastrado            │
+├─────────────────────────────────────────────────────────────┤
+│ 4. Para cada membro (com delay 15-30s):                     │
+│    - Montar email HTML com template                         │
+│    - POST mail.zoho.com/api/accounts/{id}/messages          │
+│    - Registrar em email_logs                                │
+├─────────────────────────────────────────────────────────────┤
+│ 5. Retornar resposta imediata (background processing)       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 4. Template de Email
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    .container { max-width: 600px; margin: 0 auto; font-family: Arial; }
+    .header { background: #1a365d; color: white; padding: 20px; }
+    .content { padding: 20px; }
+    .category { display: inline-block; padding: 4px 12px; border-radius: 4px; }
+    .button { background: #3182ce; color: white; padding: 12px 24px; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>{nome_condo}</h1>
+    </div>
+    <div class="content">
+      <span class="category">{categoria}</span>
+      <h2>{titulo}</h2>
+      <p>{resumo}</p>
+      <a href="{link}" class="button">Ver Aviso Completo</a>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+### 5. API Zoho Mail - Enviar Email
+
+```typescript
+// Renovar token
+const tokenResponse = await fetch(
+  `https://accounts.zoho.com/oauth/v2/token?refresh_token=${REFRESH_TOKEN}&grant_type=refresh_token&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}`,
+  { method: 'POST' }
+);
+const { access_token } = await tokenResponse.json();
+
+// Enviar email
+const response = await fetch(
+  `https://mail.zoho.com/api/accounts/${ACCOUNT_ID}/messages`,
+  {
+    method: 'POST',
+    headers: {
+      'Authorization': `Zoho-oauthtoken ${access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      fromAddress: FROM_EMAIL,
+      toAddress: recipientEmail,
+      subject: `[${condoName}] ${announcement.title}`,
+      content: htmlContent,
+      mailFormat: 'html',
+    }),
+  }
+);
+```
+
+---
+
+## Fluxo de Uso
+
+1. Sindico cria novo aviso
+2. Marca opcao "Enviar por Email" (se habilitado no condominio)
+3. Sistema envia emails em background com intervalo de 15-30s
+4. Logs ficam disponiveis para consulta
+
+---
+
+## Proximos Passos Apos Aprovacao
+
+1. Voce configura a aplicacao no Zoho Developer Console
+2. Voce me fornece os 5 segredos necessarios
+3. Eu implemento a edge function e integracoes
+

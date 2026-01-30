@@ -33,15 +33,27 @@ import { useAllCondominiums } from "@/hooks/useAllCondominiums";
 import { useAllUsers } from "@/hooks/useAllUsers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, Building2, Plus, ArrowLeft, Loader2, Pencil, Trash2, ExternalLink, Search, Users } from "lucide-react";
+import { Bell, Building2, Plus, ArrowLeft, Loader2, Pencil, Trash2, ExternalLink, Search, Users, LayoutDashboard, FileText, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
+import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
+import { MobileCardItem } from "@/components/mobile/MobileCardItem";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const superAdminNavItems: MobileNavItem[] = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/super-admin" },
+  { icon: Building2, label: "Condos", path: "/super-admin/condominiums" },
+  { icon: Users, label: "Usuários", path: "/super-admin/users" },
+  { icon: FileText, label: "Timelines", path: "/super-admin/timelines" },
+  { icon: MessageSquare, label: "WhatsApp", path: "/super-admin/whatsapp" },
+];
 
 export default function SuperAdminCondominiums() {
   const { condominiums, loading, refetch } = useAllCondominiums();
   const { users } = useAllUsers();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -164,7 +176,7 @@ export default function SuperAdminCondominiums() {
 
   return (
     <SuperAdminGuard>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background has-bottom-nav">
         {/* Header */}
         <header className="sticky top-0 z-50 bg-card border-b border-border">
           <div className="container px-4 mx-auto">
@@ -279,7 +291,68 @@ export default function SuperAdminCondominiums() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
+          ) : isMobile ? (
+            /* Mobile: Cards */
+            <div className="space-y-4">
+              {filteredCondos.length === 0 ? (
+                <Card className="p-8 text-center text-muted-foreground">
+                  Nenhum condomínio encontrado
+                </Card>
+              ) : (
+                filteredCondos.map((condo) => (
+                  <MobileCardItem
+                    key={condo.id}
+                    title={condo.name}
+                    subtitle={condo.slug}
+                    metadata={
+                      <code className="text-xs bg-primary/10 text-primary font-bold px-2 py-1 rounded">
+                        {condo.code}
+                      </code>
+                    }
+                    badges={
+                      <>
+                        <span className={`text-xs px-2 py-1 rounded-full capitalize ${
+                          condo.plan === "pro" ? "bg-primary/10 text-primary" :
+                          condo.plan === "starter" ? "bg-accent text-accent-foreground" :
+                          "bg-muted text-muted-foreground"
+                        }`}>
+                          {condo.plan}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(condo.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
+                      </>
+                    }
+                    actions={
+                      <>
+                        <Button asChild variant="ghost" size="sm">
+                          <Link to={`/c/${condo.slug}`} target="_blank">
+                            <ExternalLink className="w-4 h-4" />
+                          </Link>
+                        </Button>
+                        <Button asChild variant="ghost" size="sm">
+                          <Link to={`/super-admin/condominiums/${condo.id}/members`}>
+                            <Users className="w-4 h-4" />
+                          </Link>
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => openEditDialog(condo)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(condo)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </>
+                    }
+                  >
+                    <p className="text-sm text-muted-foreground">
+                      {condo.owner?.full_name || condo.owner?.email || "Sem proprietário"}
+                    </p>
+                  </MobileCardItem>
+                ))
+              )}
+            </div>
           ) : (
+            /* Desktop: Table */
             <Card>
               <Table>
                 <TableHeader>
@@ -424,6 +497,8 @@ export default function SuperAdminCondominiums() {
             </form>
           </DialogContent>
         </Dialog>
+
+        <MobileBottomNav items={superAdminNavItems} />
       </div>
     </SuperAdminGuard>
   );

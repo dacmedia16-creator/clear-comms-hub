@@ -15,11 +15,22 @@ import { useCondoMembers } from "@/hooks/useCondoMembers";
 import { useAllUsers } from "@/hooks/useAllUsers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle } from "lucide-react";
+import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Building2, FileText, MessageSquare, LayoutDashboard } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
 import { AddMemberDialog } from "@/components/super-admin/AddMemberDialog";
+import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
+import { MobileCardItem } from "@/components/mobile/MobileCardItem";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const superAdminNavItems: MobileNavItem[] = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/super-admin" },
+  { icon: Building2, label: "Condos", path: "/super-admin/condominiums" },
+  { icon: Users, label: "Usuários", path: "/super-admin/users" },
+  { icon: FileText, label: "Timelines", path: "/super-admin/timelines" },
+  { icon: MessageSquare, label: "WhatsApp", path: "/super-admin/whatsapp" },
+];
 
 const roleLabels: Record<string, string> = {
   admin: "Administrador",
@@ -40,6 +51,7 @@ export default function SuperAdminCondoMembers() {
   const { members, loading, addMember, createMember, removeMember } = useCondoMembers(condoId || "");
   const { users } = useAllUsers();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const [condoName, setCondoName] = useState<string>("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -114,7 +126,7 @@ export default function SuperAdminCondoMembers() {
 
   return (
     <SuperAdminGuard>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background has-bottom-nav">
         {/* Header */}
         <header className="sticky top-0 z-50 bg-card border-b border-border">
           <div className="container px-4 mx-auto">
@@ -165,7 +177,64 @@ export default function SuperAdminCondoMembers() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
+          ) : isMobile ? (
+            /* Mobile: Cards */
+            <div className="space-y-4">
+              {members.length === 0 ? (
+                <Card className="p-8 text-center text-muted-foreground">
+                  <div className="flex flex-col items-center gap-2">
+                    <UserCircle className="w-12 h-12 opacity-30" />
+                    <p>Nenhum membro cadastrado neste condomínio</p>
+                    <p className="text-sm">Clique em "Adicionar" para incluir síndicos ou moradores</p>
+                  </div>
+                </Card>
+              ) : (
+                members.map((member) => (
+                  <MobileCardItem
+                    key={member.id}
+                    title={member.profile?.full_name || "—"}
+                    subtitle={member.profile?.email || ""}
+                    metadata={
+                      <span className="text-xs">
+                        {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                      </span>
+                    }
+                    badges={
+                      <>
+                        <span className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}>
+                          {roleLabels[member.role]}
+                        </span>
+                        {member.unit && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                            {member.unit}
+                          </span>
+                        )}
+                      </>
+                    }
+                    actions={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          handleRemoveMember(
+                            member.id,
+                            member.profile?.full_name || member.profile?.email || "este membro"
+                          )
+                        }
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    }
+                  >
+                    {member.profile?.phone && (
+                      <p className="text-xs text-muted-foreground">{member.profile.phone}</p>
+                    )}
+                  </MobileCardItem>
+                ))
+              )}
+            </div>
           ) : (
+            /* Desktop: Table */
             <Card>
               <Table>
                 <TableHeader>
@@ -240,6 +309,8 @@ export default function SuperAdminCondoMembers() {
             </Card>
           )}
         </main>
+
+        <MobileBottomNav items={superAdminNavItems} />
       </div>
     </SuperAdminGuard>
   );

@@ -26,18 +26,30 @@ import { useAllUsers } from "@/hooks/useAllUsers";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, ArrowLeft, Loader2, Shield, ShieldOff, Search, Pencil, Trash2, Settings } from "lucide-react";
+import { Users, ArrowLeft, Loader2, Shield, ShieldOff, Search, Pencil, Trash2, Settings, Building2, FileText, MessageSquare, LayoutDashboard } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
 import { EditUserDialog } from "@/components/super-admin/EditUserDialog";
 import { UserRoleBadges } from "@/components/super-admin/UserRoleBadges";
 import { ManageUserRolesDialog } from "@/components/super-admin/ManageUserRolesDialog";
+import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
+import { MobileCardItem } from "@/components/mobile/MobileCardItem";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const superAdminNavItems: MobileNavItem[] = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/super-admin" },
+  { icon: Building2, label: "Condos", path: "/super-admin/condominiums" },
+  { icon: Users, label: "Usuários", path: "/super-admin/users" },
+  { icon: FileText, label: "Timelines", path: "/super-admin/timelines" },
+  { icon: MessageSquare, label: "WhatsApp", path: "/super-admin/whatsapp" },
+];
 
 export default function SuperAdminUsers() {
   const { users, loading, refetch } = useAllUsers();
   const { profile: currentProfile } = useProfile();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [showPendingOnly, setShowPendingOnly] = useState(false);
@@ -151,7 +163,7 @@ export default function SuperAdminUsers() {
 
   return (
     <SuperAdminGuard>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background has-bottom-nav">
         {/* Header */}
         <header className="sticky top-0 z-50 bg-card border-b border-border">
           <div className="container px-4 mx-auto">
@@ -200,7 +212,84 @@ export default function SuperAdminUsers() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
+          ) : isMobile ? (
+            /* Mobile: Cards */
+            <div className="space-y-4">
+              {filteredUsers.length === 0 ? (
+                <Card className="p-8 text-center text-muted-foreground">
+                  Nenhum usuário encontrado
+                </Card>
+              ) : (
+                filteredUsers.map((user) => (
+                  <MobileCardItem
+                    key={user.id}
+                    title={user.full_name || "—"}
+                    subtitle={user.email || ""}
+                    metadata={
+                      <span className="text-xs">
+                        {format(new Date(user.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                      </span>
+                    }
+                    badges={
+                      <UserRoleBadges 
+                        isSuperAdmin={user.is_super_admin || false} 
+                        roles={user.roles || []} 
+                      />
+                    }
+                    actions={
+                      user.id !== currentProfile?.id ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingUser(user)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setManagingRolesUser(user)}
+                          >
+                            <Settings className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeletingUser(user)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                          {user.is_super_admin ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDemotingUser(user)}
+                            >
+                              <ShieldOff className="w-4 h-4 text-destructive" />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setPromotingUser(user)}
+                            >
+                              <Shield className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </>
+                      ) : null
+                    }
+                  >
+                    {user.phone && (
+                      <p className="text-xs text-muted-foreground">{user.phone}</p>
+                    )}
+                  </MobileCardItem>
+                ))
+              )}
+            </div>
           ) : (
+            /* Desktop: Table */
             <Card>
               <Table>
                 <TableHeader>
@@ -376,6 +465,8 @@ export default function SuperAdminUsers() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <MobileBottomNav items={superAdminNavItems} />
       </div>
     </SuperAdminGuard>
   );

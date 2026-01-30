@@ -14,12 +14,15 @@ import {
 import { useCondoMembers } from "@/hooks/useCondoMembers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check } from "lucide-react";
+import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check, Bell, Settings, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
 import { AddMemberDialog } from "@/components/super-admin/AddMemberDialog";
+import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
+import { MobileCardItem } from "@/components/mobile/MobileCardItem";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const roleLabels: Record<string, string> = {
   admin: "Administrador",
@@ -41,10 +44,20 @@ export default function CondoMembersPage() {
   const navigate = useNavigate();
   const { members, loading, createMember, removeMember, approveMember } = useCondoMembers(condoId || "");
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const [condoName, setCondoName] = useState<string>("");
+  const [condoSlug, setCondoSlug] = useState<string>("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+
+  // Nav items for syndic
+  const syndicNavItems: MobileNavItem[] = condoId ? [
+    { icon: Bell, label: "Avisos", path: `/admin/${condoId}` },
+    { icon: Users, label: "Moradores", path: `/admin/${condoId}/members` },
+    { icon: Settings, label: "Config", path: `/admin/${condoId}/settings` },
+    { icon: FileText, label: "Timeline", path: condoSlug ? `/c/${condoSlug}` : `/admin/${condoId}` },
+  ] : [];
 
   // Check if user can manage this condominium
   useEffect(() => {
@@ -89,10 +102,13 @@ export default function CondoMembersPage() {
       if (!condoId) return;
       const { data } = await supabase
         .from("condominiums")
-        .select("name")
+        .select("name, slug")
         .eq("id", condoId)
         .maybeSingle();
-      if (data) setCondoName(data.name);
+      if (data) {
+        setCondoName(data.name);
+        setCondoSlug(data.slug);
+      }
     };
     fetchCondo();
   }, [condoId]);
@@ -159,7 +175,7 @@ export default function CondoMembersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background has-bottom-nav">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card border-b border-border">
         <div className="container px-4 mx-auto">
@@ -210,7 +226,90 @@ export default function CondoMembersPage() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
+        ) : isMobile ? (
+          /* Mobile: Cards */
+          <div className="space-y-4">
+            {members.length === 0 ? (
+              <Card className="p-8 text-center text-muted-foreground">
+                <div className="flex flex-col items-center gap-2">
+                  <UserCircle className="w-12 h-12 opacity-30" />
+                  <p>Nenhum morador cadastrado neste condomínio</p>
+                  <p className="text-sm">Clique em "Adicionar" para cadastrar moradores</p>
+                </div>
+              </Card>
+            ) : (
+              members.map((member) => (
+                <MobileCardItem
+                  key={member.id}
+                  title={member.profile?.full_name || "—"}
+                  subtitle={member.profile?.email || ""}
+                  className={!member.is_approved ? "border-yellow-500/50" : ""}
+                  metadata={
+                    <span className="text-xs">
+                      {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                    </span>
+                  }
+                  badges={
+                    <>
+                      <span className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}>
+                        {roleLabels[member.role]}
+                      </span>
+                      {member.unit && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                          {member.unit}
+                        </span>
+                      )}
+                      {member.is_approved ? (
+                        <Badge variant="default" className="bg-green-500/20 text-green-700 hover:bg-green-500/30">
+                          Aprovado
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-yellow-500 text-yellow-600 bg-yellow-500/10">
+                          Pendente
+                        </Badge>
+                      )}
+                    </>
+                  }
+                  actions={
+                    <div className="flex items-center gap-1">
+                      {!member.is_approved && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            handleApproveMember(
+                              member.id,
+                              member.profile?.full_name || member.profile?.email || "Este membro"
+                            )
+                          }
+                        >
+                          <Check className="w-4 h-4 text-green-600" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          handleRemoveMember(
+                            member.id,
+                            member.profile?.full_name || member.profile?.email || "este membro"
+                          )
+                        }
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  }
+                >
+                  {member.profile?.phone && (
+                    <p className="text-xs text-muted-foreground">{member.profile.phone}</p>
+                  )}
+                </MobileCardItem>
+              ))
+            )}
+          </div>
         ) : (
+          /* Desktop: Table */
           <Card>
             <Table>
               <TableHeader>
@@ -315,6 +414,8 @@ export default function CondoMembersPage() {
           </Card>
         )}
       </main>
+
+      <MobileBottomNav items={syndicNavItems} />
     </div>
   );
 }

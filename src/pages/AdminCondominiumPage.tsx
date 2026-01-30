@@ -33,7 +33,9 @@ import {
   MessageCircle,
   Mail,
   Smartphone,
-  Users
+  Users,
+  Settings,
+  FileText
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSendWhatsApp } from "@/hooks/useSendWhatsApp";
@@ -45,6 +47,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
 import { SendWhatsAppButton } from "@/components/SendWhatsAppButton";
+import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Announcement {
   id: string;
@@ -73,6 +77,7 @@ export default function AdminCondominiumPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const [condominium, setCondominium] = useState<Condominium | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -80,6 +85,14 @@ export default function AdminCondominiumPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [lastCreatedAnnouncement, setLastCreatedAnnouncement] = useState<Announcement | null>(null);
+
+  // Generate nav items dynamically based on condoId
+  const syndicNavItems: MobileNavItem[] = condoId ? [
+    { icon: Bell, label: "Avisos", path: `/admin/${condoId}` },
+    { icon: Users, label: "Moradores", path: `/admin/${condoId}/members` },
+    { icon: Settings, label: "Config", path: `/admin/${condoId}/settings` },
+    { icon: FileText, label: "Timeline", path: condominium?.slug ? `/c/${condominium.slug}` : `/admin/${condoId}` },
+  ] : [];
 
   // Form state
   const [title, setTitle] = useState("");
@@ -324,7 +337,7 @@ export default function AdminCondominiumPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background has-bottom-nav">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card border-b border-border">
         <div className="container px-4 mx-auto">
@@ -672,6 +685,8 @@ export default function AdminCondominiumPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <MobileBottomNav items={syndicNavItems} />
       </main>
     </div>
   );

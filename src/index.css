@@ -134,3 +134,21 @@
     @apply p-5 md:p-6 rounded-xl shadow-sm;
   }
 }
+
+/* Safe area for mobile devices with notches */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Mobile bottom nav spacing */
+.has-bottom-nav {
+  padding-bottom: 5rem;
+}
+
+@media (min-width: 768px) {
+  .has-bottom-nav {
+    padding-bottom: 0;
+  }
+}

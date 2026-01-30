@@ -15,7 +15,7 @@ const superAdminNavItems: MobileNavItem[] = [
   { icon: Building2, label: "Condos", path: "/super-admin/condominiums" },
   { icon: Users, label: "Usuários", path: "/super-admin/users" },
   { icon: FileText, label: "Timelines", path: "/super-admin/timelines" },
-  { icon: MessageSquare, label: "WhatsApp", path: "/super-admin/whatsapp" },
+  { icon: Bell, label: "Notificações", path: "/super-admin/notifications" },
 ];
 
 export default function SuperAdminDashboard() {
@@ -198,23 +198,29 @@ export default function SuperAdminDashboard() {
                 <Card className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center mb-2">
-                      <MessageSquare className="w-6 h-6 text-primary" />
+                      <Bell className="w-6 h-6 text-primary" />
                     </div>
-                    <CardTitle className="font-display">API WhatsApp</CardTitle>
+                    <CardTitle className="font-display">Central de Notificações</CardTitle>
                     <CardDescription>
-                      Gerencie a integração com a API Zion Talk para notificações
+                      Gerencie WhatsApp, SMS e Email para todos os condomínios
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2 mb-4">
                       <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                        Zion Talk
+                        WhatsApp
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                        SMS
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                        Email
                       </span>
                     </div>
                     <Button asChild className="w-full">
-                      <Link to="/super-admin/whatsapp">
-                        <MessageSquare className="w-4 h-4 mr-2" />
-                        Gerenciar API
+                      <Link to="/super-admin/notifications">
+                        <Bell className="w-4 h-4 mr-2" />
+                        Gerenciar Notificações
                       </Link>
                     </Button>
                   </CardContent>

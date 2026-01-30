@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useAllAnnouncements } from "@/hooks/useAllAnnouncements";
 import { useAllCondominiums } from "@/hooks/useAllCondominiums";
-import { FileText, ArrowLeft, Loader2, ExternalLink, Building2, Bell, Users, MessageSquare, LayoutDashboard } from "lucide-react";
+import { FileText, ArrowLeft, Loader2, ExternalLink, Building2, Bell, Users, LayoutDashboard } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
@@ -15,7 +15,7 @@ const superAdminNavItems: MobileNavItem[] = [
   { icon: Building2, label: "Condos", path: "/super-admin/condominiums" },
   { icon: Users, label: "Usuários", path: "/super-admin/users" },
   { icon: FileText, label: "Timelines", path: "/super-admin/timelines" },
-  { icon: MessageSquare, label: "WhatsApp", path: "/super-admin/whatsapp" },
+  { icon: Bell, label: "Notificações", path: "/super-admin/notifications" },
 ];
 
 const categoryLabels: Record<string, string> = {

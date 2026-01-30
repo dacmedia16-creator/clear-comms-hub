@@ -33,7 +33,7 @@ import { useAllCondominiums } from "@/hooks/useAllCondominiums";
 import { useAllUsers } from "@/hooks/useAllUsers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, Building2, Plus, ArrowLeft, Loader2, Pencil, Trash2, ExternalLink, Search, Users, LayoutDashboard, FileText, MessageSquare } from "lucide-react";
+import { Bell, Building2, Plus, ArrowLeft, Loader2, Pencil, Trash2, ExternalLink, Search, Users, LayoutDashboard, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
@@ -46,7 +46,7 @@ const superAdminNavItems: MobileNavItem[] = [
   { icon: Building2, label: "Condos", path: "/super-admin/condominiums" },
   { icon: Users, label: "Usuários", path: "/super-admin/users" },
   { icon: FileText, label: "Timelines", path: "/super-admin/timelines" },
-  { icon: MessageSquare, label: "WhatsApp", path: "/super-admin/whatsapp" },
+  { icon: Bell, label: "Notificações", path: "/super-admin/notifications" },
 ];
 
 export default function SuperAdminCondominiums() {

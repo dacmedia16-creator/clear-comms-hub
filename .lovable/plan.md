@@ -1,222 +1,183 @@
 
-# Importar Moradores de Planilha
+# Envio Segmentado por Bloco/Unidade - Bloco Obrigatório
 
-## Objetivo
+## Alteração Solicitada
 
-Adicionar funcionalidade para importar múltiplos moradores de uma vez através de arquivo Excel (.xlsx) ou CSV, conforme indicado na imagem (área circulada no header da página de moradores).
-
----
-
-## Visão Geral
-
-O síndico poderá clicar no botão "Importar" ao lado do botão "Adicionar", fazer upload de uma planilha com os dados dos moradores, visualizar uma prévia dos dados e confirmar a importação em massa.
+O campo **Bloco/Torre** será obrigatório em todo o sistema, assim como Nome, Telefone, Email e Unidade.
 
 ---
 
-## Formato Esperado da Planilha
+## Resumo das Mudanças
+
+| Campo | Obrigatório | Exemplo |
+|-------|-------------|---------|
+| Nome Completo | Sim | João da Silva |
+| Telefone | Sim | 11999999999 |
+| Email | Sim | joao@email.com |
+| Bloco/Torre | **Sim** | A, Torre 1, Bloco B |
+| Unidade/Apt | Sim | 101, 202, Casa 5 |
+| Função | Não (default: morador) | morador |
+
+---
+
+## Arquivos a Modificar
+
+### 1. Banco de Dados
+
+```sql
+-- Adicionar coluna block (NOT NULL com valor default temporário para permitir migração)
+ALTER TABLE user_roles ADD COLUMN IF NOT EXISTS block TEXT;
+
+-- Adicionar colunas de segmentação em announcements
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS target_blocks TEXT[];
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS target_units TEXT[];
+```
+
+### 2. AddMemberDialog.tsx
+
+**Estado atual**: Campo único "Bloco e Unidade"
+
+**Mudança**: Separar em dois campos obrigatórios
+
+| Campo | Label | Placeholder | Validação |
+|-------|-------|-------------|-----------|
+| block | Bloco/Torre * | A, Torre 1, Bloco B | Não pode ser vazio |
+| unit | Unidade/Apt * | 101, 202, Casa 5 | Não pode ser vazio |
+
+**Validação a adicionar**:
+```typescript
+if (!block.trim()) {
+  setError("Bloco/Torre é obrigatório");
+  return;
+}
+```
+
+### 3. ImportMembersDialog.tsx
+
+**Novo formato da planilha** (6 colunas):
 
 | Coluna | Campo | Obrigatório |
 |--------|-------|-------------|
 | A | Nome Completo | Sim |
 | B | Telefone | Sim |
 | C | Email | Sim |
-| D | Bloco e Unidade | Sim |
-| E | Função (morador/sindico/admin/colaborador) | Não (default: morador) |
+| D | Bloco/Torre | **Sim** |
+| E | Unidade/Apt | Sim |
+| F | Função | Não |
 
----
-
-## Componentes a Criar
-
-### 1. ImportMembersDialog
-
-Dialog com as seguintes etapas:
-
-1. **Upload**: Área de upload (drag & drop) para arquivo .xlsx ou .csv
-2. **Prévia**: Tabela mostrando os dados parseados com validação
-3. **Confirmação**: Resumo e botão para importar
-
----
-
-## Alterações Necessárias
-
-### Dependência Nova
-
-```bash
-npm install xlsx
+**Validação a adicionar**:
+```typescript
+if (!block) errors.push("Bloco obrigatório");
 ```
 
-A biblioteca `xlsx` (SheetJS) é a mais popular para parsing de Excel no browser.
+**Modelo de planilha atualizado**:
+```typescript
+const ws = XLSX.utils.aoa_to_sheet([
+  ["Nome Completo", "Telefone", "Email", "Bloco/Torre", "Unidade/Apt", "Função"],
+  ["João da Silva", "11999999999", "joao@email.com", "A", "101", "morador"],
+  ["Maria Santos", "11988888888", "maria@email.com", "B", "202", "morador"],
+]);
+```
 
-### Arquivos a Criar
+### 4. create-member Edge Function
 
-| Arquivo | Descrição |
-|---------|-----------|
-| `src/components/ImportMembersDialog.tsx` | Dialog com upload, prévia e importação |
+**Payload atualizado**:
+```typescript
+interface CreateMemberRequest {
+  condominiumId: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  block: string;  // NOVO - obrigatório
+  unit: string;
+  role: "admin" | "syndic" | "resident" | "collaborator";
+}
+```
 
-### Arquivos a Modificar
+**Validação a adicionar**:
+```typescript
+if (!condominiumId || !fullName || !role || !block || !unit) {
+  return Response({ error: "Missing required fields" });
+}
+```
 
-| Arquivo | Mudança |
-|---------|---------|
-| `src/pages/CondoMembersPage.tsx` | Adicionar botão "Importar" e integrar dialog |
-| `src/hooks/useCondoMembers.ts` | Adicionar função `importMembers` para criar múltiplos |
+### 5. useCondoMembers Hook
 
----
+Atualizar interface `CreateMemberData`:
+```typescript
+interface CreateMemberData {
+  fullName: string;
+  phone: string;
+  email: string;
+  block: string;  // NOVO
+  unit: string;
+  role: Role;
+}
+```
 
-## Fluxo de Uso
+### 6. Formulário de Criação de Aviso
+
+Adicionar seletor de destinatários com lista de blocos disponíveis:
 
 ```text
-Síndico clica "Importar"
-         │
-         ▼
-┌─────────────────────────┐
-│  Dialog: Upload File    │
-│                         │
-│  ┌───────────────────┐  │
-│  │ Arraste sua       │  │
-│  │ planilha aqui     │  │
-│  │ .xlsx ou .csv     │  │
-│  └───────────────────┘  │
-└─────────────────────────┘
-         │
-         ▼
-┌─────────────────────────┐
-│  Dialog: Prévia         │
-│                         │
-│  ┌─────────────────────┐│
-│  │ Nome │Tel │ Un │... ││
-│  │──────┼────┼────┼────││
-│  │ João │... │ A1 │ OK ││
-│  │ Maria│... │ B2 │ERRO││
-│  └─────────────────────┘│
-│                         │
-│  10 válidos, 1 erro     │
-│                         │
-│  [Cancelar] [Importar]  │
-└─────────────────────────┘
-         │
-         ▼
-┌─────────────────────────┐
-│  Importando...          │
-│  ████████░░░░ 8/10      │
-└─────────────────────────┘
-         │
-         ▼
-   Lista atualizada
+Destinatários:
+● Todos os moradores
+○ Blocos específicos → [A] [B] [C] ...
+○ Unidades específicas → 101, 102, ...
 ```
+
+### 7. Edge Functions de Notificação
+
+Adicionar filtro por bloco/unidade na query de membros.
 
 ---
 
-## Detalhes Técnicos
-
-### Parsing da Planilha
-
-```typescript
-import * as XLSX from 'xlsx';
-
-const handleFile = (file: File) => {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const data = new Uint8Array(e.target?.result as ArrayBuffer);
-    const workbook = XLSX.read(data, { type: 'array' });
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-    // jsonData é array de arrays: [["Nome", "Tel", ...], ["João", "11...", ...]]
-  };
-  reader.readAsArrayBuffer(file);
-};
-```
-
-### Validação dos Dados
-
-Para cada linha:
-- Nome: mínimo 2 caracteres
-- Telefone: presente
-- Email: contém @
-- Unidade: presente
-- Função: se vazio, assume "resident"
-
-### Mapeamento de Função
-
-```typescript
-const roleMap: Record<string, string> = {
-  'morador': 'resident',
-  'residente': 'resident',
-  'resident': 'resident',
-  'sindico': 'syndic',
-  'síndico': 'syndic',
-  'syndic': 'syndic',
-  'admin': 'admin',
-  'administrador': 'admin',
-  'colaborador': 'collaborator',
-  'collaborator': 'collaborator',
-};
-```
-
-### Importação em Batch
-
-Reutilizar a função `createMember` existente, chamando sequencialmente para cada membro válido. Exibir progresso durante a importação.
-
----
-
-## Interface do Dialog
-
-### Header
-- Título: "Importar Moradores"
-- Descrição: "Faça upload de uma planilha Excel ou CSV"
-
-### Etapa 1: Upload
-- Área de drag & drop
-- Aceita: `.xlsx, .xls, .csv`
-- Botão para baixar modelo de planilha
-
-### Etapa 2: Prévia
-- Tabela com os dados
-- Indicador de status por linha (válido/erro)
-- Contador: "X válidos, Y com erro"
-- Erros destacados em vermelho
-
-### Etapa 3: Importação
-- Progress bar
-- Contador: "Importando X de Y..."
-- Ao finalizar: resumo de sucesso/erro
-
----
-
-## Modelo de Planilha para Download
-
-Criar função para gerar um arquivo Excel modelo:
-
-```typescript
-const downloadTemplate = () => {
-  const ws = XLSX.utils.aoa_to_sheet([
-    ['Nome Completo', 'Telefone', 'Email', 'Bloco e Unidade', 'Função'],
-    ['João da Silva', '11999999999', 'joao@email.com', 'Bloco A, Apt 101', 'morador'],
-    ['Maria Santos', '11988888888', 'maria@email.com', 'Bloco B, Apt 202', 'morador'],
-  ]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Moradores');
-  XLSX.writeFile(wb, 'modelo_moradores.xlsx');
-};
-```
-
----
-
-## Resultado Visual
-
-O botão "Importar" ficará ao lado do botão "Adicionar" no header:
+## Interface Atualizada do Formulário
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│  ← 👥 Moradores          [Importar] [↻] [+ Adicionar]       │
-│     Vitrine Esplanada                                        │
-└──────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  Nome Completo *                                             │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │ João da Silva                                           │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│                                                              │
+│  Telefone *                      Email *                     │
+│  ┌───────────────────────┐      ┌────────────────────────┐   │
+│  │ +55 11 99999-9999     │      │ joao@email.com         │   │
+│  └───────────────────────┘      └────────────────────────┘   │
+│                                                              │
+│  Bloco/Torre *                   Unidade/Apt *               │
+│  ┌───────────────────────┐      ┌────────────────────────┐   │
+│  │ A                     │      │ 101                    │   │
+│  └───────────────────────┘      └────────────────────────┘   │
+│                                                              │
+│  Função *                                                    │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │ Morador                                            ▼    │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Resumo das Tarefas
 
-1. **Instalar dependência**: `xlsx` (SheetJS)
-2. **Criar componente**: `ImportMembersDialog.tsx`
-3. **Modificar página**: Adicionar botão e dialog em `CondoMembersPage.tsx`
-4. **Adicionar hook**: Função `importMembers` em `useCondoMembers.ts`
+| # | Tarefa |
+|---|--------|
+| 1 | Migração SQL: adicionar `block` em `user_roles` e `target_blocks/target_units` em `announcements` |
+| 2 | Atualizar `AddMemberDialog.tsx`: separar Bloco e Unidade, ambos obrigatórios |
+| 3 | Atualizar `ImportMembersDialog.tsx`: nova coluna "Bloco", validação obrigatória |
+| 4 | Atualizar `create-member` Edge Function: aceitar e validar campo `block` |
+| 5 | Atualizar `useCondoMembers.ts`: incluir `block` na interface e chamada |
+| 6 | Criar hook `useCondoBlocks.ts`: buscar blocos únicos do condomínio |
+| 7 | Atualizar `AdminCondominiumPage.tsx`: seletor de destinatários no formulário de aviso |
+| 8 | Atualizar Edge Functions de notificação: filtrar por `block` e `unit` |
+
+---
+
+## Resultado
+
+Após implementação:
+- Todo morador terá Bloco E Unidade obrigatórios
+- Síndico poderá enviar aviso para blocos ou unidades específicas
+- Sistema terá dados normalizados para filtragem precisa

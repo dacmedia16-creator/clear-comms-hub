@@ -5,6 +5,7 @@ import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { Pricing } from "@/components/landing/Pricing";
 import { Footer } from "@/components/landing/Footer";
+import { SalesChatbot } from "@/components/landing/SalesChatbot";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -49,6 +50,8 @@ const Index = () => {
       </main>
 
       <Footer />
+      
+      <SalesChatbot />
     </div>
   );
 };

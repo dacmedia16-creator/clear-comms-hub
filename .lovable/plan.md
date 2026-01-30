@@ -101,9 +101,10 @@ const result = await supabase.functions.invoke('send-email', {
 
 ## Checklist
 
-- [ ] Ativar 2FA na conta Zoho
-- [ ] Gerar App Password em Zoho Account > Security > App Passwords
-- [ ] Adicionar secret `ZOHO_SMTP_USER`
-- [ ] Adicionar secret `ZOHO_SMTP_PASSWORD`
-- [ ] Adicionar secret `ZOHO_SMTP_HOST`
-- [ ] Testar conexão no painel de Notificações
+- [x] Ativar 2FA na conta Zoho
+- [x] Gerar App Password em Zoho Account > Security > App Passwords
+- [x] Adicionar secret `ZOHO_SMTP_USER`
+- [x] Adicionar secret `ZOHO_SMTP_PASSWORD`
+- [x] Adicionar secret `ZOHO_SMTP_HOST`
+- [x] Reescrever edge functions para usar SMTP nativo
+- [x] Testar conexão SMTP ✅ Funcionando!

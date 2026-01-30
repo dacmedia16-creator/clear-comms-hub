@@ -7,34 +7,152 @@ const corsHeaders = {
 };
 
 interface RequestBody {
-  email: string;
+  action?: 'test-connection' | 'send';
+  email?: string;
   condominiumId?: string;
-  condominiumName?: string;
 }
 
-async function getZohoAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string> {
-  const tokenUrl = 'https://accounts.zoho.com/oauth/v2/token';
+// Simple SMTP implementation using Deno's native TLS
+async function sendSmtpEmail(
+  host: string,
+  port: number,
+  username: string,
+  password: string,
+  from: string,
+  to: string,
+  subject: string,
+  htmlBody: string
+): Promise<{ success: boolean; error?: string }> {
+  let conn: Deno.TlsConn | null = null;
   
-  const params = new URLSearchParams({
-    grant_type: 'refresh_token',
-    client_id: clientId,
-    client_secret: clientSecret,
-    refresh_token: refreshToken,
-  });
+  try {
+    conn = await Deno.connectTls({
+      hostname: host,
+      port: port,
+    });
 
-  const response = await fetch(tokenUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  });
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    let buffer = "";
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to get Zoho access token: ${errorText}`);
+    async function readLine(): Promise<string> {
+      while (!buffer.includes("\r\n")) {
+        const chunk = new Uint8Array(1024);
+        const n = await conn!.read(chunk);
+        if (n === null) throw new Error("Connection closed");
+        buffer += decoder.decode(chunk.subarray(0, n));
+      }
+      const idx = buffer.indexOf("\r\n");
+      const line = buffer.substring(0, idx);
+      buffer = buffer.substring(idx + 2);
+      return line;
+    }
+
+    async function readResponse(): Promise<string> {
+      const lines: string[] = [];
+      while (true) {
+        const line = await readLine();
+        lines.push(line);
+        // If line[3] is space (not hyphen), it's the last line
+        if (line.length >= 4 && line[3] === ' ') break;
+        // Also break if it's a single-line response
+        if (line.length < 4) break;
+      }
+      return lines.join("\r\n");
+    }
+
+    async function sendCommand(cmd: string): Promise<string> {
+      await conn!.write(encoder.encode(cmd + "\r\n"));
+      return await readResponse();
+    }
+
+    // Read greeting
+    const greeting = await readResponse();
+    const greetingCode = greeting.substring(0, 3);
+    if (greetingCode !== "220") {
+      throw new Error(`Unexpected greeting: ${greeting}`);
+    }
+    console.log("Server greeting OK");
+
+    // EHLO
+    const ehloResp = await sendCommand(`EHLO localhost`);
+    if (!ehloResp.startsWith("250")) {
+      throw new Error(`EHLO failed: ${ehloResp}`);
+    }
+    console.log("EHLO OK");
+
+    // AUTH LOGIN
+    const authResp = await sendCommand("AUTH LOGIN");
+    if (!authResp.startsWith("334")) {
+      throw new Error(`AUTH LOGIN failed: ${authResp}`);
+    }
+    console.log("AUTH LOGIN initiated");
+
+    // Send username (base64)
+    const userResp = await sendCommand(btoa(username));
+    if (!userResp.startsWith("334")) {
+      throw new Error(`Username rejected: ${userResp}`);
+    }
+    console.log("Username accepted");
+
+    // Send password (base64)
+    const passResp = await sendCommand(btoa(password));
+    if (!passResp.startsWith("235")) {
+      throw new Error(`Authentication failed: ${passResp.trim()}`);
+    }
+    console.log("Authentication successful");
+
+    // MAIL FROM
+    const fromResp = await sendCommand(`MAIL FROM:<${from}>`);
+    if (!fromResp.startsWith("250")) {
+      throw new Error(`MAIL FROM failed: ${fromResp}`);
+    }
+
+    // RCPT TO
+    const toResp = await sendCommand(`RCPT TO:<${to}>`);
+    if (!toResp.startsWith("250")) {
+      throw new Error(`RCPT TO failed: ${toResp}`);
+    }
+
+    // DATA
+    const dataResp = await sendCommand("DATA");
+    if (!dataResp.startsWith("354")) {
+      throw new Error(`DATA failed: ${dataResp}`);
+    }
+
+    // Send email content
+    const emailContent = [
+      `From: ${from}`,
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/html; charset=UTF-8`,
+      ``,
+      htmlBody,
+      `.`
+    ].join("\r\n");
+
+    const sendResp = await sendCommand(emailContent);
+    if (!sendResp.startsWith("250")) {
+      throw new Error(`Send failed: ${sendResp}`);
+    }
+
+    // QUIT
+    await sendCommand("QUIT");
+
+    conn.close();
+    return { success: true };
+
+  } catch (error) {
+    console.error("SMTP Error:", error);
+    if (conn) {
+      try { conn.close(); } catch {}
+    }
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
   }
-
-  const data = await response.json();
-  return data.access_token;
 }
 
 serve(async (req) => {
@@ -44,16 +162,14 @@ serve(async (req) => {
   }
 
   try {
-    const ZOHO_CLIENT_ID = Deno.env.get('ZOHO_CLIENT_ID');
-    const ZOHO_CLIENT_SECRET = Deno.env.get('ZOHO_CLIENT_SECRET');
-    const ZOHO_REFRESH_TOKEN = Deno.env.get('ZOHO_REFRESH_TOKEN');
-    const ZOHO_ACCOUNT_ID = Deno.env.get('ZOHO_ACCOUNT_ID');
-    const ZOHO_FROM_EMAIL = Deno.env.get('ZOHO_FROM_EMAIL');
+    const ZOHO_SMTP_USER = Deno.env.get('ZOHO_SMTP_USER');
+    const ZOHO_SMTP_PASSWORD = Deno.env.get('ZOHO_SMTP_PASSWORD');
+    const ZOHO_SMTP_HOST = Deno.env.get('ZOHO_SMTP_HOST') || 'smtppro.zoho.com';
     
-    if (!ZOHO_CLIENT_ID || !ZOHO_CLIENT_SECRET || !ZOHO_REFRESH_TOKEN || !ZOHO_ACCOUNT_ID || !ZOHO_FROM_EMAIL) {
-      console.error("Zoho credentials not configured");
+    if (!ZOHO_SMTP_USER || !ZOHO_SMTP_PASSWORD) {
+      console.error("SMTP credentials not configured");
       return new Response(
-        JSON.stringify({ success: false, error: "Credenciais Zoho Mail não configuradas", apiConfigured: false }),
+        JSON.stringify({ success: false, error: "Credenciais SMTP não configuradas", apiConfigured: false }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -66,8 +182,49 @@ serve(async (req) => {
       );
     }
 
-    const { email, condominiumId }: RequestBody = await req.json();
+    const body: RequestBody = await req.json();
+    const { action = 'send', email, condominiumId } = body;
 
+    // Action: test-connection - verify SMTP connection by sending a test email to self
+    if (action === 'test-connection') {
+      console.log('Testing SMTP connection...');
+      console.log(`Host: ${ZOHO_SMTP_HOST}, User: ${ZOHO_SMTP_USER}`);
+      
+      const result = await sendSmtpEmail(
+        ZOHO_SMTP_HOST,
+        465,
+        ZOHO_SMTP_USER,
+        ZOHO_SMTP_PASSWORD,
+        ZOHO_SMTP_USER,
+        ZOHO_SMTP_USER,
+        'SMTP Connection Test',
+        '<p>This is a test message to verify SMTP connection.</p>'
+      );
+
+      if (result.success) {
+        console.log('✓ SMTP connection verified successfully');
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Conexão SMTP verificada com sucesso',
+            apiConfigured: true
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } else {
+        console.error('SMTP verification failed:', result.error);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: result.error || 'Falha na verificação SMTP',
+            apiConfigured: true
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Action: send - send a test email
     if (!email) {
       return new Response(
         JSON.stringify({ success: false, error: "Email é obrigatório" }),
@@ -86,71 +243,55 @@ serve(async (req) => {
 
     console.log(`Sending test email to ${email}`);
 
-    // Create Supabase client with service role for logging
+    const htmlContent = `
+      <html>
+      <body style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2 style="color: #22c55e;">✅ Teste de Integração</h2>
+        <p>Esta é uma mensagem de teste do sistema de notificações por email.</p>
+        <p><strong>Se você recebeu este email, a integração SMTP está funcionando corretamente!</strong></p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+        <p style="color: #6b7280; font-size: 12px;">Enviado via SMTP Zoho Mail</p>
+      </body>
+      </html>
+    `;
+
+    const result = await sendSmtpEmail(
+      ZOHO_SMTP_HOST,
+      465,
+      ZOHO_SMTP_USER,
+      ZOHO_SMTP_PASSWORD,
+      ZOHO_SMTP_USER,
+      email,
+      '✅ Teste de Integração - Sistema de Notificações',
+      htmlContent
+    );
+
+    // Log the test send attempt
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Get fresh access token
-    const accessToken = await getZohoAccessToken(ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN);
-
-    // Send email via Zoho Mail API (using global .com endpoint)
-    const sendUrl = `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages`;
-    
-    const emailPayload = {
-      fromAddress: ZOHO_FROM_EMAIL,
-      toAddress: email,
-      subject: '✅ Teste de Integração - Sistema de Notificações',
-      content: `
-        <html>
-        <body style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2 style="color: #22c55e;">✅ Teste de Integração</h2>
-          <p>Esta é uma mensagem de teste do sistema de notificações por email.</p>
-          <p><strong>Se você recebeu este email, a integração com o Zoho Mail está funcionando corretamente!</strong></p>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-          <p style="color: #6b7280; font-size: 12px;">Enviado via API Zoho Mail</p>
-        </body>
-        </html>
-      `,
-      mailFormat: 'html',
-    };
-
-    const response = await fetch(sendUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Zoho-oauthtoken ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(emailPayload),
-    });
-
-    const responseData = await response.json();
-    const success = response.ok && responseData?.status?.code === 200;
-    
-    let errorMessage: string | undefined;
-    if (!success) {
-      errorMessage = responseData?.status?.description || responseData?.message || `HTTP ${response.status}`;
-      console.error(`Failed to send test email: ${errorMessage}`);
-    } else {
-      console.log(`Successfully sent test email to ${email}`);
-    }
-
-    // Log the test send attempt
     await supabase.from('email_logs').insert({
       announcement_id: null,
       condominium_id: condominiumId || null,
       recipient_email: email,
       recipient_name: 'Teste Manual',
-      status: success ? 'sent' : 'failed',
-      error_message: errorMessage || null,
+      status: result.success ? 'sent' : 'failed',
+      error_message: result.error || null,
     });
+
+    if (result.success) {
+      console.log(`✓ Test email sent successfully to ${email}`);
+    } else {
+      console.error(`Failed to send test email: ${result.error}`);
+    }
 
     return new Response(
       JSON.stringify({ 
-        success, 
+        success: result.success, 
         email,
-        error: errorMessage,
+        error: result.error,
         apiConfigured: true
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

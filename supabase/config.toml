@@ -9,7 +9,13 @@ verify_jwt = false
 [functions.send-sms]
 verify_jwt = false
 
+[functions.test-sms]
+verify_jwt = false
+
 [functions.send-email]
+verify_jwt = false
+
+[functions.test-email]
 verify_jwt = false
 
 [functions.sales-chat]

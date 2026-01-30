@@ -1,158 +1,148 @@
 
 
-# Adicionar Anexos de Arquivos aos Avisos
+# Unificar Gestão de APIs de Notificação
 
 ## Resumo
 
-Implementar a funcionalidade de anexar arquivos (PDF, imagens, documentos) aos avisos no formulário de criação. Os arquivos serão armazenados no Lovable Cloud Storage e referenciados na tabela `attachments` que já existe no banco de dados.
+Renomear e expandir a página atual de WhatsApp (`SuperAdminWhatsApp`) para se tornar um painel completo de gestão de todas as APIs de notificação (WhatsApp, SMS e Email), consolidando status, configurações por condomínio e logs em um único local.
 
 ## Situação Atual
 
-### O que já existe:
-- Tabela `attachments` no banco de dados com campos: `id`, `announcement_id`, `file_name`, `file_url`, `file_type`, `file_size`
-- Políticas RLS configuradas para visualização pública e gerenciamento por admins
-- Bucket `avatars` para armazenamento de imagens de perfil
-
-### O que falta:
-- Bucket de storage para os anexos de avisos
-- Interface de upload no formulário de criação de aviso
-- Lógica para fazer upload dos arquivos e salvar na tabela `attachments`
-- Exibição dos anexos na timeline (página pública)
+| API | Edge Function | Tabela de Logs | Flag por Condo | Página de Gestão |
+|-----|---------------|----------------|----------------|------------------|
+| WhatsApp (Zion Talk) | `send-whatsapp` | `whatsapp_logs` | `notification_whatsapp` | SuperAdminWhatsApp |
+| SMS (SMSFire) | `send-sms` | `sms_logs` | `notification_sms` | Não existe |
+| Email (Zoho) | `send-email` | `email_logs` | `notification_email` | Não existe |
 
 ## Solução Proposta
 
-### 1. Criar Bucket de Storage
-Criar um bucket público chamado `attachments` para armazenar os arquivos anexados aos avisos.
+### Nova Estrutura da Página
 
-### 2. Interface de Upload no Formulário
-Adicionar seção de upload de arquivos no dialog de criação de aviso com:
-- Botão "Anexar arquivos" com ícone de clipe
-- Preview dos arquivos selecionados (nome, tamanho, tipo)
-- Botão para remover arquivo antes do envio
-- Suporte para múltiplos arquivos
-- Limite de tamanho (5MB por arquivo para plano Inicial, 10MB para Profissional)
+Transformar `SuperAdminWhatsApp.tsx` em `SuperAdminNotifications.tsx`:
 
-### 3. Fluxo de Upload
-1. Usuário seleciona arquivo(s) via input
-2. Arquivos ficam em estado temporário (estado local)
-3. Ao clicar "Publicar aviso":
-   - Cria o aviso no banco
-   - Faz upload de cada arquivo para o bucket
-   - Registra cada arquivo na tabela `attachments`
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  🔔 Central de Notificações                                 │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐           │
+│  │ WhatsApp    │ │ SMS         │ │ Email       │           │
+│  │ ✅ Ativo    │ │ ✅ Ativo    │ │ ✅ Ativo    │           │
+│  │ Zion Talk   │ │ SMSFire     │ │ Zoho Mail   │           │
+│  │ [Testar]    │ │ [Testar]    │ │ [Testar]    │           │
+│  └─────────────┘ └─────────────┘ └─────────────┘           │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│  Condomínios                                                │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │ Nome        │ Plano │ WhatsApp │ SMS   │ Email │ Ações │ │
+│  │ Esplanada   │ PRO   │ ✅       │ ✅    │ ✅    │ ...   │ │
+│  │ Jardins     │ FREE  │ ❌       │ ❌    │ ✅    │ ...   │ │
+│  └───────────────────────────────────────────────────────┘ │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│  [WhatsApp ▼] [SMS] [Email]   Logs de Envio Recentes        │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │ Data/Hora │ Condo │ Destino │ Status                  │ │
+│  │ 30/01 10h │ Espl. │ 159... │ ✅ Enviado              │ │
+│  └───────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
 
-### 4. Exibição na Timeline
-Mostrar anexos nos cards de avisos quando expandidos:
-- Ícone por tipo de arquivo (PDF, imagem, documento)
-- Nome e tamanho do arquivo
-- Link para download/visualização
+### Funcionalidades por Seção
+
+**1. Cards de Status das APIs (Novo)**
+- Card para cada API (WhatsApp, SMS, Email)
+- Indicador visual de configuração (verde/vermelho)
+- Nome do provedor (Zion Talk, SMSFire, Zoho)
+- Botão "Enviar Teste Global" para cada API
+
+**2. Tabela de Condomínios (Expandida)**
+- Adicionar colunas para SMS e Email (já existe só WhatsApp)
+- Switch para ativar/desativar cada tipo de notificação
+- Botões de teste para cada API por condomínio
+
+**3. Logs Unificados com Tabs (Novo)**
+- Tabs para alternar entre logs de WhatsApp, SMS e Email
+- Mesma estrutura de tabela para todos os tipos
+- Dados vindos das tabelas `whatsapp_logs`, `sms_logs`, `email_logs`
+
+### Edge Functions de Teste (Novas)
+
+Criar funções de teste para SMS e Email (similar ao `test-whatsapp`):
+
+**`test-sms`** - Envia SMS de teste para um número específico
+**`test-email`** - Envia email de teste para um endereço específico
 
 ## Detalhes Técnicos
 
-### Migration SQL (Nova)
-
-```text
--- Criar bucket de storage para anexos
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('attachments', 'attachments', true)
-ON CONFLICT (id) DO NOTHING;
-
--- Política para visualização pública
-CREATE POLICY "Public read access"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'attachments');
-
--- Política para upload por usuários autenticados
-CREATE POLICY "Authenticated upload"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (bucket_id = 'attachments');
-
--- Política para exclusão pelo dono
-CREATE POLICY "Delete own files"
-ON storage.objects FOR DELETE
-TO authenticated
-USING (bucket_id = 'attachments');
-```
-
-### Componente de Upload (Novo)
-Criar `src/components/FileUpload.tsx`:
-- Input file com múltipla seleção
-- Preview de arquivos com ícones por tipo
-- Validação de tamanho
-- Botão para remover arquivo da lista
-
-### Modificações no AdminCondominiumPage.tsx
-- Adicionar estado para arquivos selecionados: `const [selectedFiles, setSelectedFiles] = useState<File[]>([])`
-- Adicionar seção de upload no formulário (antes das opções de notificação)
-- Modificar `handleCreateAnnouncement` para:
-  1. Criar o aviso
-  2. Fazer upload de cada arquivo para storage
-  3. Inserir registros na tabela `attachments`
-
-### Modificações no TimelinePage.tsx
-- Buscar anexos junto com os avisos (join com tabela attachments)
-- Exibir lista de anexos no conteúdo expandido do card
-- Ícones diferenciados por tipo (PDF, imagem, doc, etc.)
-- Links de download
-
-## Arquivos a Criar
-
-| Arquivo | Descrição |
-|---------|-----------|
-| `src/components/FileUpload.tsx` | Componente reutilizável de upload |
-| Migration SQL | Bucket de storage e políticas |
-
-## Arquivos a Modificar
+### Arquivos a Modificar
 
 | Arquivo | Alterações |
 |---------|------------|
-| `src/pages/AdminCondominiumPage.tsx` | Adicionar upload de arquivos no form |
-| `src/pages/TimelinePage.tsx` | Exibir anexos nos avisos expandidos |
+| `SuperAdminWhatsApp.tsx` | Renomear para `SuperAdminNotifications.tsx` e expandir |
+| `App.tsx` | Atualizar rota de `/super-admin/whatsapp` para `/super-admin/notifications` |
+| Navigation items | Atualizar ícone e label para "Notificações" |
 
-## Interface Visual do Upload
+### Arquivos a Criar
 
-```text
-┌──────────────────────────────────────────────┐
-│  Anexos (opcional)                           │
-├──────────────────────────────────────────────┤
-│  ┌─────────────────────────────────────────┐ │
-│  │  📎 Clique para anexar arquivos         │ │
-│  │     ou arraste e solte aqui             │ │
-│  │                                         │ │
-│  │  PDF, imagens, documentos (máx 5MB)     │ │
-│  └─────────────────────────────────────────┘ │
-│                                              │
-│  📄 regulamento.pdf (1.2 MB)           [✕]  │
-│  🖼 foto-obra.jpg (856 KB)             [✕]  │
-└──────────────────────────────────────────────┘
+| Arquivo | Descrição |
+|---------|-----------|
+| `supabase/functions/test-sms/index.ts` | Edge function para teste de SMS |
+| `supabase/functions/test-email/index.ts` | Edge function para teste de Email |
+
+### Queries de Dados
+
+```typescript
+// Buscar condomínios com todas as flags
+const { data } = await supabase
+  .from("condominiums")
+  .select("id, name, slug, plan, notification_whatsapp, notification_sms, notification_email")
+  .order("name");
+
+// Buscar logs por tipo
+const logsQueries = {
+  whatsapp: supabase.from("whatsapp_logs").select("*, condominiums(name)").order("sent_at", { ascending: false }).limit(50),
+  sms: supabase.from("sms_logs").select("*, condominiums(name)").order("sent_at", { ascending: false }).limit(50),
+  email: supabase.from("email_logs").select("*, condominiums(name)").order("sent_at", { ascending: false }).limit(50),
+};
 ```
 
-## Interface Visual na Timeline (Aviso Expandido)
+### Interface dos Cards de Status
 
-```text
-┌──────────────────────────────────────────────┐
-│  [Conteúdo do aviso...]                      │
-│                                              │
-│  ─────────────────────────────────────────── │
-│  📎 Anexos                                   │
-│  ┌─────────────────────────────────────────┐ │
-│  │ 📄 regulamento.pdf         [Baixar ↓]   │ │
-│  │ 🖼 foto-obra.jpg           [Ver 👁]     │ │
-│  └─────────────────────────────────────────┘ │
-└──────────────────────────────────────────────┘
+```typescript
+interface ApiStatus {
+  id: 'whatsapp' | 'sms' | 'email';
+  name: string;
+  provider: string;
+  icon: LucideIcon;
+  configured: boolean;
+  checking: boolean;
+  checkFunction: string;
+  secretsToCheck: string[];
+}
+
+const apis: ApiStatus[] = [
+  { id: 'whatsapp', name: 'WhatsApp', provider: 'Zion Talk', icon: MessageSquare, ... },
+  { id: 'sms', name: 'SMS', provider: 'SMSFire', icon: Smartphone, ... },
+  { id: 'email', name: 'Email', provider: 'Zoho Mail', icon: Mail, ... },
+];
 ```
 
-## Tipos de Arquivo Suportados
+### Modal de Teste Unificado
 
-| Tipo | Extensões | Ícone |
-|------|-----------|-------|
-| PDF | .pdf | 📄 FileText |
-| Imagem | .jpg, .jpeg, .png, .gif, .webp | 🖼 Image |
-| Documento | .doc, .docx | 📝 FileText |
-| Planilha | .xls, .xlsx | 📊 FileSpreadsheet |
-| Outros | * | 📁 File |
+O modal de teste será dinâmico, adaptando-se ao tipo de notificação:
+
+```text
+WhatsApp/SMS → Input de telefone com máscara BR
+Email → Input de email
+```
 
 ## Resultado Esperado
 
-Síndicos poderão anexar documentos importantes aos avisos (regulamentos, boletos, fotos de obras, atas de reunião, etc.), e os moradores poderão visualizar e baixar esses arquivos diretamente na timeline.
+Super Admins terão uma visão consolidada de todas as integrações de notificação em um único painel, podendo:
+- Ver status de cada API em tempo real
+- Ativar/desativar canais por condomínio
+- Testar cada canal individualmente
+- Monitorar logs de envio de todos os canais
 

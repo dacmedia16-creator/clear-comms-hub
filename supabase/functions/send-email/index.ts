@@ -154,7 +154,7 @@ async function renewZohoAccessToken(): Promise<string> {
     throw new Error('Zoho OAuth credentials not configured');
   }
 
-  const tokenUrl = `https://accounts.zoho.com/oauth/v2/token?` +
+  const tokenUrl = `https://accounts.zoho.com.br/oauth/v2/token?` +
     `refresh_token=${ZOHO_REFRESH_TOKEN}&` +
     `grant_type=refresh_token&` +
     `client_id=${ZOHO_CLIENT_ID}&` +
@@ -196,7 +196,7 @@ async function sendZohoEmail(
   }
 
   const response = await fetch(
-    `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages`,
+    `https://mail.zoho.com.br/api/accounts/${ZOHO_ACCOUNT_ID}/messages`,
     {
       method: 'POST',
       headers: {

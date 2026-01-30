@@ -57,14 +57,14 @@ export const PLANS = {
   },
   starter: {
     name: "Inicial",
-    price: 29,
+    price: 199,
     announcementsPerMonth: 50,
     maxAttachmentSize: 5,
     features: ["Até 50 avisos/mês", "Anexos até 5MB", "Notificações por email", "Suporte prioritário"],
   },
   pro: {
     name: "Profissional",
-    price: 79,
+    price: 299,
     announcementsPerMonth: -1, // unlimited
     maxAttachmentSize: 10,
     features: ["Avisos ilimitados", "Anexos até 10MB", "Email + WhatsApp", "Relatórios", "API de integração"],

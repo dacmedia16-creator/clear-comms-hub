@@ -42,6 +42,7 @@ function generateSMSMessage(
   baseUrl: string
 ): string {
   // SMS template: max 160 chars for single SMS
+  // Remove special characters that SMSFire may not support
   const timelineUrl = `${baseUrl}/c/${condominium.slug}`;
   const condoShort = condominium.name.length > 20 
     ? condominium.name.substring(0, 17) + "..." 
@@ -50,7 +51,8 @@ function generateSMSMessage(
     ? announcement.title.substring(0, 47) + "..." 
     : announcement.title;
   
-  return `[${condoShort}] ${titleShort} - Veja: ${timelineUrl}`;
+  // Use simple characters - avoid brackets and special chars
+  return `${condoShort}: ${titleShort} Veja em ${timelineUrl}`;
 }
 
 function formatPhoneForSMSFire(phone: string): string {
@@ -134,13 +136,13 @@ serve(async (req) => {
       
       try {
         // SMSFire API v3 - GET request with query params and separate headers
-        const url = new URL('https://api-v3.smsfire.com.br/sms/send/individual');
-        url.searchParams.set('to', formattedPhone);
-        url.searchParams.set('text', message);
+        const baseUrl_api = 'https://api-v3.smsfire.com.br/sms/send/individual';
+        const encodedText = encodeURIComponent(message);
+        const apiUrl = `${baseUrl_api}?to=${formattedPhone}&text=${encodedText}`;
 
         console.log(`Sending SMS to ${formattedPhone} (${profile.full_name || 'Unknown'})`);
 
-        const response = await fetch(url.toString(), {
+        const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
             'Username': SMSFIRE_USERNAME,

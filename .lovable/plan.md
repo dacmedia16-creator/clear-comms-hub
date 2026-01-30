@@ -1,161 +1,198 @@
 
-# Síndico pode Editar Cadastro de Moradores
+# Validacao de Campos Bloco/Torre e Unidade/Apt
 
 ## Objetivo
-Permitir que síndicos e gestores de condomínio editem os dados cadastrais dos moradores (nome, telefone, email, bloco e unidade) diretamente pela página de Moradores.
+Implementar validacao restritiva nos campos de localizacao para garantir padronizacao dos dados:
+
+| Campo | Regras de Validacao |
+|-------|---------------------|
+| **Bloco/Torre** | Apenas numeros sem zero a esquerda (1, 2, 10) OU uma unica letra maiuscula (A, B, C) |
+| **Unidade/Apt** | Apenas numeros (101, 202, 1501) |
 
 ---
 
-## Análise do Sistema Atual
+## Solucao Tecnica
 
-O sistema possui dois tipos de membros:
+### 1. Criar Funcoes de Validacao Reutilizaveis
 
-| Tipo | Tabela de Dados | Tabela de Vínculo |
-|------|----------------|-------------------|
-| Usuários autenticados | `profiles` | `user_roles` |
-| Moradores manuais | `condo_members` | `user_roles` |
-
-### RLS Policies Existentes
-- `condo_members`: "Managers can update condo members" - OK
-- `user_roles`: "Managers can update user roles" - OK
-- `profiles`: Síndicos **NÃO podem** atualizar (apenas o próprio usuário ou Super Admin)
-
-### Conclusão
-Síndicos podem editar:
-- Dados de `condo_members` (moradores manuais)
-- Bloco/Unidade em `user_roles`
-
-Síndicos **NÃO podem** editar:
-- Dados de `profiles` (nome/email/telefone de usuários autenticados)
-
----
-
-## Solução Proposta
-
-### 1. Criar Componente `EditMemberDialog.tsx`
-
-Diálogo para edição de moradores com campos:
-- Nome Completo *
-- Telefone
-- Email
-- Bloco/Torre *
-- Unidade/Apt *
-
-O diálogo identifica automaticamente se é um `condo_member` (editável) ou `profile` (apenas bloco/unidade editáveis).
-
-### 2. Adicionar Função `updateMember` no Hook
+Adicionar no arquivo `src/lib/utils.ts` funcoes de validacao e formatacao:
 
 ```typescript
-// No useCondoMembers.ts
-const updateMember = async (
-  memberId: string,
-  memberType: "profile" | "condo_member",
-  data: {
-    fullName?: string;
-    phone?: string;
-    email?: string;
-    block: string;
-    unit: string;
+// Valida bloco: numero sem zero inicial OU letra unica
+export function isValidBlock(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  
+  // Letra unica (A-Z)
+  if (/^[A-Za-z]$/.test(trimmed)) return true;
+  
+  // Numero sem zero inicial (1, 2, 10, 100...)
+  if (/^[1-9][0-9]*$/.test(trimmed)) return true;
+  
+  return false;
+}
+
+// Valida unidade: apenas numeros
+export function isValidUnit(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return /^[0-9]+$/.test(trimmed);
+}
+
+// Formata bloco para padrao (letra maiuscula)
+export function formatBlock(value: string): string {
+  const trimmed = value.trim();
+  if (/^[A-Za-z]$/.test(trimmed)) {
+    return trimmed.toUpperCase();
   }
-) => {
-  // Atualiza user_roles (block, unit)
-  // Se condo_member, atualiza também nome/phone/email
-};
+  return trimmed;
+}
 ```
 
-### 3. Adicionar Botão de Edição na Tabela
+### 2. Aplicar em Tempo Real nos Inputs
 
-Ícone de lápis ao lado do botão de remover em cada linha.
+Usar `onChange` para filtrar caracteres invalidos enquanto o usuario digita:
+
+**Bloco/Torre:**
+- Permitir apenas: 0-9 e A-Za-z
+- Limitar a 10 caracteres (ex: numeros de bloco)
+- Se for letra, aceitar apenas 1 caractere
+
+**Unidade/Apt:**
+- Permitir apenas: 0-9
+- Limitar a 10 caracteres
 
 ---
 
 ## Arquivos a Modificar
 
-| Arquivo | Ação |
-|---------|------|
-| `src/components/EditMemberDialog.tsx` | Criar novo |
-| `src/hooks/useCondoMembers.ts` | Adicionar `updateMember` |
-| `src/pages/CondoMembersPage.tsx` | Adicionar botão de edição e estado do diálogo |
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/lib/utils.ts` | Adicionar funcoes de validacao |
+| `src/components/EditMemberDialog.tsx` | Aplicar validacao nos campos block e unit |
+| `src/components/super-admin/AddMemberDialog.tsx` | Aplicar validacao nos campos (ambas abas) |
+| `src/components/ImportMembersDialog.tsx` | Validar dados importados da planilha |
 
 ---
 
-## Detalhes Técnicos
+## Detalhes de Implementacao
 
 ### EditMemberDialog.tsx
 
 ```typescript
-interface EditMemberDialogProps {
-  member: CondoMember | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSave: (data: UpdateMemberData) => Promise<{ success: boolean; error?: string }>;
-}
-```
-
-**Comportamento**:
-- Se `member.member_id` existe (condo_member): todos os campos editáveis
-- Se `member.user_id` existe (profile): apenas Bloco e Unidade editáveis, demais campos desabilitados com tooltip "Este usuário gerencia seus próprios dados"
-
-### updateMember no Hook
-
-```typescript
-const updateMember = async (
-  roleId: string,
-  updates: {
-    fullName?: string;
-    phone?: string;
-    email?: string;
-    block: string;
-    unit: string;
+// Handler para Bloco - aceita numeros ou uma letra
+const handleBlockChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const value = e.target.value;
+  // Permitir apenas numeros ou uma unica letra
+  if (value === "" || /^[A-Za-z]$/.test(value) || /^[1-9][0-9]*$/.test(value)) {
+    setBlock(value.toUpperCase());
   }
-) => {
-  const member = members.find(m => m.id === roleId);
-  if (!member) return { success: false, error: "Membro não encontrado" };
+};
 
-  // 1. Atualizar user_roles (block, unit)
-  await supabase
-    .from("user_roles")
-    .update({ block: updates.block, unit: updates.unit })
-    .eq("id", roleId);
-
-  // 2. Se for condo_member, atualizar dados pessoais
-  if (member.member_id) {
-    await supabase
-      .from("condo_members")
-      .update({
-        full_name: updates.fullName,
-        phone: updates.phone || null,
-        email: updates.email || null,
-      })
-      .eq("id", member.member_id);
+// Handler para Unidade - aceita apenas numeros
+const handleUnitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const value = e.target.value;
+  // Permitir apenas numeros
+  if (value === "" || /^[0-9]+$/.test(value)) {
+    setUnit(value);
   }
-
-  return { success: true };
 };
 ```
 
-### Interface na Tabela
+Atualizacao dos inputs:
+```jsx
+<Input
+  id="block"
+  value={block}
+  onChange={handleBlockChange}
+  placeholder="Ex: 1, A"
+  maxLength={10}
+  required
+/>
 
-```text
-┌───────────────────────────────────────────────────────────────────┐
-│ Usuário        │ Telefone  │ Unidade │ Função  │ Status  │ Ações  │
-├───────────────────────────────────────────────────────────────────┤
-│ João Silva     │ 1199...   │ A, 101  │ Morador │ Aprovado│ ✏️ 🗑️ │
-│ maria@email    │           │         │         │         │        │
-└───────────────────────────────────────────────────────────────────┘
+<Input
+  id="unit"
+  value={unit}
+  onChange={handleUnitChange}
+  placeholder="Ex: 101"
+  maxLength={10}
+  required
+/>
+```
+
+### AddMemberDialog.tsx
+
+Mesma logica aplicada aos 4 campos:
+- `block` e `unit` (aba "Novo Morador")
+- `existingBlock` e `existingUnit` (aba "Usuario Existente")
+
+Atualizar placeholders para refletir o novo formato aceito.
+
+### ImportMembersDialog.tsx
+
+Adicionar validacao na funcao `validateMember`:
+
+```typescript
+function validateMember(row: any[]): ParsedMember {
+  // ... validacoes existentes ...
+  
+  // Validar formato do bloco
+  if (block && !isValidBlock(block)) {
+    errors.push("Bloco invalido (use numero ou letra unica)");
+  }
+  
+  // Validar formato da unidade
+  if (unit && !isValidUnit(unit)) {
+    errors.push("Unidade invalida (use apenas numeros)");
+  }
+  
+  // Formatar bloco para maiuscula
+  const formattedBlock = formatBlock(block);
+  
+  return {
+    // ...
+    block: formattedBlock,
+    // ...
+  };
+}
 ```
 
 ---
 
-## Fluxo do Usuário
+## Mensagens de Erro
 
-1. Síndico acessa página de Moradores
-2. Clica no ícone de edição (lápis) em uma linha
-3. Diálogo abre com dados preenchidos
-4. Para condo_members: edita todos os campos
-5. Para profiles: edita apenas Bloco/Unidade
-6. Clica em Salvar
-7. Toast de confirmação
+| Campo | Mensagem |
+|-------|----------|
+| Bloco vazio | "Bloco/Torre e obrigatorio" |
+| Bloco invalido | "Bloco deve ser um numero (sem zero inicial) ou uma letra" |
+| Unidade vazia | "Unidade/Apt e obrigatoria" |
+| Unidade invalida | "Unidade deve conter apenas numeros" |
+
+---
+
+## Validacao no Submit
+
+Alem da filtragem em tempo real, adicionar validacao no submit para garantir:
+
+```typescript
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  // Validar bloco
+  if (!isValidBlock(block)) {
+    setError("Bloco deve ser um numero (sem zero inicial) ou uma letra");
+    return;
+  }
+  
+  // Validar unidade
+  if (!isValidUnit(unit)) {
+    setError("Unidade deve conter apenas numeros");
+    return;
+  }
+  
+  // ... resto do submit
+};
+```
 
 ---
 
@@ -163,16 +200,16 @@ const updateMember = async (
 
 | # | Tarefa |
 |---|--------|
-| 1 | Criar `EditMemberDialog.tsx` com campos condicionais |
-| 2 | Adicionar função `updateMember` em `useCondoMembers.ts` |
-| 3 | Integrar botão de edição e diálogo em `CondoMembersPage.tsx` |
-| 4 | Integrar em `SuperAdminCondoMembers.tsx` (super admin também pode editar) |
+| 1 | Adicionar funcoes `isValidBlock`, `isValidUnit` e `formatBlock` em `utils.ts` |
+| 2 | Atualizar `EditMemberDialog.tsx` com handlers de validacao e novos placeholders |
+| 3 | Atualizar `AddMemberDialog.tsx` com validacao em ambas as abas |
+| 4 | Atualizar `ImportMembersDialog.tsx` para validar dados da planilha |
 
 ---
 
-## Resultado Esperado
+## Exemplos de Entradas Validas/Invalidas
 
-Após implementação:
-- Síndico pode editar todos os dados de moradores manuais (condo_members)
-- Síndico pode alterar Bloco/Unidade de qualquer membro
-- Dados de perfil de usuários autenticados permanecem protegidos (só o próprio usuário altera)
+| Campo | Valido | Invalido |
+|-------|--------|----------|
+| Bloco/Torre | `1`, `7`, `10`, `A`, `B` | `01`, `007`, `AB`, `1A`, `Bloco 1` |
+| Unidade/Apt | `101`, `202`, `1501`, `01` | `101A`, `Apt 101`, `12A` |

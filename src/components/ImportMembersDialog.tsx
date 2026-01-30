@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isValidBlock, isValidUnit, formatBlock } from "@/lib/utils";
 
 export interface ParsedMember {
   fullName: string;
@@ -66,15 +66,30 @@ function validateMember(row: any[]): ParsedMember {
   const fullName = (row[0] || "").toString().trim();
   const phone = (row[1] || "").toString().trim();
   const email = (row[2] || "").toString().trim();
-  const block = (row[3] || "").toString().trim();
+  const rawBlock = (row[3] || "").toString().trim();
   const unit = (row[4] || "").toString().trim();
   const roleStr = (row[5] || "").toString().trim();
   
   if (fullName.length < 2) errors.push("Nome inválido");
   if (!phone) errors.push("Telefone obrigatório");
   if (!email.includes("@")) errors.push("Email inválido");
-  if (!block) errors.push("Bloco obrigatório");
-  if (!unit) errors.push("Unidade obrigatória");
+  
+  // Validar formato do bloco
+  if (!rawBlock) {
+    errors.push("Bloco obrigatório");
+  } else if (!isValidBlock(rawBlock)) {
+    errors.push("Bloco inválido (use número ou letra única)");
+  }
+  
+  // Validar formato da unidade
+  if (!unit) {
+    errors.push("Unidade obrigatória");
+  } else if (!isValidUnit(unit)) {
+    errors.push("Unidade inválida (use apenas números)");
+  }
+  
+  // Formatar bloco para maiúscula
+  const block = formatBlock(rawBlock);
   
   return {
     fullName,

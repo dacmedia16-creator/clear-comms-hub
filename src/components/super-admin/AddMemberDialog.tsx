@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import { isValidBlock, isValidUnit, formatBlock } from "@/lib/utils";
 
 interface User {
   id: string;
@@ -67,6 +68,19 @@ export function AddMemberDialog({
   const [existingUnit, setExistingUnit] = useState("");
   const [existingRole, setExistingRole] = useState<Role>("resident");
 
+  // Handlers para validação em tempo real
+  const handleBlockChange = (value: string, setter: (v: string) => void) => {
+    if (value === "" || /^[A-Za-z]$/.test(value) || /^[1-9][0-9]*$/.test(value)) {
+      setter(formatBlock(value));
+    }
+  };
+
+  const handleUnitChange = (value: string, setter: (v: string) => void) => {
+    if (value === "" || /^[0-9]+$/.test(value)) {
+      setter(value);
+    }
+  };
+
   const resetForm = () => {
     setFullName("");
     setPhone("");
@@ -103,12 +117,12 @@ export function AddMemberDialog({
       setError("Email inválido");
       return;
     }
-    if (!block.trim()) {
-      setError("Bloco/Torre é obrigatório");
+    if (!isValidBlock(block)) {
+      setError("Bloco deve ser um número (sem zero inicial) ou uma letra");
       return;
     }
-    if (!unit.trim()) {
-      setError("Unidade/Apt é obrigatório");
+    if (!isValidUnit(unit)) {
+      setError("Unidade deve conter apenas números");
       return;
     }
 
@@ -138,12 +152,12 @@ export function AddMemberDialog({
       setError("Selecione um usuário");
       return;
     }
-    if (!existingBlock.trim()) {
-      setError("Bloco/Torre é obrigatório");
+    if (!isValidBlock(existingBlock)) {
+      setError("Bloco deve ser um número (sem zero inicial) ou uma letra");
       return;
     }
-    if (!existingUnit.trim()) {
-      setError("Unidade/Apt é obrigatório");
+    if (!isValidUnit(existingUnit)) {
+      setError("Unidade deve conter apenas números");
       return;
     }
 
@@ -215,8 +229,9 @@ export function AddMemberDialog({
                   <Input
                     id="block"
                     value={block}
-                    onChange={(e) => setBlock(e.target.value)}
-                    placeholder="A, Torre 1, Bloco B"
+                    onChange={(e) => handleBlockChange(e.target.value, setBlock)}
+                    placeholder="Ex: 1, A"
+                    maxLength={10}
                   />
                 </div>
 
@@ -225,8 +240,9 @@ export function AddMemberDialog({
                   <Input
                     id="unit"
                     value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    placeholder="101, 202, Casa 5"
+                    onChange={(e) => handleUnitChange(e.target.value, setUnit)}
+                    placeholder="Ex: 101"
+                    maxLength={10}
                   />
                 </div>
               </div>
@@ -292,8 +308,9 @@ export function AddMemberDialog({
                   <Input
                     id="existingBlock"
                     value={existingBlock}
-                    onChange={(e) => setExistingBlock(e.target.value)}
-                    placeholder="A, Torre 1, Bloco B"
+                    onChange={(e) => handleBlockChange(e.target.value, setExistingBlock)}
+                    placeholder="Ex: 1, A"
+                    maxLength={10}
                   />
                 </div>
 
@@ -302,8 +319,9 @@ export function AddMemberDialog({
                   <Input
                     id="existingUnit"
                     value={existingUnit}
-                    onChange={(e) => setExistingUnit(e.target.value)}
-                    placeholder="101, 202, Casa 5"
+                    onChange={(e) => handleUnitChange(e.target.value, setExistingUnit)}
+                    placeholder="Ex: 101"
+                    maxLength={10}
                   />
                 </div>
               </div>

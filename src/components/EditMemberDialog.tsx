@@ -17,6 +17,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { CondoMember, getMemberDisplayName, getMemberEmail, getMemberPhone } from "@/hooks/useCondoMembers";
+import { isValidBlock, isValidUnit, formatBlock } from "@/lib/utils";
 
 export interface UpdateMemberData {
   fullName?: string;
@@ -60,11 +61,32 @@ export function EditMemberDialog({
     }
   }, [member, open]);
 
+  // Handler para Bloco - aceita numeros ou uma letra
+  const handleBlockChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Permitir vazio, letra unica ou numero sem zero inicial
+    if (value === "" || /^[A-Za-z]$/.test(value) || /^[1-9][0-9]*$/.test(value)) {
+      setBlock(formatBlock(value));
+    }
+  };
+
+  // Handler para Unidade - aceita apenas numeros
+  const handleUnitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Permitir apenas numeros
+    if (value === "" || /^[0-9]+$/.test(value)) {
+      setUnit(value);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!member) return;
 
-    if (!block.trim() || !unit.trim()) {
+    if (!isValidBlock(block)) {
+      return;
+    }
+    if (!isValidUnit(unit)) {
       return;
     }
 
@@ -178,8 +200,9 @@ export function EditMemberDialog({
               <Input
                 id="block"
                 value={block}
-                onChange={(e) => setBlock(e.target.value)}
-                placeholder="Ex: A, Bloco 1"
+                onChange={handleBlockChange}
+                placeholder="Ex: 1, A"
+                maxLength={10}
                 required
               />
             </div>
@@ -188,8 +211,9 @@ export function EditMemberDialog({
               <Input
                 id="unit"
                 value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                placeholder="Ex: 101, 12A"
+                onChange={handleUnitChange}
+                placeholder="Ex: 101"
+                maxLength={10}
                 required
               />
             </div>
@@ -211,7 +235,7 @@ export function EditMemberDialog({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={saving || !block.trim() || !unit.trim()}>
+            <Button type="submit" disabled={saving || !isValidBlock(block) || !isValidUnit(unit)}>
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Salvar
             </Button>

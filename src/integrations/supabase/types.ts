@@ -112,6 +112,33 @@ export type Database = {
           },
         ]
       }
+      condo_members: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       condominiums: {
         Row: {
           address: string | null
@@ -375,9 +402,10 @@ export type Database = {
           created_at: string
           id: string
           is_approved: boolean
+          member_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           unit: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           auth_user_id?: string | null
@@ -385,9 +413,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_approved?: boolean
+          member_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           unit?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           auth_user_id?: string | null
@@ -395,9 +424,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_approved?: boolean
+          member_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           unit?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -405,6 +435,13 @@ export type Database = {
             columns: ["condominium_id"]
             isOneToOne: false
             referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "condo_members"
             referencedColumns: ["id"]
           },
           {

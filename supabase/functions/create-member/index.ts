@@ -97,14 +97,10 @@ Deno.serve(async (req) => {
     // 6. Create service role client to bypass RLS
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 7. Create a placeholder user_id for the profile (member without auth account)
-    const placeholderUserId = crypto.randomUUID();
-
-    // 8. Create profile using service role
-    const { data: profileData, error: profileError } = await serviceClient
-      .from("profiles")
+    // 7. Create condo_member (for residents without auth account)
+    const { data: memberData, error: memberError } = await serviceClient
+      .from("condo_members")
       .insert({
-        user_id: placeholderUserId,
         full_name: fullName,
         email: email || null,
         phone: phone || null,
@@ -112,22 +108,23 @@ Deno.serve(async (req) => {
       .select("id")
       .single();
 
-    if (profileError) {
-      console.error("Error creating profile:", profileError);
+    if (memberError) {
+      console.error("Error creating condo_member:", memberError);
       return new Response(
-        JSON.stringify({ error: `Erro ao criar perfil: ${profileError.message}` }),
+        JSON.stringify({ error: `Erro ao criar membro: ${memberError.message}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Profile created:", profileData.id);
+    console.log("Condo member created:", memberData.id);
 
-    // 9. Create user_role linking profile to condominium
+    // 8. Create user_role linking condo_member to condominium (using member_id instead of user_id)
     const { error: roleError } = await serviceClient
       .from("user_roles")
       .insert({
         condominium_id: condominiumId,
-        user_id: profileData.id,
+        member_id: memberData.id,
+        user_id: null, // No profile linked - this is a manual member
         role: role,
         unit: unit || null,
         is_approved: true,
@@ -135,8 +132,8 @@ Deno.serve(async (req) => {
 
     if (roleError) {
       console.error("Error creating user_role:", roleError);
-      // Rollback: delete the profile we just created
-      await serviceClient.from("profiles").delete().eq("id", profileData.id);
+      // Rollback: delete the condo_member we just created
+      await serviceClient.from("condo_members").delete().eq("id", memberData.id);
       
       return new Response(
         JSON.stringify({ error: `Erro ao vincular morador: ${roleError.message}` }),
@@ -144,12 +141,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log("User role created successfully");
+    console.log("User role created successfully for condo_member");
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        profileId: profileData.id,
+        memberId: memberData.id,
         message: "Morador cadastrado com sucesso" 
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

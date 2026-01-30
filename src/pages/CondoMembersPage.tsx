@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCondoMembers } from "@/hooks/useCondoMembers";
+import { useCondoMembers, getMemberDisplayName, getMemberEmail, getMemberPhone } from "@/hooks/useCondoMembers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check, Bell, Settings, FileText } from "lucide-react";
@@ -238,74 +238,70 @@ export default function CondoMembersPage() {
                 </div>
               </Card>
             ) : (
-              members.map((member) => (
-                <MobileCardItem
-                  key={member.id}
-                  title={member.profile?.full_name || "—"}
-                  subtitle={member.profile?.email || ""}
-                  className={!member.is_approved ? "border-yellow-500/50" : ""}
-                  metadata={
-                    <span className="text-xs">
-                      {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                    </span>
-                  }
-                  badges={
-                    <>
-                      <span className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}>
-                        {roleLabels[member.role]}
+              members.map((member) => {
+                const displayName = getMemberDisplayName(member);
+                const email = getMemberEmail(member);
+                const phone = getMemberPhone(member);
+                
+                return (
+                  <MobileCardItem
+                    key={member.id}
+                    title={displayName}
+                    subtitle={email || ""}
+                    className={!member.is_approved ? "border-yellow-500/50" : ""}
+                    metadata={
+                      <span className="text-xs">
+                        {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
                       </span>
-                      {member.unit && (
-                        <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                          {member.unit}
+                    }
+                    badges={
+                      <>
+                        <span className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}>
+                          {roleLabels[member.role]}
                         </span>
-                      )}
-                      {member.is_approved ? (
-                        <Badge variant="default" className="bg-green-500/20 text-green-700 hover:bg-green-500/30">
-                          Aprovado
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="border-yellow-500 text-yellow-600 bg-yellow-500/10">
-                          Pendente
-                        </Badge>
-                      )}
-                    </>
-                  }
-                  actions={
-                    <div className="flex items-center gap-1">
-                      {!member.is_approved && (
+                        {member.unit && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                            {member.unit}
+                          </span>
+                        )}
+                        {member.is_approved ? (
+                          <Badge variant="default" className="bg-green-500/20 text-green-700 hover:bg-green-500/30">
+                            Aprovado
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-yellow-500 text-yellow-600 bg-yellow-500/10">
+                            Pendente
+                          </Badge>
+                        )}
+                      </>
+                    }
+                    actions={
+                      <div className="flex items-center gap-1">
+                        {!member.is_approved && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleApproveMember(member.id, displayName)}
+                          >
+                            <Check className="w-4 h-4 text-green-600" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() =>
-                            handleApproveMember(
-                              member.id,
-                              member.profile?.full_name || member.profile?.email || "Este membro"
-                            )
-                          }
+                          onClick={() => handleRemoveMember(member.id, displayName)}
                         >
-                          <Check className="w-4 h-4 text-green-600" />
+                          <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          handleRemoveMember(
-                            member.id,
-                            member.profile?.full_name || member.profile?.email || "este membro"
-                          )
-                        }
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  }
-                >
-                  {member.profile?.phone && (
-                    <p className="text-xs text-muted-foreground">{member.profile.phone}</p>
-                  )}
-                </MobileCardItem>
-              ))
+                      </div>
+                    }
+                  >
+                    {phone && (
+                      <p className="text-xs text-muted-foreground">{phone}</p>
+                    )}
+                  </MobileCardItem>
+                );
+              })
             )}
           </div>
         ) : (
@@ -335,79 +331,73 @@ export default function CondoMembersPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  members.map((member) => (
-                    <TableRow key={member.id} className={!member.is_approved ? "bg-yellow-500/5" : ""}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {member.profile?.full_name || "—"}
+                  members.map((member) => {
+                    const displayName = getMemberDisplayName(member);
+                    const email = getMemberEmail(member);
+                    const phone = getMemberPhone(member);
+                    
+                    return (
+                      <TableRow key={member.id} className={!member.is_approved ? "bg-yellow-500/5" : ""}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{displayName}</div>
+                            {email && (
+                              <div className="text-sm text-muted-foreground">{email}</div>
+                            )}
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {member.profile?.email}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {member.profile?.phone || "—"}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {member.unit || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}
-                        >
-                          {roleLabels[member.role]}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {member.is_approved ? (
-                          <Badge variant="default" className="bg-green-500/20 text-green-700 hover:bg-green-500/30">
-                            Aprovado
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="border-yellow-500 text-yellow-600 bg-yellow-500/10">
-                            Pendente
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {!member.is_approved && (
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {phone || "—"}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {member.unit || "—"}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}
+                          >
+                            {roleLabels[member.role]}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {member.is_approved ? (
+                            <Badge variant="default" className="bg-green-500/20 text-green-700 hover:bg-green-500/30">
+                              Aprovado
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-yellow-500 text-yellow-600 bg-yellow-500/10">
+                              Pendente
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {!member.is_approved && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleApproveMember(member.id, displayName)}
+                                title="Aprovar membro"
+                              >
+                                <Check className="w-4 h-4 text-green-600" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() =>
-                                handleApproveMember(
-                                  member.id,
-                                  member.profile?.full_name || member.profile?.email || "Este membro"
-                                )
-                              }
-                              title="Aprovar membro"
+                              onClick={() => handleRemoveMember(member.id, displayName)}
+                              title="Remover membro"
                             >
-                              <Check className="w-4 h-4 text-green-600" />
+                              <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              handleRemoveMember(
-                                member.id,
-                                member.profile?.full_name || member.profile?.email || "este membro"
-                              )
-                            }
-                            title="Remover membro"
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

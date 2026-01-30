@@ -26,6 +26,8 @@ export type Database = {
           is_urgent: boolean
           published_at: string
           summary: string | null
+          target_blocks: string[] | null
+          target_units: string[] | null
           title: string
           updated_at: string
         }
@@ -40,6 +42,8 @@ export type Database = {
           is_urgent?: boolean
           published_at?: string
           summary?: string | null
+          target_blocks?: string[] | null
+          target_units?: string[] | null
           title: string
           updated_at?: string
         }
@@ -54,6 +58,8 @@ export type Database = {
           is_urgent?: boolean
           published_at?: string
           summary?: string | null
+          target_blocks?: string[] | null
+          target_units?: string[] | null
           title?: string
           updated_at?: string
         }
@@ -398,6 +404,7 @@ export type Database = {
       user_roles: {
         Row: {
           auth_user_id: string | null
+          block: string | null
           condominium_id: string
           created_at: string
           id: string
@@ -409,6 +416,7 @@ export type Database = {
         }
         Insert: {
           auth_user_id?: string | null
+          block?: string | null
           condominium_id: string
           created_at?: string
           id?: string
@@ -420,6 +428,7 @@ export type Database = {
         }
         Update: {
           auth_user_id?: string | null
+          block?: string | null
           condominium_id?: string
           created_at?: string
           id?: string

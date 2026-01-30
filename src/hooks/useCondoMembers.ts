@@ -6,6 +6,7 @@ export interface CondoMember {
   user_id: string | null;
   member_id: string | null;
   role: "admin" | "syndic" | "resident" | "collaborator";
+  block: string | null;
   unit: string | null;
   is_approved: boolean;
   created_at: string;
@@ -48,6 +49,7 @@ export function useCondoMembers(condoId: string) {
           user_id,
           member_id,
           role,
+          block,
           unit,
           is_approved,
           created_at,
@@ -74,6 +76,7 @@ export function useCondoMembers(condoId: string) {
         user_id: item.user_id,
         member_id: item.member_id,
         role: item.role,
+        block: item.block,
         unit: item.unit,
         is_approved: item.is_approved,
         created_at: item.created_at,
@@ -97,7 +100,8 @@ export function useCondoMembers(condoId: string) {
   const addMember = async (
     userId: string,
     role: "admin" | "syndic" | "resident" | "collaborator",
-    unit?: string
+    block: string,
+    unit: string
   ) => {
     try {
       const { error } = await supabase
@@ -106,6 +110,7 @@ export function useCondoMembers(condoId: string) {
           condominium_id: condoId,
           user_id: userId,
           role,
+          block: block || null,
           unit: unit || null,
         });
 
@@ -122,6 +127,7 @@ export function useCondoMembers(condoId: string) {
     fullName: string;
     phone: string;
     email: string;
+    block: string;
     unit: string;
     role: "admin" | "syndic" | "resident" | "collaborator";
   }) => {
@@ -133,6 +139,7 @@ export function useCondoMembers(condoId: string) {
           fullName: memberData.fullName,
           phone: memberData.phone,
           email: memberData.email,
+          block: memberData.block,
           unit: memberData.unit,
           role: memberData.role,
         }
@@ -201,6 +208,7 @@ export function useCondoMembers(condoId: string) {
       fullName: string;
       phone: string;
       email: string;
+      block: string;
       unit: string;
       role: "admin" | "syndic" | "resident" | "collaborator";
     }>
@@ -253,4 +261,12 @@ export function getMemberPhone(member: CondoMember): string | null {
   if (member.profile?.phone) return member.profile.phone;
   if (member.condo_member?.phone) return member.condo_member.phone;
   return null;
+}
+
+// Helper function to get formatted location (block + unit)
+export function getMemberLocation(member: CondoMember): string {
+  const parts: string[] = [];
+  if (member.block) parts.push(member.block);
+  if (member.unit) parts.push(member.unit);
+  return parts.length > 0 ? parts.join(", ") : "—";
 }

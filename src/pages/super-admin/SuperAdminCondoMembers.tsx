@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCondoMembers } from "@/hooks/useCondoMembers";
+import { useCondoMembers, getMemberDisplayName, getMemberEmail, getMemberPhone, getMemberLocation } from "@/hooks/useCondoMembers";
 import { useAllUsers } from "@/hooks/useAllUsers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -74,8 +74,8 @@ export default function SuperAdminCondoMembers() {
   const memberUserIds = new Set(members.map((m) => m.user_id));
   const availableUsers = users.filter((u) => !memberUserIds.has(u.id));
 
-  const handleAddExisting = async (userId: string, role: "admin" | "syndic" | "resident" | "collaborator", unit: string) => {
-    const result = await addMember(userId, role, unit);
+  const handleAddExisting = async (userId: string, role: "admin" | "syndic" | "resident" | "collaborator", block: string, unit: string) => {
+    const result = await addMember(userId, role, block, unit);
     if (result.success) {
       toast({ title: "Membro adicionado com sucesso!" });
     } else {
@@ -92,6 +92,7 @@ export default function SuperAdminCondoMembers() {
     fullName: string;
     phone: string;
     email: string;
+    block: string;
     unit: string;
     role: "admin" | "syndic" | "resident" | "collaborator";
   }) => {
@@ -189,48 +190,52 @@ export default function SuperAdminCondoMembers() {
                   </div>
                 </Card>
               ) : (
-                members.map((member) => (
-                  <MobileCardItem
-                    key={member.id}
-                    title={member.profile?.full_name || "—"}
-                    subtitle={member.profile?.email || ""}
-                    metadata={
-                      <span className="text-xs">
-                        {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                      </span>
-                    }
-                    badges={
-                      <>
-                        <span className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}>
-                          {roleLabels[member.role]}
+                members.map((member) => {
+                  const displayName = getMemberDisplayName(member);
+                  const email = getMemberEmail(member);
+                  const phone = getMemberPhone(member);
+                  const location = getMemberLocation(member);
+                  
+                  return (
+                    <MobileCardItem
+                      key={member.id}
+                      title={displayName}
+                      subtitle={email || ""}
+                      metadata={
+                        <span className="text-xs">
+                          {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
                         </span>
-                        {member.unit && (
-                          <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                            {member.unit}
+                      }
+                      badges={
+                        <>
+                          <span className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}>
+                            {roleLabels[member.role]}
                           </span>
-                        )}
-                      </>
-                    }
-                    actions={
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          handleRemoveMember(
-                            member.id,
-                            member.profile?.full_name || member.profile?.email || "este membro"
-                          )
-                        }
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    }
-                  >
-                    {member.profile?.phone && (
-                      <p className="text-xs text-muted-foreground">{member.profile.phone}</p>
-                    )}
-                  </MobileCardItem>
-                ))
+                          {location !== "—" && (
+                            <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                              {location}
+                            </span>
+                          )}
+                        </>
+                      }
+                      actions={
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            handleRemoveMember(member.id, displayName)
+                          }
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      }
+                    >
+                      {phone && (
+                        <p className="text-xs text-muted-foreground">{phone}</p>
+                      )}
+                    </MobileCardItem>
+                  );
+                })
               )}
             </div>
           ) : (
@@ -259,50 +264,50 @@ export default function SuperAdminCondoMembers() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    members.map((member) => (
-                      <TableRow key={member.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {member.profile?.full_name || "—"}
+                    members.map((member) => {
+                      const displayName = getMemberDisplayName(member);
+                      const email = getMemberEmail(member);
+                      const phone = getMemberPhone(member);
+                      const location = getMemberLocation(member);
+                      
+                      return (
+                        <TableRow key={member.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{displayName}</div>
+                              {email && (
+                                <div className="text-sm text-muted-foreground">{email}</div>
+                              )}
                             </div>
-                            <div className="text-sm text-muted-foreground">
-                              {member.profile?.email}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {member.profile?.phone || "—"}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {member.unit || "—"}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}
-                          >
-                            {roleLabels[member.role]}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              handleRemoveMember(
-                                member.id,
-                                member.profile?.full_name || member.profile?.email || "este membro"
-                              )
-                            }
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {phone || "—"}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {location}
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}
+                            >
+                              {roleLabels[member.role]}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveMember(member.id, displayName)}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>

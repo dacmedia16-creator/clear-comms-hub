@@ -11,6 +11,7 @@ interface CreateMemberRequest {
   fullName: string;
   phone: string;
   email: string;
+  block: string;
   unit: string;
   role: "admin" | "syndic" | "resident" | "collaborator";
 }
@@ -58,14 +59,14 @@ Deno.serve(async (req) => {
 
     // 4. Parse request body
     const body: CreateMemberRequest = await req.json();
-    const { condominiumId, fullName, phone, email, unit, role } = body;
+    const { condominiumId, fullName, phone, email, block, unit, role } = body;
 
-    console.log("Create member request:", { condominiumId, fullName, email, unit, role });
+    console.log("Create member request:", { condominiumId, fullName, email, block, unit, role });
 
     // Validate required fields
-    if (!condominiumId || !fullName || !role) {
+    if (!condominiumId || !fullName || !role || !block || !unit) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: condominiumId, fullName, role" }),
+        JSON.stringify({ error: "Campos obrigatórios: condominiumId, fullName, role, block, unit" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -126,7 +127,8 @@ Deno.serve(async (req) => {
         member_id: memberData.id,
         user_id: null, // No profile linked - this is a manual member
         role: role,
-        unit: unit || null,
+        block: block,
+        unit: unit,
         is_approved: true,
       });
 

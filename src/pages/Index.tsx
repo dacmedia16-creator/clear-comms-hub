@@ -35,7 +35,7 @@ const Index = () => {
               Pronto para transformar a comunicação do seu condomínio?
             </h2>
             <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
-              Comece gratuitamente hoje. Sem cartão de crédito, sem compromisso.
+              Configure em minutos e transforme a comunicação do seu condomínio.
             </p>
             <Button asChild size="lg" className="touch-target text-base font-semibold px-8">
               <Link to="/auth">

@@ -12,37 +12,11 @@ export function Pricing() {
             Planos simples e transparentes
           </h2>
           <p className="text-lg text-muted-foreground">
-            Comece gratuitamente. Evolua conforme sua necessidade.
+            Escolha o plano ideal para seu condomínio.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {/* Free Plan */}
-          <div className="bg-card rounded-2xl border border-border p-8 flex flex-col">
-            <div className="mb-6">
-              <h3 className="font-display font-bold text-xl text-foreground mb-2">
-                {PLANS.free.name}
-              </h3>
-              <div className="flex items-baseline gap-1">
-                <span className="font-display text-4xl font-bold text-foreground">R$ 0</span>
-                <span className="text-muted-foreground">/mês</span>
-              </div>
-            </div>
-
-            <ul className="space-y-3 mb-8 flex-1">
-              {PLANS.free.features.map((feature) => (
-                <li key={feature} className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-primary flex-shrink-0" />
-                  <span className="text-foreground">{feature}</span>
-                </li>
-              ))}
-            </ul>
-
-            <Button asChild variant="outline" size="lg" className="w-full touch-target">
-              <Link to="/auth">Começar grátis</Link>
-            </Button>
-          </div>
-
+        <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
           {/* Starter Plan - Highlighted */}
           <div className="bg-card rounded-2xl border-2 border-primary p-8 flex flex-col relative shadow-lg">
             <div className="absolute -top-4 left-1/2 -translate-x-1/2">

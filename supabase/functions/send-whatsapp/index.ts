@@ -30,15 +30,23 @@ interface RequestBody {
   baseUrl: string;
 }
 
-interface MemberProfile {
+interface ContactInfo {
   id: string;
-  phone: string;
+  phone: string | null;
   full_name: string | null;
+  email: string | null;
 }
 
 interface MemberRow {
-  user_id: string;
-  profiles: MemberProfile;
+  user_id: string | null;
+  member_id: string | null;
+  profiles: ContactInfo | null;
+  condo_members: ContactInfo | null;
+}
+
+interface UnifiedMember {
+  phone: string;
+  full_name: string | null;
 }
 
 const WHATSAPP_TEMPLATES: Record<string, string> = {
@@ -120,7 +128,7 @@ function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
 
 // Background task to send messages with delays
 async function sendMessagesInBackground(
-  members: MemberRow[],
+  members: UnifiedMember[],
   message: string,
   authHeader: string,
   announcement: Announcement,
@@ -131,7 +139,6 @@ async function sendMessagesInBackground(
 
   for (let i = 0; i < members.length; i++) {
     const member = members[i];
-    const profile = member.profiles;
 
     // Wait before sending (except for first member)
     if (i > 0) {
@@ -140,12 +147,12 @@ async function sendMessagesInBackground(
       await randomDelay(15, 30);
     }
 
-    console.log(`[Background] Enviando para membro ${i + 1} de ${members.length}: ${profile.phone} (${profile.full_name || 'Unknown'})`);
+    console.log(`[Background] Enviando para membro ${i + 1} de ${members.length}: ${member.phone} (${member.full_name || 'Unknown'})`);
 
     try {
       const formData = new FormData();
       formData.append('msg', message);
-      formData.append('mobile_phone', profile.phone);
+      formData.append('mobile_phone', member.phone);
 
       const response = await fetch(
         'https://app.ziontalk.com/api/send_message/',
@@ -161,29 +168,29 @@ async function sendMessagesInBackground(
 
       if (!success) {
         errorMessage = await response.text();
-        console.error(`[Background] Falha ao enviar para ${profile.phone}: ${response.status} - ${errorMessage}`);
+        console.error(`[Background] Falha ao enviar para ${member.phone}: ${response.status} - ${errorMessage}`);
       } else {
-        console.log(`[Background] ✓ Enviado com sucesso para ${profile.phone}`);
+        console.log(`[Background] ✓ Enviado com sucesso para ${member.phone}`);
       }
 
       // Log the send attempt
       await supabase.from('whatsapp_logs').insert({
         announcement_id: announcement.id,
         condominium_id: condominium.id,
-        recipient_phone: profile.phone,
-        recipient_name: profile.full_name,
+        recipient_phone: member.phone,
+        recipient_name: member.full_name,
         status: success ? 'sent' : 'failed',
         error_message: errorMessage || null,
       });
 
     } catch (sendError) {
-      console.error(`[Background] Exceção ao enviar para ${profile.phone}:`, sendError);
+      console.error(`[Background] Exceção ao enviar para ${member.phone}:`, sendError);
 
       await supabase.from('whatsapp_logs').insert({
         announcement_id: announcement.id,
         condominium_id: condominium.id,
-        recipient_phone: profile.phone,
-        recipient_name: profile.full_name,
+        recipient_phone: member.phone,
+        recipient_name: member.full_name,
         status: 'failed',
         error_message: sendError instanceof Error ? sendError.message : 'Unknown error',
       });
@@ -223,13 +230,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Fetch members with registered phone numbers (only approved members)
-    const { data: membersData, error: membersError } = await supabase
+    // Fetch members from BOTH sources: profiles (authenticated) and condo_members (manual)
+    const { data: rolesData, error: membersError } = await supabase
       .from('user_roles')
-      .select('user_id, profiles!inner(id, phone, full_name)')
+      .select(`
+        user_id, member_id,
+        profiles:user_id (id, phone, full_name, email),
+        condo_members:member_id (id, phone, full_name, email)
+      `)
       .eq('condominium_id', condominium.id)
-      .eq('is_approved', true)
-      .not('profiles.phone', 'is', null);
+      .eq('is_approved', true);
 
     if (membersError) {
       console.error("Error fetching members:", membersError);
@@ -239,9 +249,21 @@ serve(async (req) => {
       );
     }
 
-    const members = membersData as unknown as MemberRow[];
+    const memberRows = rolesData as unknown as MemberRow[];
 
-    if (!members || members.length === 0) {
+    // Unify members from both sources, filtering those with valid phone numbers
+    const members: UnifiedMember[] = memberRows
+      .map(role => {
+        const source = role.profiles || role.condo_members;
+        if (!source || !source.phone) return null;
+        return {
+          phone: source.phone,
+          full_name: source.full_name,
+        };
+      })
+      .filter((m): m is UnifiedMember => m !== null);
+
+    if (members.length === 0) {
       console.log("No members with phone numbers found");
       return new Response(
         JSON.stringify({ total: 0, sent: 0, failed: 0, results: [], message: "Nenhum membro com telefone cadastrado" }),
@@ -249,7 +271,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Found ${members.length} members with phone numbers`);
+    console.log(`Found ${members.length} members with phone numbers (from profiles + condo_members)`);
 
     // Generate message based on template
     const message = generateMessage(announcement, condominium, baseUrl);

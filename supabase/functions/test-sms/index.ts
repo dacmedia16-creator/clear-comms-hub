@@ -12,7 +12,7 @@ interface RequestBody {
   condominiumName?: string;
 }
 
-const TEST_MESSAGE = `[TESTE] Sistema de SMS funcionando! Se voce recebeu esta mensagem, a integracao SMSFire esta OK.`;
+const TEST_MESSAGE = `Teste SMS funcionando`;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -71,14 +71,14 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Call SMSFire API v3 with GET and query params
-    const url = new URL('https://api-v3.smsfire.com.br/sms/send/individual');
-    url.searchParams.set('to', formattedPhone);
-    url.searchParams.set('text', TEST_MESSAGE);
+    // Call SMSFire API v3 with GET and query params - manually encode to ensure proper URL encoding
+    const baseUrl = 'https://api-v3.smsfire.com.br/sms/send/individual';
+    const encodedText = encodeURIComponent(TEST_MESSAGE);
+    const url = `${baseUrl}?to=${formattedPhone}&text=${encodedText}`;
 
-    console.log(`Calling SMSFire API v3: ${url.toString()}`);
+    console.log(`Calling SMSFire API v3: ${url}`);
 
-    const response = await fetch(url.toString(), {
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Username': SMSFIRE_USERNAME,
@@ -86,13 +86,22 @@ serve(async (req) => {
       },
     });
 
-    const responseData = await response.json();
-    const success = response.ok && responseData?.message !== 'error';
+    const responseText = await response.text();
+    console.log(`SMSFire API response status: ${response.status}, body: ${responseText}`);
+    
+    let responseData;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch {
+      responseData = { message: responseText };
+    }
+    
+    const success = response.ok && responseData?.message !== 'error' && !responseData?.error;
     
     let errorMessage: string | undefined;
     if (!success) {
       errorMessage = responseData?.message || responseData?.error || `HTTP ${response.status}`;
-      console.error(`Failed to send test SMS: ${errorMessage}`);
+      console.error(`Failed to send test SMS: ${JSON.stringify(responseData)}`);
     } else {
       console.log(`Successfully sent test SMS to ${formattedPhone}`);
     }

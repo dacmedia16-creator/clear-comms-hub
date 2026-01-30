@@ -25,15 +25,23 @@ interface RequestBody {
   baseUrl: string;
 }
 
-interface MemberProfile {
+interface ContactInfo {
   id: string;
-  phone: string;
+  phone: string | null;
   full_name: string | null;
+  email: string | null;
 }
 
 interface MemberRow {
-  user_id: string;
-  profiles: MemberProfile;
+  user_id: string | null;
+  member_id: string | null;
+  profiles: ContactInfo | null;
+  condo_members: ContactInfo | null;
+}
+
+interface UnifiedMember {
+  phone: string;
+  full_name: string | null;
 }
 
 function generateSMSMessage(
@@ -95,13 +103,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Fetch members with registered phone numbers (only approved members)
-    const { data: membersData, error: membersError } = await supabase
+    // Fetch members from BOTH sources: profiles (authenticated) and condo_members (manual)
+    const { data: rolesData, error: membersError } = await supabase
       .from('user_roles')
-      .select('user_id, profiles!inner(id, phone, full_name)')
+      .select(`
+        user_id, member_id,
+        profiles:user_id (id, phone, full_name, email),
+        condo_members:member_id (id, phone, full_name, email)
+      `)
       .eq('condominium_id', condominium.id)
-      .eq('is_approved', true)
-      .not('profiles.phone', 'is', null);
+      .eq('is_approved', true);
 
     if (membersError) {
       console.error("Error fetching members:", membersError);
@@ -111,9 +122,21 @@ serve(async (req) => {
       );
     }
 
-    const members = membersData as unknown as MemberRow[];
+    const memberRows = rolesData as unknown as MemberRow[];
 
-    if (!members || members.length === 0) {
+    // Unify members from both sources, filtering those with valid phone numbers
+    const members: UnifiedMember[] = memberRows
+      .map(role => {
+        const source = role.profiles || role.condo_members;
+        if (!source || !source.phone) return null;
+        return {
+          phone: source.phone,
+          full_name: source.full_name,
+        };
+      })
+      .filter((m): m is UnifiedMember => m !== null);
+
+    if (members.length === 0) {
       console.log("No members with phone numbers found");
       return new Response(
         JSON.stringify({ total: 0, sent: 0, failed: 0, results: [], message: "Nenhum membro com telefone cadastrado" }),
@@ -121,7 +144,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Found ${members.length} members with phone numbers`);
+    console.log(`Found ${members.length} members with phone numbers (from profiles + condo_members)`);
 
     // Generate SMS message
     const message = generateSMSMessage(announcement, condominium, baseUrl);
@@ -131,8 +154,7 @@ serve(async (req) => {
     const results: Array<{ phone: string; name: string | null; success: boolean; error?: string }> = [];
     
     for (const member of members) {
-      const profile = member.profiles;
-      const formattedPhone = formatPhoneForSMSFire(profile.phone);
+      const formattedPhone = formatPhoneForSMSFire(member.phone);
       
       try {
         // SMSFire API v3 - GET request with query params and separate headers
@@ -140,7 +162,7 @@ serve(async (req) => {
         const encodedText = encodeURIComponent(message);
         const apiUrl = `${baseUrl_api}?to=${formattedPhone}&text=${encodedText}`;
 
-        console.log(`Sending SMS to ${formattedPhone} (${profile.full_name || 'Unknown'})`);
+        console.log(`Sending SMS to ${formattedPhone} (${member.full_name || 'Unknown'})`);
 
         const response = await fetch(apiUrl, {
           method: 'GET',
@@ -162,8 +184,8 @@ serve(async (req) => {
         }
 
         results.push({ 
-          phone: profile.phone, 
-          name: profile.full_name,
+          phone: member.phone, 
+          name: member.full_name,
           success,
           error: errorMessage
         });
@@ -172,8 +194,8 @@ serve(async (req) => {
         await supabase.from('sms_logs').insert({
           announcement_id: announcement.id,
           condominium_id: condominium.id,
-          recipient_phone: profile.phone,
-          recipient_name: profile.full_name,
+          recipient_phone: member.phone,
+          recipient_name: member.full_name,
           status: success ? 'sent' : 'failed',
           error_message: errorMessage || null,
         });
@@ -181,8 +203,8 @@ serve(async (req) => {
       } catch (sendError) {
         console.error(`Exception sending SMS to ${formattedPhone}:`, sendError);
         results.push({ 
-          phone: profile.phone, 
-          name: profile.full_name,
+          phone: member.phone, 
+          name: member.full_name,
           success: false,
           error: sendError instanceof Error ? sendError.message : 'Unknown error'
         });
@@ -191,8 +213,8 @@ serve(async (req) => {
         await supabase.from('sms_logs').insert({
           announcement_id: announcement.id,
           condominium_id: condominium.id,
-          recipient_phone: profile.phone,
-          recipient_name: profile.full_name,
+          recipient_phone: member.phone,
+          recipient_name: member.full_name,
           status: 'failed',
           error_message: sendError instanceof Error ? sendError.message : 'Unknown error',
         });

@@ -29,15 +29,23 @@ interface RequestBody {
   baseUrl: string;
 }
 
-interface MemberProfile {
+interface ContactInfo {
   id: string;
-  email: string;
+  phone: string | null;
   full_name: string | null;
+  email: string | null;
 }
 
 interface MemberRow {
-  user_id: string;
-  profiles: MemberProfile;
+  user_id: string | null;
+  member_id: string | null;
+  profiles: ContactInfo | null;
+  condo_members: ContactInfo | null;
+}
+
+interface UnifiedMember {
+  email: string;
+  full_name: string | null;
 }
 
 const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
@@ -283,7 +291,7 @@ function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
 
 // Background task to send emails with delays
 async function sendEmailsInBackground(
-  members: MemberRow[],
+  members: UnifiedMember[],
   announcement: Announcement,
   condominium: Condominium,
   baseUrl: string,
@@ -300,7 +308,6 @@ async function sendEmailsInBackground(
 
   for (let i = 0; i < members.length; i++) {
     const member = members[i];
-    const profile = member.profiles;
 
     // Wait before sending (except for first member)
     if (i > 0) {
@@ -309,7 +316,7 @@ async function sendEmailsInBackground(
       await randomDelay(15, 30);
     }
 
-    console.log(`[Background] Enviando email ${i + 1} de ${members.length}: ${profile.email} (${profile.full_name || 'Unknown'})`);
+    console.log(`[Background] Enviando email ${i + 1} de ${members.length}: ${member.email} (${member.full_name || 'Unknown'})`);
 
     const result = await sendSmtpEmail(
       host,
@@ -317,23 +324,23 @@ async function sendEmailsInBackground(
       username,
       password,
       username,
-      profile.email,
+      member.email,
       subject,
       htmlContent
     );
 
     if (result.success) {
-      console.log(`[Background] ✓ Email enviado com sucesso para ${profile.email}`);
+      console.log(`[Background] ✓ Email enviado com sucesso para ${member.email}`);
     } else {
-      console.error(`[Background] Falha ao enviar para ${profile.email}: ${result.error}`);
+      console.error(`[Background] Falha ao enviar para ${member.email}: ${result.error}`);
     }
 
     // Log the result
     await supabase.from('email_logs').insert({
       announcement_id: announcement.id,
       condominium_id: condominium.id,
-      recipient_email: profile.email,
-      recipient_name: profile.full_name,
+      recipient_email: member.email,
+      recipient_name: member.full_name,
       status: result.success ? 'sent' : 'failed',
       error_message: result.error || null,
     });
@@ -371,13 +378,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Fetch members with registered email addresses (only approved members)
-    const { data: membersData, error: membersError } = await supabase
+    // Fetch members from BOTH sources: profiles (authenticated) and condo_members (manual)
+    const { data: rolesData, error: membersError } = await supabase
       .from('user_roles')
-      .select('user_id, profiles!inner(id, email, full_name)')
+      .select(`
+        user_id, member_id,
+        profiles:user_id (id, phone, full_name, email),
+        condo_members:member_id (id, phone, full_name, email)
+      `)
       .eq('condominium_id', condominium.id)
-      .eq('is_approved', true)
-      .not('profiles.email', 'is', null);
+      .eq('is_approved', true);
 
     if (membersError) {
       console.error("Error fetching members:", membersError);
@@ -387,10 +397,19 @@ serve(async (req) => {
       );
     }
 
-    const members = membersData as unknown as MemberRow[];
+    const memberRows = rolesData as unknown as MemberRow[];
 
-    // Filter out empty emails
-    const validMembers = members.filter(m => m.profiles.email && m.profiles.email.trim() !== '');
+    // Unify members from both sources, filtering those with valid email addresses
+    const validMembers: UnifiedMember[] = memberRows
+      .map(role => {
+        const source = role.profiles || role.condo_members;
+        if (!source || !source.email || source.email.trim() === '') return null;
+        return {
+          email: source.email,
+          full_name: source.full_name,
+        };
+      })
+      .filter((m): m is UnifiedMember => m !== null);
 
     if (validMembers.length === 0) {
       console.log("No members with email addresses found");
@@ -400,7 +419,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Found ${validMembers.length} members with email addresses`);
+    console.log(`Found ${validMembers.length} members with email addresses (from profiles + condo_members)`);
 
     // Start background processing with delays
     EdgeRuntime.waitUntil(

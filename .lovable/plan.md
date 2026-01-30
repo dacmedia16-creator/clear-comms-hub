@@ -1,127 +1,78 @@
 
-
-# Criar IA de Atendimento e Vendas
+# Adicionar Animacao de Entrada Suave no Chat
 
 ## Resumo
 
-Implementar um chatbot inteligente na landing page que responde duvidas dos visitantes e ajuda a vender o sistema AVISO PRO. O chatbot vai aparecer como um botao flutuante no canto inferior direito da pagina.
+Melhorar a animacao de abertura do chatbot para uma experiencia mais fluida e profissional. Atualmente o chat usa apenas opacity e translate-y basicos. Vamos adicionar animacoes escalonadas (staggered) e efeitos de spring para um visual mais moderno.
 
-## Funcionalidades
+## Melhorias Planejadas
 
-O chatbot tera conhecimento sobre:
-- Funcionalidades do sistema (timeline, filtros, dashboard, notificacoes)
-- Planos e precos (Starter R$29/mes, Pro R$79/mes)
-- Como funciona o sistema (4 passos)
-- Beneficios para sindicos e moradores
-- Perguntas frequentes sobre comunicacao em condominios
+### 1. Animacao do Painel Principal
+- Combinacao de scale + opacity + translate para efeito "pop-in"
+- Timing com cubic-bezier para sensacao de spring
+- Duracao aumentada para 400ms
 
-O assistente sera treinado para:
-- Responder duvidas de forma clara e amigavel
-- Destacar beneficios do produto
-- Direcionar usuarios para criar conta quando apropriado
-- Comparar planos e ajudar na decisao
+### 2. Animacoes Escalonadas (Staggered)
+- Header aparece primeiro
+- Area de mensagens aparece com delay
+- Formulario de input aparece por ultimo
+- Cria sensacao de "construcao" do painel
 
-## Interface do Usuario
+### 3. Animacao do Botao Flutuante
+- Efeito pulse sutil quando fechado (chamar atencao)
+- Transicao suave do icone (MessageCircle -> X)
 
-```text
-+--------------------------------------------------+
-|                                                  |
-|                  Landing Page                    |
-|                                                  |
-|                                                  |
-|                                                  |
-|                                                  |
-|                                                  |
-|                                          +------+|
-|                                          |  AI  ||
-+------------------------------------------+------++
-                                           |
-                                           v
-                              +------------------------+
-                              |  Ola! Sou o assistente |
-                              |  virtual do AVISO PRO  |
-                              |                        |
-                              |  [Campo de mensagem]   |
-                              +------------------------+
-```
+## Implementacao Tecnica
 
-## Arquitetura Tecnica
-
-### Componentes a Criar
-
-1. **Edge Function `sales-chat`**
-   - Recebe mensagens do usuario
-   - Usa Lovable AI (gemini-3-flash-preview)
-   - System prompt com informacoes do produto
-   - Retorna resposta em streaming
-
-2. **Componente `SalesChatbot.tsx`**
-   - Botao flutuante para abrir/fechar
-   - Interface de chat com historico
-   - Streaming de respostas token por token
-   - Design responsivo (mobile-friendly)
-
-3. **Hook `useSalesChat.ts`**
-   - Gerencia estado das mensagens
-   - Lida com streaming SSE
-   - Controla loading states
-
-### Fluxo de Dados
-
-```text
-Usuario digita pergunta
-         |
-         v
-  SalesChatbot.tsx
-         |
-         v
-  useSalesChat.ts
-         |
-         v
-  Edge Function (sales-chat)
-         |
-         v
-  Lovable AI Gateway
-         |
-         v
-  Resposta em streaming
-```
-
-### System Prompt da IA
-
-A IA tera conhecimento de:
-- Nome do produto: AVISO PRO
-- Proposta de valor: Centralizar comunicacao oficial de condominios
-- Planos: Starter (R$29, 50 avisos/mes, email) e Pro (R$79, ilimitado, WhatsApp)
-- Funcionalidades: Timeline, Filtros, Dashboard, Notificacoes WhatsApp/Email
-- Publico-alvo: Sindicos, administradores, moradores
-- Diferenciais: Simplicidade, sem login para moradores, timeline publica
-
-### Arquivos a Criar/Modificar
+### Arquivo a Modificar
 
 | Arquivo | Acao |
 |---------|------|
-| `supabase/functions/sales-chat/index.ts` | Criar |
-| `supabase/config.toml` | Adicionar funcao |
-| `src/components/landing/SalesChatbot.tsx` | Criar |
-| `src/hooks/useSalesChat.ts` | Criar |
-| `src/pages/Index.tsx` | Adicionar componente |
+| `src/components/landing/SalesChatbot.tsx` | Atualizar animacoes |
 
-### Detalhes de Implementacao
+### Detalhes das Animacoes
 
-**Edge Function:**
-- Model: `google/gemini-3-flash-preview` (rapido e eficiente)
-- Streaming: true (resposta em tempo real)
-- CORS habilitado para chamadas do frontend
+**Painel Principal:**
+```text
+Fechado -> Aberto
+- scale: 0.95 -> 1
+- opacity: 0 -> 1
+- translateY: 20px -> 0
+- Timing: cubic-bezier(0.34, 1.56, 0.64, 1) (efeito spring)
+```
 
-**Frontend:**
-- Botao com icone de mensagem (MessageCircle)
-- Painel de chat com animacao slide-up
-- Campo de input com envio via Enter ou botao
-- Mensagens com diferenciacao visual (user vs AI)
-- Indicador de "digitando" durante streaming
+**Elementos Internos (staggered):**
+```text
+Header:    delay 0ms
+Messages:  delay 100ms  
+Input:     delay 200ms
+```
+
+**Botao Flutuante:**
+```text
+- Pulse animation quando fechado
+- Scale transition no hover
+- Rotacao suave do icone
+```
+
+### Codigo das Animacoes
+
+Adicionar classes CSS customizadas com keyframes:
+
+```text
+@keyframes chat-panel-enter
+  0%:   opacity: 0, scale: 0.95, translateY: 20px
+  100%: opacity: 1, scale: 1, translateY: 0
+
+@keyframes chat-content-enter
+  0%:   opacity: 0, translateY: 10px
+  100%: opacity: 1, translateY: 0
+```
+
+Usar Tailwind arbitrary values para aplicar:
+- `animate-[chat-panel-enter_0.4s_cubic-bezier(0.34,1.56,0.64,1)]`
+- Delays via `[animation-delay:100ms]`
 
 ## Resultado Esperado
 
-Visitantes da landing page poderao tirar duvidas em tempo real sobre o produto, aumentando a taxa de conversao e reduzindo barreiras para a compra.
-
+O chatbot tera uma animacao de abertura mais elegante e profissional, com elementos aparecendo de forma escalonada e um efeito de "spring" que da sensacao de responsividade e qualidade ao produto.

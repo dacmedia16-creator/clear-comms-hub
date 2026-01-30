@@ -1,110 +1,90 @@
 
-# Remover Referências a "Grátis" do Site
+
+# Melhorar Seção de Funcionalidades com Imagens do Sistema
 
 ## Resumo
 
-Remover todas as menções sobre começar grátis, plano gratuito e termos relacionados das páginas públicas do site (landing page).
+Redesenhar a seção de Features para incluir capturas de tela reais do sistema, tornando-a mais visual e convincente para novos visitantes.
 
-## Arquivos a Modificar
+## Abordagem Proposta
 
-### 1. src/components/landing/Hero.tsx
-- **Linha 37**: Alterar botão "Começar gratuitamente" para "Começar agora"
-- **Linha 51**: Remover o item "Gratuito para começar" da lista de benefícios
-- **Linha 55**: Remover "Sem cartão de crédito" (implica gratuidade)
+### Opção 1: Layout Alternado com Screenshots (Recomendado)
 
-### 2. src/components/landing/Pricing.tsx
-- **Linha 15**: Alterar subtítulo "Comece gratuitamente. Evolua conforme sua necessidade." para algo como "Escolha o plano ideal para seu condomínio."
-- **Linhas 20-44**: Remover completamente o card do plano gratuito (Free Plan)
-- **Linha 42**: Remover botão "Começar grátis"
-- Ajustar o grid de 3 colunas para 2 colunas (somente Starter e Pro)
+Transformar a seção de funcionalidades em um layout alternado onde cada feature importante tem uma imagem do sistema ao lado da descrição:
 
-### 3. src/pages/Index.tsx
-- **Linhas 37-38**: Alterar texto "Comece gratuitamente hoje. Sem cartão de crédito, sem compromisso." para algo como "Configure em minutos e transforme a comunicação do seu condomínio."
+```text
++---------------------------+    +---------------------------+
+|                           |    |                           |
+|  [IMAGEM DA TIMELINE]     |    |  Titulo da Feature        |
+|                           |    |  Descricao detalhada      |
+|                           |    |                           |
++---------------------------+    +---------------------------+
 
-### 4. src/lib/constants.ts
-- **Linhas 51-57**: Remover o plano `free` do objeto `PLANS` (manter apenas `starter` e `pro`)
++---------------------------+    +---------------------------+
+|                           |    |                           |
+|  Titulo da Feature        |    |  [IMAGEM DOS FILTROS]     |
+|  Descricao detalhada      |    |                           |
+|                           |    |                           |
++---------------------------+    +---------------------------+
+```
+
+### Opcion 2: Manter Grid Atual com Thumbnails
+
+Adicionar pequenas imagens/thumbnails em cada card de feature, mantendo o layout de grid atual.
+
+## Proximos Passos
+
+**Voce precisa fornecer as imagens do sistema.** Pode fazer isso de duas formas:
+
+1. **Fazer upload via chat**: Tire screenshots das telas principais (timeline, dashboard, filtros, notificacoes) e envie aqui no chat
+2. **Indicar quais telas quer mostrar**: Me diga quais funcionalidades quer destacar e eu posso abrir o sistema no navegador para capturar
+
+## Telas Sugeridas para Captura
+
+1. **Timeline de avisos** - Mostrando cards de avisos com categorias coloridas
+2. **Filtros por categoria** - Barra de filtros horizontal
+3. **Dashboard do sindico** - Painel de gerenciamento
+4. **Card de aviso expandido** - Detalhes de um comunicado
+5. **Notificacao WhatsApp** - Simulacao ou exemplo
+
+## Secao Tecnica
+
+### Estrutura do Novo Componente
+
+```tsx
+// Novo componente FeatureShowcase.tsx
+interface FeatureShowcaseItem {
+  title: string;
+  description: string;
+  image: string;
+  imageAlt: string;
+}
+
+// Layout alternado com AspectRatio para manter proporcoes
+<div className="grid lg:grid-cols-2 gap-8 items-center">
+  <div className="order-2 lg:order-1">
+    <h3>Titulo</h3>
+    <p>Descricao</p>
+  </div>
+  <div className="order-1 lg:order-2">
+    <AspectRatio ratio={16/9}>
+      <img src={feature.image} />
+    </AspectRatio>
+  </div>
+</div>
+```
+
+### Armazenamento de Imagens
+
+As imagens enviadas serao salvas na pasta `public/screenshots/` ou utilizadas diretamente do upload.
+
+### Otimizacoes
+
+- Usar lazy loading para imagens
+- Adicionar sombra e borda para parecer uma janela de app
+- Animacao de fade-in ao rolar a pagina
 
 ## Resultado Esperado
 
-- Seção de preços mostrará apenas 2 planos: Inicial (R$ 29) e Profissional (R$ 79)
-- Todos os CTAs dirão "Começar agora" ou "Escolher plano"
-- Nenhuma menção a gratuidade nas páginas públicas
+Uma secao de features mais visual e profissional que mostra o produto real, aumentando a conversao de visitantes.
 
-## Seção Tecnica
-
-### Alteracoes Detalhadas
-
-**Hero.tsx - Botoes e beneficios:**
-```tsx
-// Antes
-<Link to="/auth/signup">
-  Começar gratuitamente
-  <ArrowRight />
-</Link>
-
-// Depois
-<Link to="/auth/signup">
-  Começar agora
-  <ArrowRight />
-</Link>
-```
-
-**Hero.tsx - Remover itens de beneficios:**
-```tsx
-// Remover estas linhas (48-56):
-<div className="flex items-center gap-2">
-  <CheckCircle className="w-4 h-4 text-primary" />
-  <span>Gratuito para começar</span>
-</div>
-<div className="flex items-center gap-2">
-  <CheckCircle className="w-4 h-4 text-primary" />
-  <span>Sem cartão de crédito</span>
-</div>
-
-// Manter apenas:
-<div className="flex items-center gap-2">
-  <CheckCircle className="w-4 h-4 text-primary" />
-  <span>Configuração em 2 minutos</span>
-</div>
-```
-
-**Pricing.tsx - Grid e planos:**
-```tsx
-// Antes
-<div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-  {/* Free Plan */}
-  ...
-  {/* Starter Plan */}
-  ...
-  {/* Pro Plan */}
-  ...
-</div>
-
-// Depois
-<div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-  {/* Starter Plan - Highlighted */}
-  ...
-  {/* Pro Plan */}
-  ...
-</div>
-```
-
-**constants.ts - Remover plano free:**
-```typescript
-// Antes
-export const PLANS = {
-  free: { ... },
-  starter: { ... },
-  pro: { ... },
-}
-
-// Depois
-export const PLANS = {
-  starter: { ... },
-  pro: { ... },
-}
-```
-
-### Observacao Importante
-
-O plano "free" e usado internamente no sistema (super-admin, banco de dados). Se for necessario manter compatibilidade com dados existentes, podemos manter a constante `free` em `PLANS` mas simplesmente nao exibi-la na UI publica. Isso evita quebrar funcionalidades administrativas.

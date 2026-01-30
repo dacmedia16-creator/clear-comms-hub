@@ -125,7 +125,10 @@ serve(async (req) => {
     const message = generateSMSMessage(announcement, condominium, baseUrl);
     console.log("Generated SMS:", message);
 
-    // Send to each member via SMSFire API v3
+    // Generate Base64 token for Basic auth (username:password)
+    const token = btoa(`${SMSFIRE_USERNAME}:${SMSFIRE_API_TOKEN}`);
+
+    // Send to each member via SMSFire API v2
     const results: Array<{ phone: string; name: string | null; success: boolean; error?: string }> = [];
     
     for (const member of members) {
@@ -133,8 +136,8 @@ serve(async (req) => {
       const formattedPhone = formatPhoneForSMSFire(profile.phone);
       
       try {
-        // SMSFire API v3 - GET request with query params
-        const url = new URL('https://api-v3.smsfire.com.br/sms/send/individual');
+        // SMSFire API v2 - GET request with query params and Basic auth
+        const url = new URL('https://api-v2.smsfire.com.br/sms/send/individual');
         url.searchParams.set('to', formattedPhone);
         url.searchParams.set('text', message);
 
@@ -143,8 +146,7 @@ serve(async (req) => {
         const response = await fetch(url.toString(), {
           method: 'GET',
           headers: {
-            'Username': SMSFIRE_USERNAME,
-            'Api_Token': SMSFIRE_API_TOKEN,
+            'Authorization': `Basic ${token}`,
           },
         });
 

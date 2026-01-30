@@ -49,6 +49,143 @@ const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: str
   urgente: { label: 'Urgente', emoji: '⚠️', color: '#DC2626' },
 };
 
+// Simple SMTP implementation using Deno's native TLS
+async function sendSmtpEmail(
+  host: string,
+  port: number,
+  username: string,
+  password: string,
+  from: string,
+  to: string,
+  subject: string,
+  htmlBody: string
+): Promise<{ success: boolean; error?: string }> {
+  let conn: Deno.TlsConn | null = null;
+  
+  try {
+    conn = await Deno.connectTls({
+      hostname: host,
+      port: port,
+    });
+
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    async function readLine(): Promise<string> {
+      while (!buffer.includes("\r\n")) {
+        const chunk = new Uint8Array(1024);
+        const n = await conn!.read(chunk);
+        if (n === null) throw new Error("Connection closed");
+        buffer += decoder.decode(chunk.subarray(0, n));
+      }
+      const idx = buffer.indexOf("\r\n");
+      const line = buffer.substring(0, idx);
+      buffer = buffer.substring(idx + 2);
+      return line;
+    }
+
+    async function readResponse(): Promise<string> {
+      const lines: string[] = [];
+      while (true) {
+        const line = await readLine();
+        lines.push(line);
+        // If line[3] is space (not hyphen), it's the last line
+        if (line.length >= 4 && line[3] === ' ') break;
+        // Also break if it's a single-line response
+        if (line.length < 4) break;
+      }
+      return lines.join("\r\n");
+    }
+
+    async function sendCommand(cmd: string): Promise<string> {
+      await conn!.write(encoder.encode(cmd + "\r\n"));
+      return await readResponse();
+    }
+
+    // Read greeting
+    const greeting = await readResponse();
+    const greetingCode = greeting.substring(0, 3);
+    if (greetingCode !== "220") {
+      throw new Error(`Unexpected greeting: ${greeting}`);
+    }
+
+    // EHLO
+    const ehloResp = await sendCommand(`EHLO localhost`);
+    if (!ehloResp.startsWith("250")) {
+      throw new Error(`EHLO failed: ${ehloResp}`);
+    }
+
+    // AUTH LOGIN
+    const authResp = await sendCommand("AUTH LOGIN");
+    if (!authResp.startsWith("334")) {
+      throw new Error(`AUTH LOGIN failed: ${authResp}`);
+    }
+
+    // Send username (base64)
+    const userResp = await sendCommand(btoa(username));
+    if (!userResp.startsWith("334")) {
+      throw new Error(`Username rejected: ${userResp}`);
+    }
+
+    // Send password (base64)
+    const passResp = await sendCommand(btoa(password));
+    if (!passResp.startsWith("235")) {
+      throw new Error(`Authentication failed: ${passResp.trim()}`);
+    }
+
+    // MAIL FROM
+    const fromResp = await sendCommand(`MAIL FROM:<${from}>`);
+    if (!fromResp.startsWith("250")) {
+      throw new Error(`MAIL FROM failed: ${fromResp}`);
+    }
+
+    // RCPT TO
+    const toResp = await sendCommand(`RCPT TO:<${to}>`);
+    if (!toResp.startsWith("250")) {
+      throw new Error(`RCPT TO failed: ${toResp}`);
+    }
+
+    // DATA
+    const dataResp = await sendCommand("DATA");
+    if (!dataResp.startsWith("354")) {
+      throw new Error(`DATA failed: ${dataResp}`);
+    }
+
+    // Send email content
+    const emailContent = [
+      `From: ${from}`,
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/html; charset=UTF-8`,
+      ``,
+      htmlBody,
+      `.`
+    ].join("\r\n");
+
+    const sendResp = await sendCommand(emailContent);
+    if (!sendResp.startsWith("250")) {
+      throw new Error(`Send failed: ${sendResp}`);
+    }
+
+    // QUIT
+    await sendCommand("QUIT");
+
+    conn.close();
+    return { success: true };
+
+  } catch (error) {
+    if (conn) {
+      try { conn.close(); } catch {}
+    }
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
+  }
+}
+
 function generateEmailHtml(
   announcement: Announcement,
   condominium: Condominium,
@@ -144,83 +281,6 @@ function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Renew Zoho access token using refresh token
-async function renewZohoAccessToken(): Promise<string> {
-  const ZOHO_CLIENT_ID = Deno.env.get('ZOHO_CLIENT_ID');
-  const ZOHO_CLIENT_SECRET = Deno.env.get('ZOHO_CLIENT_SECRET');
-  const ZOHO_REFRESH_TOKEN = Deno.env.get('ZOHO_REFRESH_TOKEN');
-
-  if (!ZOHO_CLIENT_ID || !ZOHO_CLIENT_SECRET || !ZOHO_REFRESH_TOKEN) {
-    throw new Error('Zoho OAuth credentials not configured');
-  }
-
-  const tokenUrl = `https://accounts.zoho.com/oauth/v2/token?` +
-    `refresh_token=${ZOHO_REFRESH_TOKEN}&` +
-    `grant_type=refresh_token&` +
-    `client_id=${ZOHO_CLIENT_ID}&` +
-    `client_secret=${ZOHO_CLIENT_SECRET}`;
-
-  console.log('[Zoho] Renewing access token...');
-
-  const response = await fetch(tokenUrl, { method: 'POST' });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[Zoho] Token renewal failed:', response.status, errorText);
-    throw new Error(`Failed to renew Zoho token: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  
-  if (!data.access_token) {
-    console.error('[Zoho] No access_token in response:', data);
-    throw new Error('No access_token in Zoho response');
-  }
-
-  console.log('[Zoho] ✓ Access token renewed successfully');
-  return data.access_token;
-}
-
-// Send email via Zoho Mail API
-async function sendZohoEmail(
-  accessToken: string,
-  toEmail: string,
-  subject: string,
-  htmlContent: string
-): Promise<{ success: boolean; error?: string }> {
-  const ZOHO_ACCOUNT_ID = Deno.env.get('ZOHO_ACCOUNT_ID');
-  const ZOHO_FROM_EMAIL = Deno.env.get('ZOHO_FROM_EMAIL');
-
-  if (!ZOHO_ACCOUNT_ID || !ZOHO_FROM_EMAIL) {
-    throw new Error('Zoho account configuration missing');
-  }
-
-  const response = await fetch(
-    `https://mail.zoho.com/api/accounts/${ZOHO_ACCOUNT_ID}/messages`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Zoho-oauthtoken ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fromAddress: ZOHO_FROM_EMAIL,
-        toAddress: toEmail,
-        subject: subject,
-        content: htmlContent,
-        mailFormat: 'html',
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    return { success: false, error: `${response.status} - ${errorText}` };
-  }
-
-  return { success: true };
-}
-
 // Background task to send emails with delays
 async function sendEmailsInBackground(
   members: MemberRow[],
@@ -231,27 +291,10 @@ async function sendEmailsInBackground(
 ) {
   console.log(`[Background] Iniciando envio de emails para ${members.length} membros...`);
 
-  let accessToken: string;
+  const host = Deno.env.get('ZOHO_SMTP_HOST') || 'smtppro.zoho.com';
+  const username = Deno.env.get('ZOHO_SMTP_USER')!;
+  const password = Deno.env.get('ZOHO_SMTP_PASSWORD')!;
   
-  try {
-    accessToken = await renewZohoAccessToken();
-  } catch (tokenError) {
-    console.error('[Background] Failed to get access token:', tokenError);
-    
-    // Log failure for all members
-    for (const member of members) {
-      await supabase.from('email_logs').insert({
-        announcement_id: announcement.id,
-        condominium_id: condominium.id,
-        recipient_email: member.profiles.email,
-        recipient_name: member.profiles.full_name,
-        status: 'failed',
-        error_message: tokenError instanceof Error ? tokenError.message : 'Token renewal failed',
-      });
-    }
-    return;
-  }
-
   const subject = `[${condominium.name}] ${announcement.title}`;
   const htmlContent = generateEmailHtml(announcement, condominium, baseUrl);
 
@@ -268,37 +311,32 @@ async function sendEmailsInBackground(
 
     console.log(`[Background] Enviando email ${i + 1} de ${members.length}: ${profile.email} (${profile.full_name || 'Unknown'})`);
 
-    try {
-      const result = await sendZohoEmail(accessToken, profile.email, subject, htmlContent);
+    const result = await sendSmtpEmail(
+      host,
+      465,
+      username,
+      password,
+      username,
+      profile.email,
+      subject,
+      htmlContent
+    );
 
-      if (result.success) {
-        console.log(`[Background] ✓ Email enviado com sucesso para ${profile.email}`);
-      } else {
-        console.error(`[Background] Falha ao enviar para ${profile.email}: ${result.error}`);
-      }
-
-      // Log the send attempt
-      await supabase.from('email_logs').insert({
-        announcement_id: announcement.id,
-        condominium_id: condominium.id,
-        recipient_email: profile.email,
-        recipient_name: profile.full_name,
-        status: result.success ? 'sent' : 'failed',
-        error_message: result.error || null,
-      });
-
-    } catch (sendError) {
-      console.error(`[Background] Exceção ao enviar para ${profile.email}:`, sendError);
-
-      await supabase.from('email_logs').insert({
-        announcement_id: announcement.id,
-        condominium_id: condominium.id,
-        recipient_email: profile.email,
-        recipient_name: profile.full_name,
-        status: 'failed',
-        error_message: sendError instanceof Error ? sendError.message : 'Unknown error',
-      });
+    if (result.success) {
+      console.log(`[Background] ✓ Email enviado com sucesso para ${profile.email}`);
+    } else {
+      console.error(`[Background] Falha ao enviar para ${profile.email}: ${result.error}`);
     }
+
+    // Log the result
+    await supabase.from('email_logs').insert({
+      announcement_id: announcement.id,
+      condominium_id: condominium.id,
+      recipient_email: profile.email,
+      recipient_name: profile.full_name,
+      status: result.success ? 'sent' : 'failed',
+      error_message: result.error || null,
+    });
   }
 
   console.log(`[Background] ✓ Processamento de emails concluído para ${members.length} membros`);
@@ -312,22 +350,15 @@ serve(async (req) => {
 
   try {
     // Check required environment variables
-    const requiredEnvVars = [
-      'ZOHO_CLIENT_ID',
-      'ZOHO_CLIENT_SECRET', 
-      'ZOHO_REFRESH_TOKEN',
-      'ZOHO_ACCOUNT_ID',
-      'ZOHO_FROM_EMAIL',
-    ];
+    const ZOHO_SMTP_USER = Deno.env.get('ZOHO_SMTP_USER');
+    const ZOHO_SMTP_PASSWORD = Deno.env.get('ZOHO_SMTP_PASSWORD');
 
-    for (const envVar of requiredEnvVars) {
-      if (!Deno.env.get(envVar)) {
-        console.error(`${envVar} not configured`);
-        return new Response(
-          JSON.stringify({ error: `${envVar} não configurado` }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    if (!ZOHO_SMTP_USER || !ZOHO_SMTP_PASSWORD) {
+      console.error("SMTP credentials not configured");
+      return new Response(
+        JSON.stringify({ error: "Credenciais SMTP não configuradas" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const { announcement, condominium, baseUrl }: RequestBody = await req.json();

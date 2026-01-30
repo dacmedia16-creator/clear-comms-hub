@@ -88,18 +88,24 @@ export function SalesChatbot() {
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "fixed bottom-6 right-6 z-50 flex items-center justify-center",
-          "w-14 h-14 rounded-full shadow-lg transition-all duration-300",
+          "w-14 h-14 rounded-full shadow-lg",
           "bg-primary text-primary-foreground hover:bg-primary/90",
-          "hover:scale-105 active:scale-95",
-          isOpen && "rotate-90"
+          "transition-transform duration-300 ease-out",
+          "hover:scale-110 active:scale-95",
+          !isOpen && "animate-pulse-subtle"
         )}
         aria-label={isOpen ? "Fechar chat" : "Abrir chat"}
       >
-        {isOpen ? (
-          <X className="w-6 h-6" />
-        ) : (
-          <MessageCircle className="w-6 h-6" />
-        )}
+        <div className={cn(
+          "transition-transform duration-300",
+          isOpen && "rotate-90"
+        )}>
+          {isOpen ? (
+            <X className="w-6 h-6" />
+          ) : (
+            <MessageCircle className="w-6 h-6" />
+          )}
+        </div>
       </button>
 
       {/* Chat Panel */}
@@ -107,15 +113,18 @@ export function SalesChatbot() {
         className={cn(
           "fixed bottom-24 right-6 z-50 w-[360px] max-w-[calc(100vw-3rem)]",
           "bg-background border border-border rounded-2xl shadow-2xl",
-          "flex flex-col overflow-hidden transition-all duration-300",
+          "flex flex-col overflow-hidden",
           isOpen
-            ? "opacity-100 translate-y-0 pointer-events-auto"
-            : "opacity-0 translate-y-4 pointer-events-none"
+            ? "animate-chat-panel-enter pointer-events-auto"
+            : "opacity-0 scale-95 translate-y-5 pointer-events-none"
         )}
         style={{ height: "min(500px, calc(100vh - 180px))" }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+        <div className={cn(
+          "flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30",
+          isOpen && "animate-chat-content-enter"
+        )}>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
               <MessageCircle className="w-5 h-5 text-primary-foreground" />
@@ -143,7 +152,10 @@ export function SalesChatbot() {
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef}>
+        <ScrollArea className={cn(
+          "flex-1 px-4 py-4",
+          isOpen && "animate-chat-content-enter [animation-delay:100ms] opacity-0 [animation-fill-mode:forwards]"
+        )} ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="text-center py-8">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -191,7 +203,10 @@ export function SalesChatbot() {
         {/* Input */}
         <form
           onSubmit={handleSubmit}
-          className="px-4 py-3 border-t border-border bg-background"
+          className={cn(
+            "px-4 py-3 border-t border-border bg-background",
+            isOpen && "animate-chat-content-enter [animation-delay:200ms] opacity-0 [animation-fill-mode:forwards]"
+          )}
         >
           <div className="flex items-end gap-2">
             <textarea

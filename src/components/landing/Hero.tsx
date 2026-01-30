@@ -33,8 +33,8 @@ export function Hero() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
               <Button asChild size="lg" className="touch-target text-base font-semibold px-8">
-                <Link to="/auth/signup">
-                  Começar gratuitamente
+              <Link to="/auth/signup">
+                  Começar agora
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Link>
               </Button>
@@ -45,19 +45,9 @@ export function Hero() {
               </Button>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-primary" />
-                <span>Gratuito para começar</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-primary" />
-                <span>Sem cartão de crédito</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-primary" />
-                <span>Configuração em 2 minutos</span>
-              </div>
+            <div className="flex items-center gap-2 justify-center lg:justify-start text-sm text-muted-foreground">
+              <CheckCircle className="w-4 h-4 text-primary" />
+              <span>Configuração em 2 minutos</span>
             </div>
           </div>
 

@@ -1,52 +1,87 @@
 
-## Diagnóstico (o que aconteceu)
-- A rota nova **já existe**: `/super-admin/notifications` está configurada no `src/App.tsx` e o arquivo `src/pages/super-admin/SuperAdminNotifications.tsx` está presente.
-- Porém, o menu e os botões do Super Admin **ainda apontam para a rota antiga** `/super-admin/whatsapp`:
-  - Em `src/pages/super-admin/SuperAdminDashboard.tsx` o card “API WhatsApp” (e o botão “Gerenciar API”) navega para `/super-admin/whatsapp`.
-  - O mesmo link antigo aparece nos itens do menu inferior (mobile) em outras telas do super-admin (`SuperAdminUsers`, `SuperAdminTimelines`, `SuperAdminCondominiums`, `SuperAdminCondoMembers`).
-- Como a rota antiga `/super-admin/whatsapp` **não existe mais**, ao clicar você cai em “nada”/NotFound, então “a API do whats não abre mais” e “não apareceu nada”.
+# Melhorar Chat da IA - Markdown + Efeito Typewriter
 
-## Objetivo
-- Centralizar tudo em **um único local**: `/super-admin/notifications`
-- Garantir que links antigos não quebrem (compatibilidade): `/super-admin/whatsapp` redireciona para `/super-admin/notifications`
+## Problemas Identificados
 
-## Mudanças que vou implementar
-### 1) Corrigir navegação no Super Admin (telas + menu)
-Atualizar todos os locais que hoje usam `/super-admin/whatsapp` para `/super-admin/notifications`, incluindo:
-- `src/pages/super-admin/SuperAdminDashboard.tsx`
-  - Trocar o card “API WhatsApp” para “Notificações” (ou “Central de Notificações”)
-  - Trocar o botão “Gerenciar API” para apontar para `/super-admin/notifications`
-  - Atualizar `superAdminNavItems` (mobile) para “Notificações”
-- `src/pages/super-admin/SuperAdminUsers.tsx`
-- `src/pages/super-admin/SuperAdminTimelines.tsx`
-- `src/pages/super-admin/SuperAdminCondominiums.tsx`
-- `src/pages/super-admin/SuperAdminCondoMembers.tsx`
-  - Atualizar `superAdminNavItems` para remover “WhatsApp” e substituir por “Notificações”
+1. **Asteriscos visíveis** - O texto `**negrito**` aparece literalmente ao invés de ser formatado
+2. **Texto aparece de uma vez** - Não há efeito visual de digitação progressiva
 
-### 2) Adicionar rota de compatibilidade (redirect)
-No `src/App.tsx`, adicionar uma rota extra:
-- `/super-admin/whatsapp` → redireciona automaticamente para `/super-admin/notifications`
+## Solução
 
-Isso garante que qualquer link antigo (inclusive se alguém salvou nos favoritos) continue funcionando.
+### 1. Renderização de Markdown
+Instalar e usar a biblioteca `react-markdown` para renderizar corretamente:
+- **Negrito** (`**texto**`)
+- *Itálico* (`*texto*`)
+- Listas
+- Links
+- Código inline
 
-### 3) Checagens rápidas pós-ajuste (para garantir que “apareceu”)
-Depois das mudanças:
-- Acessar `/super-admin` e clicar no card de Notificações (deve abrir a Central).
-- Acessar diretamente `/super-admin/whatsapp` (deve redirecionar para `/super-admin/notifications`).
-- Validar navegação no mobile (menu inferior) em todas as telas do Super Admin.
+### 2. Efeito Typewriter (Digitação Gradual)
+O streaming já funciona (recebemos chunk por chunk da API), mas os chunks vêm em blocos grandes. Vou adicionar um efeito visual que simula digitação:
+- Quando um novo chunk chega, ele é exibido caractere por caractere
+- Velocidade configurável (~20-30ms por caractere)
+- Suave e natural
 
-## Observação importante
-A tela `SuperAdminNotifications.tsx` já está criada e parece correta; o problema principal agora é **somente roteamento/navegação ainda apontando para o caminho antigo**.
+## Mudanças Técnicas
 
-## Arquivos que serão alterados
-- `src/App.tsx` (adicionar redirect `/super-admin/whatsapp`)
-- `src/pages/super-admin/SuperAdminDashboard.tsx` (botão/card + nav items)
-- `src/pages/super-admin/SuperAdminUsers.tsx` (nav items)
-- `src/pages/super-admin/SuperAdminTimelines.tsx` (nav items)
-- `src/pages/super-admin/SuperAdminCondominiums.tsx` (nav items)
-- `src/pages/super-admin/SuperAdminCondoMembers.tsx` (nav items)
+### Arquivos a Modificar
 
-## Resultado esperado
-- O botão “Gerenciar API” que você mostrou no print vai abrir a **Central de Notificações** corretamente.
-- O WhatsApp “não some”: ele passa a ser um dos cards/abas dentro da Central.
-- Links antigos continuam funcionando via redirecionamento.
+| Arquivo | Mudança |
+|---------|---------|
+| `package.json` | Adicionar `react-markdown` |
+| `src/components/landing/SalesChatbot.tsx` | Usar ReactMarkdown + efeito typewriter |
+
+### Nova Estrutura do ChatMessage
+
+```tsx
+import ReactMarkdown from 'react-markdown';
+
+function ChatMessage({ message, isStreaming }: { message: Message; isStreaming?: boolean }) {
+  const [displayedContent, setDisplayedContent] = useState("");
+  
+  // Efeito typewriter para mensagens do assistente
+  useEffect(() => {
+    if (message.role === "user") {
+      setDisplayedContent(message.content);
+      return;
+    }
+    
+    // Typewriter: adiciona caracteres gradualmente
+    // ...lógica de animação
+  }, [message.content]);
+
+  return (
+    <div className={...}>
+      {isUser ? (
+        <p>{message.content}</p>
+      ) : (
+        <ReactMarkdown className="prose prose-sm">
+          {displayedContent}
+        </ReactMarkdown>
+      )}
+    </div>
+  );
+}
+```
+
+### Configuração de Estilos do Markdown
+
+Adicionar classes CSS para o markdown ficar bonito no chat:
+- Parágrafos com espaçamento correto
+- Links coloridos
+- Listas formatadas
+- Código com fundo destacado
+
+## Resultado Esperado
+
+| Antes | Depois |
+|-------|--------|
+| `**AVISO PRO**` | **AVISO PRO** |
+| Texto aparece em blocos | Texto aparece letra por letra |
+| Formatação quebrada | Listas, negrito, itálico funcionando |
+
+## Velocidade do Typewriter
+
+- **Rápido**: ~15ms por caractere (parece natural)
+- Quando o streaming termina, o texto restante aparece imediatamente
+- Mensagens do usuário aparecem instantaneamente

@@ -21,6 +21,7 @@ import SuperAdminUsers from "./pages/super-admin/SuperAdminUsers";
 import SuperAdminTimelines from "./pages/super-admin/SuperAdminTimelines";
 import SuperAdminWhatsApp from "./pages/super-admin/SuperAdminWhatsApp";
 import ProfilePage from "./pages/ProfilePage";
+import DemoPage from "./pages/DemoPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/auth/signup/resident" element={<SignupResidentPage />} />
             <Route path="/auth/signup/syndic" element={<SignupSyndicPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/demo" element={<DemoPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin/:condoId" element={<AdminCondominiumPage />} />
             <Route path="/admin/:condoId/settings" element={<CondominiumSettingsPage />} />

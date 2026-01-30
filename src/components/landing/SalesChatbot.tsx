@@ -1,12 +1,43 @@
 import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send, Loader2, Trash2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useSalesChat, type Message } from "@/hooks/useSalesChat";
 
-function ChatMessage({ message }: { message: Message }) {
+function ChatMessage({ message, isStreaming }: { message: Message; isStreaming?: boolean }) {
   const isUser = message.role === "user";
+  const [displayedContent, setDisplayedContent] = useState("");
+  const targetContent = message.content;
+
+  // Typewriter effect for assistant messages
+  useEffect(() => {
+    if (isUser) {
+      setDisplayedContent(targetContent);
+      return;
+    }
+
+    // If we're behind, animate to catch up
+    if (displayedContent.length < targetContent.length) {
+      const timer = setTimeout(() => {
+        // Add multiple characters at once for smoother feel during streaming
+        const charsToAdd = isStreaming ? 3 : 5;
+        const nextLength = Math.min(displayedContent.length + charsToAdd, targetContent.length);
+        setDisplayedContent(targetContent.slice(0, nextLength));
+      }, 15);
+      return () => clearTimeout(timer);
+    }
+  }, [isUser, targetContent, displayedContent, isStreaming]);
+
+  // Reset when message changes completely (new message)
+  useEffect(() => {
+    if (isUser) {
+      setDisplayedContent(targetContent);
+    } else if (!targetContent.startsWith(displayedContent.slice(0, 10))) {
+      setDisplayedContent("");
+    }
+  }, [targetContent, isUser]);
 
   return (
     <div
@@ -23,9 +54,39 @@ function ChatMessage({ message }: { message: Message }) {
             : "bg-muted text-foreground rounded-bl-md"
         )}
       >
-        <p className="whitespace-pre-wrap break-words leading-relaxed">
-          {message.content}
-        </p>
+        {isUser ? (
+          <p className="whitespace-pre-wrap break-words leading-relaxed">
+            {message.content}
+          </p>
+        ) : (
+          <div className="chat-markdown prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+                em: ({ children }) => <em className="italic">{children}</em>,
+                ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                a: ({ href, children }) => (
+                  <a href={href} className="text-primary underline hover:no-underline" target="_blank" rel="noopener noreferrer">
+                    {children}
+                  </a>
+                ),
+                code: ({ children }) => (
+                  <code className="bg-muted-foreground/20 px-1.5 py-0.5 rounded text-xs font-mono">
+                    {children}
+                  </code>
+                ),
+              }}
+            >
+              {displayedContent || " "}
+            </ReactMarkdown>
+            {isStreaming && displayedContent.length < targetContent.length && (
+              <span className="inline-block w-1.5 h-4 bg-foreground/50 animate-pulse ml-0.5 align-middle" />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -186,7 +247,11 @@ export function SalesChatbot() {
           ) : (
             <>
               {messages.map((msg, i) => (
-                <ChatMessage key={i} message={msg} />
+                <ChatMessage 
+                  key={i} 
+                  message={msg} 
+                  isStreaming={isLoading && i === messages.length - 1 && msg.role === "assistant"}
+                />
               ))}
               {isLoading && messages[messages.length - 1]?.role === "user" && (
                 <TypingIndicator />

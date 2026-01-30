@@ -1,47 +1,41 @@
 
-# Adicionar Logo na Barra de Navegacao
+# Atualizar Favicon com Logo
 
 ## Objetivo
-Substituir o icone atual (Bell/sino) pelo logo personalizado enviado na barra de navegacao do site.
+Substituir o favicon padrão pelo logo do AVISO PRO que já está salvo no projeto.
 
 ---
 
-## Passos de Implementacao
+## Passos de Implementação
 
-### 1. Copiar a Imagem para o Projeto
-Copiar o arquivo `user-uploads://image-25.png` para `src/assets/logo.png`
+### 1. Copiar o Logo para a Pasta Public
+Copiar o arquivo `src/assets/logo.png` para `public/favicon.png` para que seja acessível como favicon.
 
-### 2. Atualizar o Header.tsx
+### 2. Atualizar index.html
+Adicionar a tag `<link>` para referenciar o novo favicon:
 
-**Alteracoes:**
-- Importar a imagem do logo como modulo ES6
-- Substituir a `<div>` com o icone Bell por uma tag `<img>` com o logo
-
-**Codigo atual (linhas 14-18):**
-```jsx
-<Link to="/" className="flex items-center gap-2">
-  <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-    <Bell className="w-5 h-5 text-primary-foreground" />
-  </div>
-  <span className="font-display text-xl font-bold text-foreground">AVISO PRO</span>
-</Link>
-```
-
-**Codigo atualizado:**
-```jsx
-import logo from "@/assets/logo.png";
-
-<Link to="/" className="flex items-center gap-2">
-  <img src={logo} alt="AVISO PRO" className="w-9 h-9 rounded-lg" />
-  <span className="font-display text-xl font-bold text-foreground">AVISO PRO</span>
-</Link>
+```html
+<link rel="icon" type="image/png" href="/favicon.png" />
 ```
 
 ---
 
-## Resumo
+## Resumo das Alterações
 
-| Tarefa | Arquivo |
-|--------|---------|
-| Copiar logo | `src/assets/logo.png` |
-| Importar e usar logo | `src/components/landing/Header.tsx` |
+| Arquivo | Alteração |
+|---------|-----------|
+| `public/favicon.png` | Copiar logo para pasta public |
+| `index.html` | Adicionar link para favicon |
+
+---
+
+## Código Final (index.html - linha 5)
+
+```html
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  ...
+</head>
+```

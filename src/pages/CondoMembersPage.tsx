@@ -11,10 +11,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCondoMembers, getMemberDisplayName, getMemberEmail, getMemberPhone, getMemberLocation } from "@/hooks/useCondoMembers";
+import { useCondoMembers, getMemberDisplayName, getMemberEmail, getMemberPhone, getMemberLocation, CondoMember } from "@/hooks/useCondoMembers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check, Bell, Settings, FileText, Upload } from "lucide-react";
+import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check, Bell, Settings, FileText, Upload, Pencil } from "lucide-react";
+import { EditMemberDialog, UpdateMemberData } from "@/components/EditMemberDialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -43,7 +44,7 @@ export default function CondoMembersPage() {
   const { condoId } = useParams<{ condoId: string }>();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { members, loading, createMember, removeMember, approveMember, importMembers } = useCondoMembers(condoId || "");
+  const { members, loading, createMember, removeMember, approveMember, importMembers, updateMember } = useCondoMembers(condoId || "");
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -52,6 +53,8 @@ export default function CondoMembersPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<CondoMember | null>(null);
 
   // Nav items for syndic
   const syndicNavItems: MobileNavItem[] = condoId ? [
@@ -182,6 +185,25 @@ export default function CondoMembersPage() {
     return result;
   };
 
+  const handleEditMember = (member: CondoMember) => {
+    setEditingMember(member);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveMember = async (roleId: string, data: UpdateMemberData) => {
+    const result = await updateMember(roleId, data);
+    if (result.success) {
+      toast({ title: "Morador atualizado com sucesso!" });
+    } else {
+      toast({
+        title: "Erro ao atualizar morador",
+        description: result.error,
+        variant: "destructive",
+      });
+    }
+    return result;
+  };
+
   if (authLoading || hasAccess === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -234,6 +256,14 @@ export default function CondoMembersPage() {
           </div>
         </div>
       </header>
+
+      {/* Edit Member Dialog */}
+      <EditMemberDialog
+        member={editingMember}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSave={handleSaveMember}
+      />
 
       {/* Import Members Dialog */}
       <ImportMembersDialog
@@ -309,6 +339,13 @@ export default function CondoMembersPage() {
                     }
                     actions={
                       <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditMember(member)}
+                        >
+                          <Pencil className="w-4 h-4 text-muted-foreground" />
+                        </Button>
                         {!member.is_approved && (
                           <Button
                             variant="ghost"
@@ -408,6 +445,14 @@ export default function CondoMembersPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditMember(member)}
+                              title="Editar membro"
+                            >
+                              <Pencil className="w-4 h-4 text-muted-foreground" />
+                            </Button>
                             {!member.is_approved && (
                               <Button
                                 variant="ghost"

@@ -1,54 +1,77 @@
 
 
-# Atualizar Credenciais OAuth do Zoho Mail
+# Corrigir Erro invalid_client na Integracao Zoho Mail
 
-## Contexto
-A resposta JSON da primeira execucao do `curl` continha o refresh_token permanente. As tentativas seguintes falharam com `invalid_code` porque o Authorization Code so pode ser usado uma vez.
+## Diagnostico
 
-## Dados Extraidos da Imagem
+O erro `invalid_client` ocorre quando o Zoho nao reconhece as credenciais Client ID e Client Secret. Os logs mostram:
 
-| Credencial | Valor |
-|------------|-------|
-| Client ID | `1000.DLY9XL72LNIMTTTGF8TJ81X2UCB5JU` |
-| Client Secret | `1de2d6b114c44c889ad23d82e8b211f7239ed11f57` |
-| Refresh Token | `1000.24832c31d7ab9a7cb2806bb237c6daed.505718df37cb835ae97a8460eb6d50f0` |
+```
+[Zoho] No access_token in response: { error: "invalid_client" }
+```
 
-## Plano de Implementacao
+Isso significa que os valores salvos nos segredos do backend nao correspondem exatamente aos valores do Zoho API Console.
 
-### Passo 1: Atualizar ZOHO_CLIENT_ID
-Substituir o valor atual do segredo `ZOHO_CLIENT_ID` pelo novo Client ID.
+## Causa Provavel
 
-### Passo 2: Atualizar ZOHO_CLIENT_SECRET  
-Substituir o valor atual do segredo `ZOHO_CLIENT_SECRET` pelo novo Client Secret.
+Quando os segredos foram atualizados, pode ter ocorrido:
+1. Espaco em branco extra no inicio ou fim dos valores
+2. Caracter invisivel copiado junto com o texto
+3. Valores truncados ou incompletos
 
-### Passo 3: Atualizar ZOHO_REFRESH_TOKEN
-Substituir o valor atual do segredo `ZOHO_REFRESH_TOKEN` pelo refresh_token permanente obtido.
+## Plano de Correcao
 
-### Passo 4: Testar a Integracao
-Disparar um envio de email de teste para confirmar que a Edge Function `send-email` consegue renovar o access_token automaticamente e enviar emails via Zoho Mail API.
+### Passo 1: Verificar Dominio Zoho
 
-## Resultado Esperado
-Apos a atualizacao dos tres segredos, o sistema de envio de emails funcionara corretamente, pois:
-- O refresh_token permanente permite renovar o access_token sempre que necessario
-- As credenciais Client ID e Client Secret correspondem ao mesmo Self Client do Zoho API Console
+Confirmar qual dominio Zoho o usuario utiliza:
+- Se `zoho.com.br` ou `zoho.eu`, a Edge Function precisa ser atualizada para usar as URLs corretas
+
+### Passo 2: Atualizar Edge Function (se necessario)
+
+Se o dominio nao for `.com`, modificar as URLs na Edge Function:
+- Token URL: `accounts.zoho.{dominio}/oauth/v2/token`
+- Mail API: `mail.zoho.{dominio}/api/accounts/...`
+
+### Passo 3: Re-inserir Credenciais
+
+Solicitar ao usuario que insira novamente as credenciais, copiando diretamente do Zoho API Console:
+- ZOHO_CLIENT_ID
+- ZOHO_CLIENT_SECRET
+- ZOHO_REFRESH_TOKEN
+
+### Passo 4: Testar Novamente
+
+Executar um teste de envio de email para validar a integracao.
 
 ## Secao Tecnica
 
-A Edge Function `send-email` utiliza o fluxo OAuth 2.0 com refresh token:
+### Dominios Zoho por Regiao
 
-```text
-+-------------------+     +-------------------+     +-------------------+
-|   Edge Function   | --> |    Zoho OAuth     | --> |   Zoho Mail API   |
-|   send-email      |     |   /oauth/v2/token |     |   /api/accounts/  |
-+-------------------+     +-------------------+     +-------------------+
-        |                         |                         |
-        | refresh_token           | access_token            | send email
-        | client_id               | (valido 1h)             |
-        | client_secret           |                         |
+| Regiao | Dominio OAuth | Dominio Mail API |
+|--------|---------------|------------------|
+| EUA/Global | accounts.zoho.com | mail.zoho.com |
+| Europa | accounts.zoho.eu | mail.zoho.eu |
+| Brasil | accounts.zoho.com.br | mail.zoho.com.br |
+| India | accounts.zoho.in | mail.zoho.in |
+
+### Modificacao na Edge Function
+
+Se o usuario usar dominio brasileiro, a funcao `renewZohoAccessToken` deve usar:
+
+```typescript
+const tokenUrl = `https://accounts.zoho.com.br/oauth/v2/token?...`
 ```
 
-O refresh_token nao expira enquanto:
-- Nao for revogado manualmente
-- As credenciais do Self Client nao forem alteradas
-- O usuario nao remover a autorizacao
+E a funcao `sendZohoEmail` deve usar:
+
+```typescript
+const response = await fetch(
+  `https://mail.zoho.com.br/api/accounts/${ZOHO_ACCOUNT_ID}/messages`,
+  ...
+)
+```
+
+### Alternativa: Variavel de Ambiente
+
+Criar um novo segredo `ZOHO_DOMAIN` para configurar o dominio dinamicamente sem alterar o codigo.
 

@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.sales-chat]
 verify_jwt = false
+
+[functions.create-member]
+verify_jwt = false

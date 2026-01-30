@@ -71,19 +71,19 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Call SMSFire API v3
-    const response = await fetch('https://api.smsfire.com.br/v3/sms/send', {
-      method: 'POST',
+    // Generate Base64 token for Basic auth (username:password)
+    const token = btoa(`${SMSFIRE_USERNAME}:${SMSFIRE_API_TOKEN}`);
+
+    // Call SMSFire API v2 with GET and query params
+    const url = new URL('https://api-v2.smsfire.com.br/sms/send/individual');
+    url.searchParams.set('to', formattedPhone);
+    url.searchParams.set('text', TEST_MESSAGE);
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'Username': SMSFIRE_USERNAME,
-        'Api_Token': SMSFIRE_API_TOKEN,
+        'Authorization': `Basic ${token}`,
       },
-      body: JSON.stringify({
-        to: formattedPhone,
-        from: 'Condominio',
-        text: TEST_MESSAGE,
-      }),
     });
 
     const responseData = await response.json();

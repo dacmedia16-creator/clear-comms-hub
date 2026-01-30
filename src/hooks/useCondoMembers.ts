@@ -108,34 +108,23 @@ export function useCondoMembers(condoId: string) {
     role: "admin" | "syndic" | "resident" | "collaborator";
   }) => {
     try {
-      // 1. Create profile without auth user (using a placeholder user_id)
-      // We use gen_random_uuid() pattern for profiles without login
-      const placeholderUserId = crypto.randomUUID();
-      
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .insert({
-          user_id: placeholderUserId,
-          full_name: memberData.fullName,
-          email: memberData.email,
+      // Call edge function to create member (bypasses RLS safely)
+      const { data, error } = await supabase.functions.invoke('create-member', {
+        body: {
+          condominiumId: condoId,
+          fullName: memberData.fullName,
           phone: memberData.phone,
-        })
-        .select("id")
-        .single();
-
-      if (profileError) throw profileError;
-
-      // 2. Create user_role linking profile to condominium
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({
-          condominium_id: condoId,
-          user_id: profileData.id,
-          role: memberData.role,
+          email: memberData.email,
           unit: memberData.unit,
-        });
+          role: memberData.role,
+        }
+      });
 
-      if (roleError) throw roleError;
+      if (error) throw error;
+      
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       await fetchMembers();
       return { success: true };

@@ -111,22 +111,14 @@ export function useSyndicReferrals() {
 
       if (error) throw error;
 
-      // Update local state with new sent status
-      if (data) {
-        setReferrals((prev) =>
-          prev.map((r) =>
-            r.id === id
-              ? {
-                  ...r,
-                  whatsapp_sent: channel === "whatsapp" || channel === "both" ? data.whatsappSent : r.whatsapp_sent,
-                  email_sent: channel === "email" || channel === "both" ? data.emailSent : r.email_sent,
-                }
-              : r
-          )
-        );
+      // Background processing - refresh after 5 seconds to get updated status
+      if (data?.success && data?.processing) {
+        setTimeout(() => {
+          fetchReferrals();
+        }, 5000);
       }
 
-      return { success: true, message: data?.message };
+      return { success: true, message: data?.message || "Reenvio iniciado!" };
     } catch (err) {
       console.error("Error resending notification:", err);
       return { success: false, message: "Erro ao reenviar notificação" };

@@ -1,10 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { SuperAdminGuard } from "@/components/SuperAdminGuard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -28,9 +30,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAllCondominiums } from "@/hooks/useAllCondominiums";
+import { usePlans, Plan, CreatePlanInput } from "@/hooks/usePlans";
 import { useAuth } from "@/hooks/useAuth";
-import { PLANS, PlanType } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { RefreshButton } from "@/components/RefreshButton";
@@ -48,6 +60,9 @@ import {
   Pencil,
   Check,
   AlertTriangle,
+  Plus,
+  Trash2,
+  X,
 } from "lucide-react";
 import { differenceInDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -60,33 +75,72 @@ const superAdminNavItems: MobileNavItem[] = [
   { icon: Bell, label: "Notificações", path: "/super-admin/notifications" },
 ];
 
-const PLAN_BADGES: Record<PlanType, { label: string; className: string }> = {
-  free: { label: "Gratuito", className: "bg-muted text-muted-foreground" },
-  starter: { label: "Inicial", className: "bg-amber-100 text-amber-700" },
-  pro: { label: "Profissional", className: "bg-primary/10 text-primary" },
-};
+const BADGE_OPTIONS = [
+  { label: "Cinza", value: "bg-muted text-muted-foreground" },
+  { label: "Âmbar", value: "bg-amber-100 text-amber-700" },
+  { label: "Verde", value: "bg-emerald-100 text-emerald-700" },
+  { label: "Azul", value: "bg-blue-100 text-blue-700" },
+  { label: "Roxo", value: "bg-purple-100 text-purple-700" },
+  { label: "Primário", value: "bg-primary/10 text-primary" },
+];
+
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, "-")
+    .substring(0, 30);
+}
 
 export default function SuperAdminPlans() {
   const { signOut } = useAuth();
-  const { condominiums, loading, refetch } = useAllCondominiums();
+  const { condominiums, loading: loadingCondos, refetch: refetchCondos } = useAllCondominiums();
+  const { plans, loading: loadingPlans, refetch: refetchPlans, createPlan, updatePlan, deletePlan } = usePlans();
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [planFilter, setPlanFilter] = useState<string>("all");
+  
+  // Condo plan edit dialog
   const [editingCondo, setEditingCondo] = useState<{
     id: string;
     name: string;
-    currentPlan: PlanType;
+    currentPlan: string;
   } | null>(null);
-  const [newPlan, setNewPlan] = useState<PlanType>("free");
-  const [updating, setUpdating] = useState(false);
+  const [newCondoPlan, setNewCondoPlan] = useState<string>("");
+  const [updatingCondo, setUpdatingCondo] = useState(false);
+  
+  // Plan CRUD dialog
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [savingPlan, setSavingPlan] = useState(false);
+  
+  // Delete confirmation
+  const [deletingPlan, setDeletingPlan] = useState<Plan | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Plan form state
+  const [planName, setPlanName] = useState("");
+  const [planSlug, setPlanSlug] = useState("");
+  const [planPrice, setPlanPrice] = useState("");
+  const [planAnnouncements, setPlanAnnouncements] = useState("");
+  const [planAttachmentSize, setPlanAttachmentSize] = useState("");
+  const [planFeatures, setPlanFeatures] = useState<string[]>([]);
+  const [newFeature, setNewFeature] = useState("");
+  const [planBadgeClass, setPlanBadgeClass] = useState(BADGE_OPTIONS[0].value);
+  const [planIsActive, setPlanIsActive] = useState(true);
 
-  // Calculate stats
+  const loading = loadingCondos || loadingPlans;
+
+  // Calculate stats based on dynamic plans
   const stats = useMemo(() => {
-    return {
-      free: condominiums.filter((c) => c.plan === "free").length,
-      starter: condominiums.filter((c) => c.plan === "starter").length,
-      pro: condominiums.filter((c) => c.plan === "pro").length,
-    };
-  }, [condominiums]);
+    const result: Record<string, number> = {};
+    plans.forEach(plan => {
+      result[plan.slug] = condominiums.filter(c => c.plan === plan.slug).length;
+    });
+    return result;
+  }, [condominiums, plans]);
 
   // Filtered condominiums
   const filteredCondominiums = useMemo(() => {
@@ -113,26 +167,42 @@ export default function SuperAdminPlans() {
     };
   };
 
-  // Update plan handler
-  const handleUpdatePlan = async () => {
-    if (!editingCondo) return;
+  // Get plan badge info
+  const getPlanBadge = (planSlug: string) => {
+    const plan = plans.find(p => p.slug === planSlug);
+    if (plan) {
+      return { label: plan.name, className: plan.badge_class };
+    }
+    return { label: planSlug, className: "bg-muted text-muted-foreground" };
+  };
 
-    setUpdating(true);
+  // Format price for display
+  const formatPrice = (priceInCents: number) => {
+    if (priceInCents === 0) return "Grátis";
+    return `R$ ${(priceInCents / 100).toFixed(0)}/mês`;
+  };
+
+  // Update condo plan handler
+  const handleUpdateCondoPlan = async () => {
+    if (!editingCondo || !newCondoPlan) return;
+
+    setUpdatingCondo(true);
     try {
       const { error } = await supabase
         .from("condominiums")
-        .update({ plan: newPlan })
+        .update({ plan: newCondoPlan })
         .eq("id", editingCondo.id);
 
       if (error) throw error;
 
+      const newPlanInfo = getPlanBadge(newCondoPlan);
       toast({
         title: "Plano atualizado",
-        description: `${editingCondo.name} agora está no plano ${PLAN_BADGES[newPlan].label}`,
+        description: `${editingCondo.name} agora está no plano ${newPlanInfo.label}`,
       });
 
       setEditingCondo(null);
-      refetch();
+      refetchCondos();
     } catch (error: any) {
       toast({
         title: "Erro ao atualizar plano",
@@ -140,21 +210,116 @@ export default function SuperAdminPlans() {
         variant: "destructive",
       });
     } finally {
-      setUpdating(false);
+      setUpdatingCondo(false);
     }
   };
 
-  const openEditDialog = (condo: {
-    id: string;
-    name: string;
-    plan: PlanType;
-  }) => {
+  const openEditCondoDialog = (condo: { id: string; name: string; plan: string }) => {
     setEditingCondo({
       id: condo.id,
       name: condo.name,
       currentPlan: condo.plan,
     });
-    setNewPlan(condo.plan);
+    setNewCondoPlan(condo.plan);
+  };
+
+  // Plan CRUD handlers
+  const openNewPlanDialog = () => {
+    setEditingPlan(null);
+    setPlanName("");
+    setPlanSlug("");
+    setPlanPrice("0");
+    setPlanAnnouncements("10");
+    setPlanAttachmentSize("2");
+    setPlanFeatures([]);
+    setNewFeature("");
+    setPlanBadgeClass(BADGE_OPTIONS[0].value);
+    setPlanIsActive(true);
+    setPlanDialogOpen(true);
+  };
+
+  const openEditPlanDialog = (plan: Plan) => {
+    setEditingPlan(plan);
+    setPlanName(plan.name);
+    setPlanSlug(plan.slug);
+    setPlanPrice(String(plan.price / 100));
+    setPlanAnnouncements(String(plan.announcements_per_month));
+    setPlanAttachmentSize(String(plan.max_attachment_size_mb));
+    setPlanFeatures([...plan.features]);
+    setNewFeature("");
+    setPlanBadgeClass(plan.badge_class);
+    setPlanIsActive(plan.is_active);
+    setPlanDialogOpen(true);
+  };
+
+  const handleAddFeature = () => {
+    if (newFeature.trim()) {
+      setPlanFeatures([...planFeatures, newFeature.trim()]);
+      setNewFeature("");
+    }
+  };
+
+  const handleRemoveFeature = (index: number) => {
+    setPlanFeatures(planFeatures.filter((_, i) => i !== index));
+  };
+
+  // Auto-generate slug from name
+  useEffect(() => {
+    if (!editingPlan && planName) {
+      setPlanSlug(generateSlug(planName));
+    }
+  }, [planName, editingPlan]);
+
+  const handleSavePlan = async () => {
+    if (!planName.trim() || !planSlug.trim()) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Nome e slug são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSavingPlan(true);
+    
+    const planData: CreatePlanInput = {
+      name: planName.trim(),
+      slug: planSlug.trim().toLowerCase(),
+      price: Math.round(parseFloat(planPrice || "0") * 100),
+      announcements_per_month: parseInt(planAnnouncements || "10"),
+      max_attachment_size_mb: parseInt(planAttachmentSize || "2"),
+      features: planFeatures,
+      badge_class: planBadgeClass,
+      is_active: planIsActive,
+    };
+
+    let success = false;
+    
+    if (editingPlan) {
+      const result = await updatePlan({ id: editingPlan.id, ...planData });
+      success = result !== null;
+    } else {
+      const result = await createPlan(planData);
+      success = result !== null;
+    }
+
+    setSavingPlan(false);
+    
+    if (success) {
+      setPlanDialogOpen(false);
+    }
+  };
+
+  const handleDeletePlan = async () => {
+    if (!deletingPlan) return;
+    
+    setIsDeleting(true);
+    const success = await deletePlan(deletingPlan.slug);
+    setIsDeleting(false);
+    
+    if (success) {
+      setDeletingPlan(null);
+    }
   };
 
   return (
@@ -182,6 +347,10 @@ export default function SuperAdminPlans() {
               </div>
 
               <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={openNewPlanDialog}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Plano
+                </Button>
                 <RefreshButton />
                 <Button variant="ghost" size="sm" onClick={() => signOut()}>
                   Sair
@@ -198,7 +367,7 @@ export default function SuperAdminPlans() {
               Gerenciador de Planos
             </h1>
             <p className="text-muted-foreground mt-1">
-              Visualize e gerencie os planos dos condomínios
+              Crie e gerencie os planos da plataforma
             </p>
           </div>
 
@@ -209,28 +378,25 @@ export default function SuperAdminPlans() {
           ) : (
             <>
               {/* Plan Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                {(Object.keys(PLANS) as PlanType[]).map((planKey) => {
-                  const plan = PLANS[planKey];
-                  const count = stats[planKey];
-                  const badge = PLAN_BADGES[planKey];
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                {plans.map((plan) => {
+                  const count = stats[plan.slug] || 0;
 
                   return (
                     <Card
-                      key={planKey}
+                      key={plan.id}
                       className={`relative overflow-hidden ${
-                        planKey === "pro"
-                          ? "border-primary/50 shadow-lg"
-                          : ""
+                        !plan.is_active ? "opacity-60" : ""
                       }`}
                     >
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
-                          <Badge className={badge.className}>{badge.label}</Badge>
+                          <Badge className={plan.badge_class}>
+                            {plan.name}
+                            {!plan.is_active && " (Inativo)"}
+                          </Badge>
                           <span className="text-2xl font-bold text-foreground">
-                            {plan.price === 0
-                              ? "Grátis"
-                              : `R$ ${plan.price}/mês`}
+                            {formatPrice(plan.price)}
                           </span>
                         </div>
                         <CardTitle className="text-4xl font-display mt-2">
@@ -241,14 +407,38 @@ export default function SuperAdminPlans() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <ul className="space-y-2 text-sm text-muted-foreground">
-                          {plan.features.map((feature, idx) => (
+                        <ul className="space-y-2 text-sm text-muted-foreground mb-4">
+                          {plan.features.slice(0, 5).map((feature, idx) => (
                             <li key={idx} className="flex items-center gap-2">
                               <Check className="w-4 h-4 text-primary flex-shrink-0" />
                               {feature}
                             </li>
                           ))}
+                          {plan.features.length > 5 && (
+                            <li className="text-xs text-muted-foreground">
+                              +{plan.features.length - 5} mais...
+                            </li>
+                          )}
                         </ul>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => openEditPlanDialog(plan)}
+                          >
+                            <Pencil className="w-4 h-4 mr-1" />
+                            Editar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDeletingPlan(plan)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   );
@@ -281,9 +471,11 @@ export default function SuperAdminPlans() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todos os planos</SelectItem>
-                        <SelectItem value="free">Gratuito</SelectItem>
-                        <SelectItem value="starter">Inicial</SelectItem>
-                        <SelectItem value="pro">Profissional</SelectItem>
+                        {plans.map((plan) => (
+                          <SelectItem key={plan.slug} value={plan.slug}>
+                            {plan.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -313,7 +505,7 @@ export default function SuperAdminPlans() {
                         ) : (
                           filteredCondominiums.map((condo) => {
                             const trial = getTrialStatus(condo.trial_ends_at);
-                            const badge = PLAN_BADGES[condo.plan];
+                            const badge = getPlanBadge(condo.plan);
 
                             return (
                               <TableRow key={condo.id}>
@@ -357,7 +549,7 @@ export default function SuperAdminPlans() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => openEditDialog(condo)}
+                                    onClick={() => openEditCondoDialog(condo)}
                                   >
                                     <Pencil className="w-4 h-4" />
                                     <span className="sr-only">Editar plano</span>
@@ -378,7 +570,7 @@ export default function SuperAdminPlans() {
 
         <MobileBottomNav items={superAdminNavItems} />
 
-        {/* Edit Plan Dialog */}
+        {/* Edit Condo Plan Dialog */}
         <Dialog open={!!editingCondo} onOpenChange={() => setEditingCondo(null)}>
           <DialogContent>
             <DialogHeader>
@@ -389,32 +581,29 @@ export default function SuperAdminPlans() {
             </DialogHeader>
 
             <div className="py-4">
-              <label className="text-sm font-medium mb-2 block">
-                Novo Plano
-              </label>
-              <Select
-                value={newPlan}
-                onValueChange={(value) => setNewPlan(value as PlanType)}
-              >
+              <Label className="mb-2 block">Novo Plano</Label>
+              <Select value={newCondoPlan} onValueChange={setNewCondoPlan}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="free">Gratuito - R$ 0/mês</SelectItem>
-                  <SelectItem value="starter">Inicial - R$ 199/mês</SelectItem>
-                  <SelectItem value="pro">Profissional - R$ 299/mês</SelectItem>
+                  {plans.map((plan) => (
+                    <SelectItem key={plan.slug} value={plan.slug}>
+                      {plan.name} - {formatPrice(plan.price)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
-              {editingCondo && newPlan !== editingCondo.currentPlan && (
+              {editingCondo && newCondoPlan !== editingCondo.currentPlan && (
                 <p className="text-sm text-muted-foreground mt-3">
                   Alterando de{" "}
-                  <Badge className={PLAN_BADGES[editingCondo.currentPlan].className}>
-                    {PLAN_BADGES[editingCondo.currentPlan].label}
+                  <Badge className={getPlanBadge(editingCondo.currentPlan).className}>
+                    {getPlanBadge(editingCondo.currentPlan).label}
                   </Badge>{" "}
                   para{" "}
-                  <Badge className={PLAN_BADGES[newPlan].className}>
-                    {PLAN_BADGES[newPlan].label}
+                  <Badge className={getPlanBadge(newCondoPlan).className}>
+                    {getPlanBadge(newCondoPlan).label}
                   </Badge>
                 </p>
               )}
@@ -425,13 +614,13 @@ export default function SuperAdminPlans() {
                 Cancelar
               </Button>
               <Button
-                onClick={handleUpdatePlan}
+                onClick={handleUpdateCondoPlan}
                 disabled={
-                  updating ||
-                  (editingCondo && newPlan === editingCondo.currentPlan)
+                  updatingCondo ||
+                  (editingCondo && newCondoPlan === editingCondo.currentPlan)
                 }
               >
-                {updating ? (
+                {updatingCondo ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Salvando...
@@ -443,6 +632,210 @@ export default function SuperAdminPlans() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Create/Edit Plan Dialog */}
+        <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingPlan ? "Editar Plano" : "Novo Plano"}
+              </DialogTitle>
+              <DialogDescription>
+                {editingPlan
+                  ? "Atualize as informações do plano"
+                  : "Crie um novo plano de assinatura"}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="plan-name">Nome do plano *</Label>
+                <Input
+                  id="plan-name"
+                  value={planName}
+                  onChange={(e) => setPlanName(e.target.value)}
+                  placeholder="Ex: Empresarial"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="plan-slug">Slug (identificador) *</Label>
+                <Input
+                  id="plan-slug"
+                  value={planSlug}
+                  onChange={(e) => setPlanSlug(e.target.value)}
+                  placeholder="Ex: enterprise"
+                  disabled={!!editingPlan}
+                />
+                {editingPlan && (
+                  <p className="text-xs text-muted-foreground">
+                    O slug não pode ser alterado após a criação
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="plan-price">Preço (R$/mês)</Label>
+                  <Input
+                    id="plan-price"
+                    type="number"
+                    min="0"
+                    value={planPrice}
+                    onChange={(e) => setPlanPrice(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="plan-announcements">Avisos/mês</Label>
+                  <Input
+                    id="plan-announcements"
+                    type="number"
+                    min="-1"
+                    value={planAnnouncements}
+                    onChange={(e) => setPlanAnnouncements(e.target.value)}
+                    placeholder="10 (-1 = ilimitado)"
+                  />
+                  <p className="text-xs text-muted-foreground">-1 = ilimitado</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="plan-attachment">Tamanho máx. anexo (MB)</Label>
+                <Input
+                  id="plan-attachment"
+                  type="number"
+                  min="1"
+                  value={planAttachmentSize}
+                  onChange={(e) => setPlanAttachmentSize(e.target.value)}
+                  placeholder="2"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Features</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={newFeature}
+                    onChange={(e) => setNewFeature(e.target.value)}
+                    placeholder="Ex: Suporte prioritário"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddFeature();
+                      }
+                    }}
+                  />
+                  <Button type="button" onClick={handleAddFeature} variant="outline">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="space-y-1 mt-2">
+                  {planFeatures.map((feature, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 text-sm bg-muted px-3 py-1.5 rounded"
+                    >
+                      <Check className="w-3 h-3 text-primary flex-shrink-0" />
+                      <span className="flex-1">{feature}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFeature(idx)}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Cor do badge</Label>
+                <Select value={planBadgeClass} onValueChange={setPlanBadgeClass}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BADGE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex items-center gap-2">
+                          <Badge className={option.value}>{option.label}</Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="mt-2">
+                  <Badge className={planBadgeClass}>{planName || "Preview"}</Badge>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Plano ativo</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Planos inativos não aparecem para novos usuários
+                  </p>
+                </div>
+                <Switch checked={planIsActive} onCheckedChange={setPlanIsActive} />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPlanDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSavePlan} disabled={savingPlan}>
+                {savingPlan ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  "Salvar"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deletingPlan} onOpenChange={() => setDeletingPlan(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir plano?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o plano "{deletingPlan?.name}"?
+                Esta ação não poderá ser desfeita.
+                {stats[deletingPlan?.slug || ""] > 0 && (
+                  <span className="block mt-2 text-destructive font-medium">
+                    Atenção: {stats[deletingPlan?.slug || ""]} condomínio(s) usam este plano.
+                    Você precisará migrá-los antes de excluir.
+                  </span>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeletePlan}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Excluindo...
+                  </>
+                ) : (
+                  "Excluir"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </SuperAdminGuard>
   );

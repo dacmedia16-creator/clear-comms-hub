@@ -8,7 +8,7 @@ interface Condominium {
   code: number;
   description: string | null;
   logo_url: string | null;
-  plan: "free" | "starter" | "pro";
+  plan: string;
   owner_id: string;
   created_at: string;
   trial_ends_at: string | null;

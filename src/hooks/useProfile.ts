@@ -17,7 +17,7 @@ interface Condominium {
   slug: string;
   description: string | null;
   logo_url: string | null;
-  plan: "free" | "starter" | "pro";
+  plan: string;
   owner_id: string;
 }
 

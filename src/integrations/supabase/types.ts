@@ -160,7 +160,7 @@ export type Database = {
           notification_sms: boolean | null
           notification_whatsapp: boolean
           owner_id: string
-          plan: Database["public"]["Enums"]["plan_type"]
+          plan: string
           slug: string
           state: string | null
           trial_ends_at: string | null
@@ -180,7 +180,7 @@ export type Database = {
           notification_sms?: boolean | null
           notification_whatsapp?: boolean
           owner_id: string
-          plan?: Database["public"]["Enums"]["plan_type"]
+          plan?: string
           slug: string
           state?: string | null
           trial_ends_at?: string | null
@@ -200,7 +200,7 @@ export type Database = {
           notification_sms?: boolean | null
           notification_whatsapp?: boolean
           owner_id?: string
-          plan?: Database["public"]["Enums"]["plan_type"]
+          plan?: string
           slug?: string
           state?: string | null
           trial_ends_at?: string | null
@@ -273,6 +273,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plans: {
+        Row: {
+          announcements_per_month: number
+          badge_class: string
+          created_at: string
+          display_order: number
+          features: Json
+          id: string
+          is_active: boolean
+          max_attachment_size_mb: number
+          name: string
+          price: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          announcements_per_month?: number
+          badge_class?: string
+          created_at?: string
+          display_order?: number
+          features?: Json
+          id?: string
+          is_active?: boolean
+          max_attachment_size_mb?: number
+          name: string
+          price?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          announcements_per_month?: number
+          badge_class?: string
+          created_at?: string
+          display_order?: number
+          features?: Json
+          id?: string
+          is_active?: boolean
+          max_attachment_size_mb?: number
+          name?: string
+          price?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

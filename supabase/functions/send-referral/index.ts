@@ -3,6 +3,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
+// Declare EdgeRuntime for background processing
+declare const EdgeRuntime: {
+  waitUntil(promise: Promise<unknown>): void;
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -76,7 +81,14 @@ async function sendWhatsApp(phone: string, message: string): Promise<{ success: 
 
     if (!success) {
       const errorText = await response.text();
-      console.error(`WhatsApp API error: ${response.status} - ${errorText}`);
+      // Identificar tipo de erro
+      if (response.status === 500 && errorText.includes("Failed to send")) {
+        console.error(`WhatsApp: Número ${formattedPhone} provavelmente não tem WhatsApp`);
+      } else if (response.status === 401) {
+        console.error(`WhatsApp: API key inválida ou expirada`);
+      } else {
+        console.error(`WhatsApp API error: ${response.status} - ${errorText}`);
+      }
       return { success: false, error: errorText };
     }
 
@@ -89,7 +101,7 @@ async function sendWhatsApp(phone: string, message: string): Promise<{ success: 
   }
 }
 
-// Função para enviar Email via SMTP
+// Função para enviar Email via SMTP com timeout
 async function sendEmail(
   to: string,
   subject: string,
@@ -263,6 +275,62 @@ function getEmailHtml(syndicName: string, referrerName: string, condominiumName:
 `;
 }
 
+// Função para atualizar status no banco
+async function updateReferralStatus(
+  referralId: string,
+  whatsappSuccess: boolean,
+  emailSuccess: boolean
+): Promise<void> {
+  try {
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    await supabaseAdmin
+      .from("syndic_referrals")
+      .update({
+        whatsapp_sent: whatsappSuccess,
+        email_sent: emailSuccess,
+      })
+      .eq("id", referralId);
+
+    console.log(`Referral ${referralId} status updated: whatsapp=${whatsappSuccess}, email=${emailSuccess}`);
+  } catch (error) {
+    console.error("Error updating referral status:", error);
+  }
+}
+
+// Função para processar notificações em background
+async function sendNotificationsInBackground(
+  referralId: string,
+  syndicPhone: string,
+  syndicEmail: string,
+  syndicName: string,
+  condominiumName: string,
+  referrerName: string
+): Promise<void> {
+  console.log(`[Background] Starting notifications for referral ${referralId}`);
+
+  // Preparar mensagens
+  const whatsappMessage = getWhatsAppMessage(syndicName, referrerName, condominiumName);
+  const emailSubject = `${referrerName || "Um morador"} do ${condominiumName} indicou o AVISO PRO para você!`;
+  const emailHtml = getEmailHtml(syndicName, referrerName, condominiumName);
+
+  // Enviar WhatsApp
+  const whatsappResult = await sendWhatsApp(syndicPhone, whatsappMessage);
+  console.log(`[Background] WhatsApp result: ${whatsappResult.success ? 'success' : 'failed - ' + whatsappResult.error}`);
+
+  // Enviar Email
+  const emailResult = await sendEmail(syndicEmail, emailSubject, emailHtml);
+  console.log(`[Background] Email result: ${emailResult.success ? 'success' : 'failed - ' + emailResult.error}`);
+
+  // Atualizar status no banco
+  await updateReferralStatus(referralId, whatsappResult.success, emailResult.success);
+
+  console.log(`[Background] Completed notifications for referral ${referralId}`);
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -320,37 +388,26 @@ serve(async (req: Request) => {
 
     console.log("Referral saved:", referral.id);
 
-    // 2. Enviar WhatsApp
-    const whatsappMessage = getWhatsAppMessage(syndicName, referrerName || "", condominiumName);
-    const whatsappResult = await sendWhatsApp(syndicPhone, whatsappMessage);
+    // 2. Processar notificações em background (fire-and-forget)
+    EdgeRuntime.waitUntil(
+      sendNotificationsInBackground(
+        referral.id,
+        syndicPhone.trim(),
+        syndicEmail.trim().toLowerCase(),
+        syndicName.trim(),
+        condominiumName.trim(),
+        referrerName?.trim() || ""
+      )
+    );
 
-    // 3. Enviar Email
-    const emailSubject = `${referrerName || "Um morador"} do ${condominiumName} indicou o AVISO PRO para você!`;
-    const emailHtml = getEmailHtml(syndicName, referrerName || "", condominiumName);
-    const emailResult = await sendEmail(syndicEmail, emailSubject, emailHtml);
-
-    // 4. Atualizar status de envio no banco
-    await supabaseAdmin
-      .from("syndic_referrals")
-      .update({
-        whatsapp_sent: whatsappResult.success,
-        email_sent: emailResult.success,
-      })
-      .eq("id", referral.id);
-
-    console.log("Referral completed:", {
-      id: referral.id,
-      whatsapp: whatsappResult.success,
-      email: emailResult.success,
-    });
+    // 3. Retornar resposta imediata
+    console.log("Returning immediate response, notifications processing in background");
 
     return new Response(
       JSON.stringify({
         success: true,
         referralId: referral.id,
-        whatsappSent: whatsappResult.success,
-        emailSent: emailResult.success,
-        message: "Indicação enviada com sucesso!",
+        message: "Indicação recebida! As notificações serão enviadas em instantes.",
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

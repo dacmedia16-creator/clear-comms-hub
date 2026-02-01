@@ -22,6 +22,7 @@ import SuperAdminTimelines from "./pages/super-admin/SuperAdminTimelines";
 import SuperAdminNotifications from "./pages/super-admin/SuperAdminNotifications";
 import ProfilePage from "./pages/ProfilePage";
 import DemoPage from "./pages/DemoPage";
+import ReferSyndicPage from "./pages/ReferSyndicPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/auth/signup/syndic" element={<SignupSyndicPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/demo" element={<DemoPage />} />
+            <Route path="/indicar-sindico" element={<ReferSyndicPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin/:condoId" element={<AdminCondominiumPage />} />
             <Route path="/admin/:condoId/settings" element={<CondominiumSettingsPage />} />

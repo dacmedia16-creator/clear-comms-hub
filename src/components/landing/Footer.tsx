@@ -34,6 +34,11 @@ export function Footer() {
                   Funcionalidades
                 </Link>
               </li>
+              <li>
+                <Link to="/indicar-sindico" className="text-background/70 hover:text-background transition-colors">
+                  Indique para seu síndico
+                </Link>
+              </li>
             </ul>
           </div>
 

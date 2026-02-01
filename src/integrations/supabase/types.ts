@@ -404,6 +404,48 @@ export type Database = {
           },
         ]
       }
+      syndic_referrals: {
+        Row: {
+          condominium_name: string
+          created_at: string | null
+          email_sent: boolean | null
+          id: string
+          notes: string | null
+          referrer_name: string | null
+          status: string | null
+          syndic_email: string
+          syndic_name: string
+          syndic_phone: string
+          whatsapp_sent: boolean | null
+        }
+        Insert: {
+          condominium_name: string
+          created_at?: string | null
+          email_sent?: boolean | null
+          id?: string
+          notes?: string | null
+          referrer_name?: string | null
+          status?: string | null
+          syndic_email: string
+          syndic_name: string
+          syndic_phone: string
+          whatsapp_sent?: boolean | null
+        }
+        Update: {
+          condominium_name?: string
+          created_at?: string | null
+          email_sent?: boolean | null
+          id?: string
+          notes?: string | null
+          referrer_name?: string | null
+          status?: string | null
+          syndic_email?: string
+          syndic_name?: string
+          syndic_phone?: string
+          whatsapp_sent?: boolean | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           auth_user_id: string | null

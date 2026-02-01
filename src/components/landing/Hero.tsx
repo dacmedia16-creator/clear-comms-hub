@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Gift, CheckCircle, Bell } from "lucide-react";
+import { ArrowRight, Gift, CheckCircle, Bell, UserPlus } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export function Hero() {
@@ -45,7 +45,7 @@ export function Hero() {
               </Button>
             </div>
 
-            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4 justify-center lg:justify-start text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4 justify-center lg:justify-start text-sm text-muted-foreground mb-6">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-primary" />
                 <span>Configuração em 2 minutos</span>
@@ -58,6 +58,17 @@ export function Hero() {
                 <CheckCircle className="w-4 h-4 text-primary" />
                 <span>Sem cartão de crédito</span>
               </div>
+            </div>
+
+            {/* Link de indicação */}
+            <div className="text-center lg:text-left">
+              <Link 
+                to="/indicar-sindico" 
+                className="inline-flex items-center gap-2 text-primary hover:underline text-sm font-medium transition-colors"
+              >
+                <UserPlus className="w-4 h-4" />
+                Indique para seu síndico
+              </Link>
             </div>
           </div>
 

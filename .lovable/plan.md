@@ -1,117 +1,149 @@
 
 
-# Adicionar Envio de SMS na Indicação de Síndico
+# Gerenciador de Planos no Super Admin
 
 ## Objetivo
 
-Quando um morador indicar um síndico, além de WhatsApp e Email, o sistema também enviará um SMS para o telefone informado.
+Criar uma nova seção no painel Super Admin para gerenciar os planos de assinatura disponíveis, permitindo visualizar estatísticas, configurar limites e alterar planos de condomínios em massa.
 
 ---
 
-## Mudanças Necessárias
+## Arquitetura Proposta
 
-### 1. Banco de Dados
+Como os planos atualmente estão definidos apenas em código (`src/lib/constants.ts`) e não no banco de dados, existem duas abordagens possíveis:
 
-Adicionar coluna `sms_sent` na tabela `syndic_referrals` para rastrear o status do envio de SMS.
+### Opção A: Interface de Visualização (Recomendada)
+Criar uma página que mostra os planos existentes, estatísticas de uso e permite gerenciar quais condomínios estão em cada plano.
 
-```sql
-ALTER TABLE syndic_referrals 
-ADD COLUMN sms_sent boolean DEFAULT false;
-```
+### Opção B: Planos no Banco de Dados
+Criar uma tabela `plans` no banco para armazenar os planos dinamicamente.
 
----
-
-### 2. Edge Function: `send-referral`
-
-**Arquivo:** `supabase/functions/send-referral/index.ts`
-
-Adicionar:
-- Função `formatPhoneForSMSFire()` para formatar telefone
-- Função `sendSMS()` para chamar a API SMSFire v3
-- Função `getSMSMessage()` com template de mensagem curta (max 160 chars)
-- Incluir envio de SMS na função `sendNotificationsInBackground()`
-- Atualizar `updateReferralStatus()` para incluir `sms_sent`
-
-**Template SMS (máx 160 caracteres):**
-```
-AVISO PRO: [Referrer] do [Condo] indicou voce! 3 meses GRATIS. Acesse clear-comms-hub.lovable.app
-```
+**Recomendo a Opção A** pois mantém a simplicidade e os planos raramente mudam.
 
 ---
 
-### 3. Edge Function: `resend-referral`
+## Funcionalidades da Nova Página
 
-**Arquivo:** `supabase/functions/resend-referral/index.ts`
+### 1. Visão Geral dos Planos
+- Cards com cada plano (Free, Starter, Pro)
+- Estatísticas: quantos condomínios em cada plano
+- Recursos incluídos em cada plano
+- Preço (visível apenas para admin)
 
-Atualizar:
-- Interface `ResendRequest` para aceitar canal "sms"
-- Adicionar função `sendSMS()` (mesma lógica do send-referral)
-- Adicionar função `getSMSMessage()`
-- Incluir lógica de reenvio de SMS na função `resendNotificationsInBackground()`
-- Validar canal aceitar "whatsapp", "email", "sms" ou "both"
+### 2. Gestão de Planos por Condomínio
+- Tabela com todos os condomínios
+- Filtro por plano atual
+- Alteração de plano individual ou em lote
+- Busca por nome do condomínio
 
----
-
-### 4. Hook: `useSyndicReferrals`
-
-**Arquivo:** `src/hooks/useSyndicReferrals.ts`
-
-Atualizar:
-- Interface `SyndicReferral` para incluir `sms_sent`
-- Estatísticas para incluir `failedSMS`
-- Função `resendNotification` aceitar canal "sms"
+### 3. Relatório de Upgrades/Downgrades
+- Histórico de mudanças de plano (futuro, requer nova tabela)
 
 ---
 
-## Fluxo Atualizado
+## Estrutura de Arquivos
+
+| Arquivo | Descrição |
+|---------|-----------|
+| `src/pages/super-admin/SuperAdminPlans.tsx` | Nova página de gerenciamento |
+| `src/App.tsx` | Adicionar rota `/super-admin/plans` |
+| `src/pages/super-admin/SuperAdminDashboard.tsx` | Adicionar card de acesso rápido |
+| `src/lib/constants.ts` | Manter planos (já existente) |
+
+---
+
+## Layout da Página
 
 ```text
-Morador submete indicação
-         |
-         v
-+------------------+
-| Salvar no banco  |
-| sms_sent: false  |
-+------------------+
-         |
-         v
-EdgeRuntime.waitUntil()
-         |
-         v
-+--------------------------------+
-|    Background Processing       |
-|  1. sendWhatsApp() → update    |
-|  2. sendEmail() → update       |
-|  3. sendSMS() → update         |  ← NOVO
-+--------------------------------+
++-------------------------------------------------------+
+|  [<] Super Admin          [Atualizar] [Sair]          |
++-------------------------------------------------------+
+|                                                       |
+|  Gerenciador de Planos                                |
+|  Visualize e gerencie os planos da plataforma         |
+|                                                       |
+|  +-------------+  +-------------+  +-------------+    |
+|  |   GRATUITO  |  |   INICIAL   |  | PROFISSIONAL|    |
+|  |   R$ 0/mês  |  |  R$ 199/mês |  |  R$ 299/mês |    |
+|  |             |  |             |  |             |    |
+|  | 5 condos    |  | 3 condos    |  | 2 condos    |    |
+|  |             |  |             |  |             |    |
+|  | - 10 avisos |  | - 50 avisos |  | - Ilimitado |    |
+|  | - 2MB anexo |  | - 5MB anexo |  | - 10MB anexo|    |
+|  | - Timeline  |  | - Email     |  | - Email+Zap |    |
+|  +-------------+  +-------------+  +-------------+    |
+|                                                       |
+|  +-----------------------------------------------+    |
+|  | Condomínios                    [Buscar...]   |    |
+|  +-----------------------------------------------+    |
+|  | Nome          | Plano    | Trial    | Ações  |    |
+|  |---------------|----------|----------|--------|    |
+|  | Residencial X | FREE     | 30 dias  | [Edit] |    |
+|  | Condo Y       | PRO      | Expirado | [Edit] |    |
+|  +-----------------------------------------------+    |
++-------------------------------------------------------+
 ```
 
 ---
 
-## API SMSFire (já configurada)
+## Implementação
 
-Usa a mesma integração já existente em `send-sms`:
-- URL: `https://api-v3.smsfire.com.br/sms/send/individual`
-- Headers: `Username` e `Api_Token`
-- Secrets já configurados: `SMSFIRE_USERNAME`, `SMSFIRE_API_TOKEN`
+### 1. Criar Página `SuperAdminPlans.tsx`
+
+Nova página seguindo o padrão das existentes (header, SuperAdminGuard, MobileBottomNav):
+
+- Importar `PLANS` de `constants.ts`
+- Cards de estatísticas por plano
+- Tabela de condomínios com ações de alteração de plano
+- Filtros: por plano, por status de trial
+- Modal para alterar plano de um condomínio
+
+### 2. Atualizar `App.tsx`
+
+Adicionar nova rota:
+```tsx
+<Route path="/super-admin/plans" element={<SuperAdminPlans />} />
+```
+
+### 3. Atualizar `SuperAdminDashboard.tsx`
+
+Adicionar novo card na seção de links rápidos:
+- Ícone: `CreditCard` (do lucide-react)
+- Título: "Gerenciar Planos"
+- Descrição: "Visualize e altere os planos dos condomínios"
+- Estatísticas: contagem por plano
+
+### 4. Atualizar Navegação Mobile
+
+Adicionar item ao `superAdminNavItems` (opcional, pode ficar acessível apenas pelo dashboard).
 
 ---
 
-## Arquivos a Criar/Modificar
+## Seção Técnica
 
-| Arquivo | Ação |
-|---------|------|
-| Tabela `syndic_referrals` | Adicionar coluna `sms_sent` |
-| `supabase/functions/send-referral/index.ts` | Adicionar envio SMS |
-| `supabase/functions/resend-referral/index.ts` | Adicionar reenvio SMS |
-| `src/hooks/useSyndicReferrals.ts` | Incluir stats e tipo SMS |
+### Componentes Utilizados
+- `Card`, `CardHeader`, `CardContent` - layout dos cards de planos
+- `Table`, `TableHeader`, `TableRow`, `TableCell` - lista de condomínios
+- `Dialog` - modal de alteração de plano
+- `Select` - seleção do novo plano
+- `Badge` - indicadores de plano
+- `Button` - ações
+- `Input` - busca
 
----
+### Hooks Existentes a Utilizar
+- `useAllCondominiums` - lista todos os condomínios
+- `useSuperAdmin` - verificação de permissão
 
-## Resultado Esperado
+### Query de Atualização de Plano
+```typescript
+await supabase
+  .from("condominiums")
+  .update({ plan: newPlan })
+  .eq("id", condoId);
+```
 
-Após implementação:
-- Ao indicar um síndico, ele receberá: WhatsApp + Email + **SMS**
-- No painel de indicações, aparecerá o status de envio do SMS
-- Será possível reenviar SMS individualmente se falhar
+### Estilização dos Badges de Plano
+- **Free**: `bg-muted text-muted-foreground`
+- **Starter**: `bg-amber-100 text-amber-700`
+- **Pro**: `bg-primary/10 text-primary`
 

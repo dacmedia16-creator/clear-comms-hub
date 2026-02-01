@@ -1,18 +1,164 @@
 
 
-# Painel de Indicacoes de Sindicos no Super Admin
+# Otimizacao da Edge Function resend-referral
 
-## Objetivo
+## Problema Atual
 
-Criar uma nova pagina no Super Admin para visualizar e gerenciar todas as indicacoes de sindicos recebidas atraves do formulario /indicar-sindico, com capacidade de reenviar notificacoes manualmente.
+A edge function `resend-referral` esta processando o envio de WhatsApp e Email de forma **sincrona**, aguardando a conclusao de ambos antes de retornar resposta ao usuario. Isso causa:
+
+- **Timeout de CPU** quando o servidor SMTP demora para responder
+- **Experiencia ruim para o usuario** que fica aguardando a resposta
+- **Falha silenciosa** quando o email nao consegue ser enviado a tempo
+
+## Solucao Proposta
+
+Aplicar o mesmo padrao usado na `send-referral`: processar as notificacoes em **background** usando `EdgeRuntime.waitUntil()`, retornando resposta imediata ao usuario.
 
 ---
 
-## Arquivos a Criar
+## Fluxo Atual vs Proposto
 
-### 1. Hook: `src/hooks/useSyndicReferrals.ts`
+| Aspecto | Atual (Sincrono) | Proposto (Assincrono) |
+|---------|------------------|----------------------|
+| Tempo de resposta | 5-30 segundos | Imediato (<500ms) |
+| Risco de timeout | Alto | Baixo |
+| Experiencia usuario | Espera longa | Feedback instantaneo |
+| Atualizacao no banco | Antes da resposta | Apos a resposta (background) |
 
-Novo hook para buscar e gerenciar indicacoes:
+---
+
+## Estrutura do Novo Fluxo
+
+```text
++------------------+     +---------------------+
+|  Request HTTP    |---->|  Validar dados      |
++------------------+     +---------------------+
+                                |
+                                v
+                         +---------------------+
+                         | Buscar indicacao    |
+                         | no banco            |
+                         +---------------------+
+                                |
+        +<----------------------+----------------------->+
+        |                                                |
+        v                                                v
++------------------+                            +------------------+
+| EdgeRuntime      |                            | Response HTTP    |
+| .waitUntil()     |                            | { success: true, |
+|                  |                            |   processing... }|
++------------------+                            +------------------+
+        |
+        v
++---------------------------------------+
+| Background:                           |
+|  1. sendWhatsApp() se solicitado      |
+|  2. sendEmail() se solicitado         |
+|  3. Atualizar whatsapp_sent/email_sent|
++---------------------------------------+
+```
+
+---
+
+## Arquivos a Modificar
+
+### 1. `supabase/functions/resend-referral/index.ts`
+
+**Adicionar:**
+1. Declaracao do `EdgeRuntime` (igual a `send-referral`)
+2. Funcao `resendNotificationsInBackground()` para processar em background
+3. Modificar o handler para usar `EdgeRuntime.waitUntil()`
+
+---
+
+## Secao Tecnica
+
+### Mudancas no Codigo
+
+**1. Adicionar declaracao do EdgeRuntime (apos imports):**
+```typescript
+declare const EdgeRuntime: {
+  waitUntil(promise: Promise<unknown>): void;
+};
+```
+
+**2. Criar funcao de processamento em background:**
+```typescript
+async function resendNotificationsInBackground(
+  referralId: string,
+  referral: SyndicReferral,
+  channel: "whatsapp" | "email" | "both"
+): Promise<void> {
+  console.log(`[Resend Background] Starting for ${referralId}, channel: ${channel}`);
+
+  let whatsappSent = referral.whatsapp_sent;
+  let emailSent = referral.email_sent;
+
+  // Reenviar WhatsApp se solicitado
+  if (channel === "whatsapp" || channel === "both") {
+    const whatsappMessage = getWhatsAppMessage(
+      referral.syndic_name,
+      referral.referrer_name || "",
+      referral.condominium_name
+    );
+    const result = await sendWhatsApp(referral.syndic_phone, whatsappMessage);
+    whatsappSent = result.success;
+    console.log(`[Resend Background] WhatsApp: ${result.success ? 'success' : 'failed'}`);
+  }
+
+  // Reenviar Email se solicitado
+  if (channel === "email" || channel === "both") {
+    const emailSubject = `${referral.referrer_name || "Um morador"} do ${referral.condominium_name} indicou o AVISO PRO para você!`;
+    const emailHtml = getEmailHtml(
+      referral.syndic_name,
+      referral.referrer_name || "",
+      referral.condominium_name
+    );
+    const result = await sendEmail(referral.syndic_email, emailSubject, emailHtml);
+    emailSent = result.success;
+    console.log(`[Resend Background] Email: ${result.success ? 'success' : 'failed'}`);
+  }
+
+  // Atualizar status no banco
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  );
+
+  await supabaseAdmin
+    .from("syndic_referrals")
+    .update({ whatsapp_sent: whatsappSent, email_sent: emailSent })
+    .eq("id", referralId);
+
+  console.log(`[Resend Background] Completed for ${referralId}`);
+}
+```
+
+**3. Modificar handler principal:**
+```typescript
+// Apos buscar a indicacao do banco com sucesso...
+
+// Processar em background
+EdgeRuntime.waitUntil(
+  resendNotificationsInBackground(referralId, referral, channel)
+);
+
+// Retornar resposta imediata
+return new Response(
+  JSON.stringify({
+    success: true,
+    processing: true,
+    message: "Reenvio iniciado. As notificacoes serao processadas em instantes.",
+  }),
+  { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+);
+```
+
+---
+
+## Interface Adicional
+
+Adicionar interface para tipar a indicacao:
 
 ```typescript
 interface SyndicReferral {
@@ -22,224 +168,33 @@ interface SyndicReferral {
   syndic_email: string;
   condominium_name: string;
   referrer_name: string | null;
-  status: string | null;
-  notes: string | null;
   whatsapp_sent: boolean | null;
   email_sent: boolean | null;
-  created_at: string;
 }
 ```
 
-**Funcionalidades:**
-- Buscar todas as indicacoes ordenadas por data
-- Atualizar status (pending/contacted/converted/rejected)
-- Adicionar notas
-- Deletar indicacoes
-
-### 2. Pagina: `src/pages/super-admin/SuperAdminReferrals.tsx`
-
-Nova pagina completa com:
-
-**Header:**
-- Link de volta para dashboard
-- Icone e titulo "Indicacoes"
-- Botao de refresh
-
-**Estatisticas:**
-- Total de indicacoes
-- Pendentes (WhatsApp ou Email nao enviados)
-- Status: pending/contacted/converted/rejected
-
-**Filtros:**
-- Busca por nome do sindico, email ou condominio
-- Filtro por status (todos/pending/contacted/converted/rejected)
-- Filtro por problemas de envio (WhatsApp/Email falhos)
-
-**Tabela (Desktop) / Cards (Mobile):**
-- Nome do sindico
-- Telefone
-- Email
-- Condominio
-- Quem indicou
-- Status do envio (WhatsApp/Email com icones)
-- Status geral
-- Data de criacao
-- Acoes: Reenviar WhatsApp, Reenviar Email, Editar notas, Excluir
-
-**Dialogs:**
-- Modal para reenvio manual de WhatsApp/Email
-- Modal para editar notas/status
-- Confirmacao de exclusao
-
 ---
 
-## Arquivos a Modificar
+## Atualizacao no Frontend
 
-### 3. App.tsx
+Apos a mudanca, a resposta da funcao nao retornara mais `whatsappSent` e `emailSent` imediatamente (esses valores serao atualizados em background). 
 
-Adicionar nova rota:
+O hook `useSyndicReferrals` devera:
+1. Mostrar toast de "Reenvio iniciado"
+2. Fazer refresh da lista apos alguns segundos para atualizar os status
 
+**Modificacao em `src/hooks/useSyndicReferrals.ts`:**
 ```typescript
-<Route path="/super-admin/referrals" element={<SuperAdminReferrals />} />
-```
-
-### 4. SuperAdminDashboard.tsx
-
-Adicionar card de acesso rapido para Indicacoes:
-
-```typescript
-<Card>
-  <CardHeader>
-    <UserPlus className="..." />
-    <CardTitle>Indicacoes de Sindicos</CardTitle>
-    <CardDescription>
-      Visualize e gerencie indicacoes recebidas
-    </CardDescription>
-  </CardHeader>
-  <CardContent>
-    <span>Total: {stats.totalReferrals}</span>
-    <span>Pendentes: {stats.pendingReferrals}</span>
-    <Button>Ver Indicacoes</Button>
-  </CardContent>
-</Card>
-```
-
-### 5. Navegacao Mobile (superAdminNavItems)
-
-Como a barra de navegacao ja tem 5 itens (limite visual), a pagina de indicacoes sera acessada pelo Dashboard ou por link direto, sem adicionar ao bottom nav.
-
----
-
-## Edge Function: Reenvio Manual
-
-### 6. Nova Edge Function: `supabase/functions/resend-referral/index.ts`
-
-Funcao para reenviar notificacoes de indicacoes existentes:
-
-**Request:**
-```json
-{
-  "referralId": "uuid",
-  "channel": "whatsapp" | "email" | "both"
-}
-```
-
-**Logica:**
-1. Buscar indicacao pelo ID
-2. Validar que existe
-3. Reenviar WhatsApp e/ou Email conforme solicitado
-4. Atualizar status no banco
-5. Retornar resultado
-
----
-
-## Estrutura da Interface
-
-```text
-/super-admin/referrals
-+--------------------------------------------------+
-|  [<-]  Indicacoes                     [Refresh]  |
-+--------------------------------------------------+
-|                                                  |
-|  +--------+  +--------+  +--------+  +--------+  |
-|  | Total  |  |Pendente|  |Contato |  |Convert.|  |
-|  |   12   |  |   3    |  |   5    |  |   4    |  |
-|  +--------+  +--------+  +--------+  +--------+  |
-|                                                  |
-|  [Buscar...              ] [Status v] [Envios v] |
-|                                                  |
-|  +----------------------------------------------+|
-|  | Nome        | Telefone | Email    | Status   ||
-|  |-------------|----------|----------|----------||
-|  | Joao Silva  | 11999..  | j@e.com  | Pending  ||
-|  |   WA: [X]   Email: [OK]           [Acoes]   ||
-|  +----------------------------------------------+|
-|                                                  |
-+--------------------------------------------------+
-```
-
----
-
-## Badges de Status de Envio
-
-| Situacao | Badge |
-|----------|-------|
-| WhatsApp enviado | Icone verde com check |
-| WhatsApp falhou | Icone vermelho com X |
-| Email enviado | Icone verde com check |
-| Email falhou | Icone vermelho com X |
-
----
-
-## Status de Indicacao
-
-| Status | Cor | Descricao |
-|--------|-----|-----------|
-| pending | Amarelo | Aguardando contato |
-| contacted | Azul | Contato realizado |
-| converted | Verde | Converteu em cliente |
-| rejected | Vermelho | Nao tem interesse |
-
----
-
-## Secao Tecnica
-
-### Estrutura de Arquivos
-
-```text
-src/
-  hooks/
-    useSyndicReferrals.ts        [NOVO]
-  pages/
-    super-admin/
-      SuperAdminReferrals.tsx    [NOVO]
-  App.tsx                        [MODIFICAR]
+const resendNotification = async (id: string, channel: "whatsapp" | "email" | "both") => {
+  // ... chamada da funcao
   
-supabase/
-  functions/
-    resend-referral/
-      index.ts                   [NOVO]
-  config.toml                    [MODIFICAR - adicionar funcao]
+  if (!error && data?.success) {
+    toast.success("Reenvio iniciado! Aguarde alguns segundos...");
+    // Refresh apos 5 segundos para atualizar status
+    setTimeout(() => refetch(), 5000);
+  }
+};
 ```
-
-### Hook useSyndicReferrals
-
-```typescript
-// Seguindo padrao de useAllCondominiums
-export function useSyndicReferrals() {
-  const [referrals, setReferrals] = useState<SyndicReferral[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchReferrals = async () => { /* ... */ };
-  const updateStatus = async (id, status) => { /* ... */ };
-  const updateNotes = async (id, notes) => { /* ... */ };
-  const deleteReferral = async (id) => { /* ... */ };
-
-  return { referrals, loading, error, refetch, updateStatus, updateNotes, deleteReferral };
-}
-```
-
-### Edge Function resend-referral
-
-```typescript
-// Reutiliza logica de send-referral
-// - Recebe referralId e channel
-// - Busca dados da indicacao no banco
-// - Reenvia WhatsApp/Email usando mesmas funcoes
-// - Atualiza whatsapp_sent/email_sent
-// - Retorna resultado
-```
-
-### Componentes da Pagina
-
-1. **Estatisticas** - Cards com contadores
-2. **Filtros** - Busca + Select de status + Select de problemas
-3. **Tabela/Cards** - Listagem responsiva
-4. **Dialogs:**
-   - ResendDialog - Para reenviar notificacoes
-   - EditNotesDialog - Para editar notas e status
-   - DeleteConfirmDialog - Para confirmar exclusao
 
 ---
 
@@ -247,11 +202,12 @@ export function useSyndicReferrals() {
 
 Apos implementacao:
 
-1. Super Admin acessa /super-admin/referrals
-2. Ve todas as indicacoes com status de envio
-3. Pode filtrar por status ou problemas de envio
-4. Pode reenviar WhatsApp/Email manualmente
-5. Pode atualizar status e adicionar notas
-6. Pode excluir indicacoes antigas
-7. Acesso rapido pelo card no Dashboard
+| Metrica | Antes | Depois |
+|---------|-------|--------|
+| Tempo de resposta | 5-30s | <500ms |
+| Timeout de CPU | Frequente | Eliminado |
+| Status no banco | Atualizado antes da resposta | Atualizado em background |
+| Feedback usuario | Aguardando... | "Reenvio iniciado!" |
+
+O painel de indicacoes mostrara o status atualizado apos o refresh automatico.
 

@@ -39,10 +39,13 @@ serve(async (req) => {
       );
     }
 
-    // If it's a GET request, just check if API is configured
+    // If it's a GET request, check if API is configured and return env key status
     if (req.method === 'GET') {
       return new Response(
-        JSON.stringify({ apiConfigured: true }),
+        JSON.stringify({ 
+          apiConfigured: true,
+          hasEnvKey: true
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

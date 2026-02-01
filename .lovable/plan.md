@@ -1,133 +1,202 @@
 
-# Corrigir Edge Function send-referral para ZionTalk
+# Analise do Erro 500 no WhatsApp da Edge Function send-referral
 
-## Problema Identificado
+## Diagnostico
 
-A funcao `send-referral` esta usando uma API incorreta para envio de WhatsApp:
+Analisei os logs e o codigo das edge functions para identificar a causa do erro.
 
-| Aspecto | Atual (ERRADO) | Correto (ZionTalk) |
-|---------|----------------|---------------------|
-| Endpoint | `api.z-api.io/instances/send-text` | `app.ziontalk.com/api/send_message/` |
-| Autenticacao | Header `Client-Token` | Basic Auth (API Key como username) |
-| Formato do Body | JSON | FormData |
-| Campo do telefone | `phone` | `mobile_phone` |
-| Campo da mensagem | `message` | `msg` |
-| Status de sucesso | `response.ok` | `response.status === 201` |
+### Evidencias dos Logs
+
+| Teste | Telefone Formatado | Erro |
+|-------|-------------------|------|
+| 1o teste (18:57) | `5511999998888` (sem +) | `NullPointerException` - formato invalido |
+| 2o teste (19:02) | `+5511999887766` (com +) | `500 - Failed to send the message` |
+
+### Causas Identificadas
+
+**1. Numero de Teste Inexistente**
+O erro 500 "Failed to send the message" ocorre porque o numero `11999887766` nao existe no WhatsApp. A API ZionTalk valida se o destinatario tem WhatsApp antes de enviar.
+
+**2. Timeout do Email (CPU Time exceeded)**
+A conexao SMTP esta demorando muito e causando timeout da edge function (limite de CPU excedido).
+
+### Comparacao com funcoes que funcionam
+
+| Aspecto | send-referral | send-whatsapp/test-whatsapp |
+|---------|--------------|------------------------------|
+| Endpoint | `app.ziontalk.com/api/send_message/` | Identico |
+| Auth | Basic Auth | Identico |
+| FormData | `msg` + `mobile_phone` | Identico |
+| Formato telefone | `+5511999887766` | Identico |
+
+**Conclusao**: A integracao com ZionTalk esta CORRETA. O erro 500 e esperado para numeros invalidos/inexistentes.
 
 ---
 
-## Alteracoes Necessarias
+## Solucoes Propostas
+
+### 1. Otimizar Edge Function para Evitar Timeout
+
+O principal problema tecnico e o timeout do SMTP. Solucoes:
+
+**Opcao A - Fire-and-forget (Recomendado)**
+Usar `EdgeRuntime.waitUntil()` para processar WhatsApp e Email em background, igual a `send-whatsapp`:
+
+```typescript
+// Retornar resposta imediata
+EdgeRuntime.waitUntil(sendNotificationsInBackground(...));
+
+return new Response(JSON.stringify({ success: true, ... }));
+```
+
+**Opcao B - Timeout configuravel**
+Adicionar timeout de 10 segundos para conexao SMTP para falhar rapido se o servidor demorar.
+
+### 2. Melhorar Tratamento de Erros
+
+Diferenciar tipos de erro do WhatsApp:
+- Numero invalido/inexistente
+- Problema de API key
+- Rate limiting
+- Erro de rede
+
+### 3. Adicionar Validacao de Telefone
+
+Antes de enviar, verificar se o telefone tem formato brasileiro valido (11 digitos apos limpeza).
+
+---
+
+## Plano de Implementacao
 
 ### Arquivo: `supabase/functions/send-referral/index.ts`
 
-### 1. Adicionar import do encode para Base64
-
+1. **Adicionar import do EdgeRuntime**
 ```typescript
-import { encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+declare const EdgeRuntime: {
+  waitUntil(promise: Promise<unknown>): void;
+};
 ```
 
-### 2. Corrigir funcao formatPhoneForWhatsApp
-
-Adicionar o prefixo `+` no telefone formatado:
-
+2. **Criar funcao de processamento em background**
 ```typescript
-function formatPhoneForWhatsApp(phone: string): string {
-  const cleanPhone = phone.replace(/\D/g, "");
-  if (cleanPhone.startsWith("55")) {
-    return `+${cleanPhone}`;
-  }
-  return `+55${cleanPhone}`;
+async function sendNotificationsInBackground(
+  referralId: string,
+  syndicPhone: string,
+  syndicEmail: string,
+  whatsappMessage: string,
+  emailSubject: string,
+  emailHtml: string
+) {
+  // Enviar WhatsApp
+  const whatsappResult = await sendWhatsApp(syndicPhone, whatsappMessage);
+  
+  // Enviar Email com timeout
+  const emailResult = await sendEmail(syndicEmail, emailSubject, emailHtml);
+  
+  // Atualizar banco
+  await updateReferralStatus(referralId, whatsappResult.success, emailResult.success);
 }
 ```
 
-### 3. Reescrever funcao sendWhatsApp
-
-Usar a API ZionTalk correta com Basic Auth e FormData:
-
+3. **Modificar handler principal**
 ```typescript
-async function sendWhatsApp(phone: string, message: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+// Salvar no banco
+const { data: referral } = await supabase.from("syndic_referrals").insert(...);
 
-    let apiKey = Deno.env.get("ZIONTALK_API_KEY");
+// Processar notificacoes em background
+EdgeRuntime.waitUntil(
+  sendNotificationsInBackground(referral.id, syndicPhone, syndicEmail, ...)
+);
 
-    // Buscar remetente ativo do banco
-    const { data: senders } = await supabaseAdmin
-      .from("whatsapp_senders")
-      .select("api_key")
-      .eq("is_active", true)
-      .order("is_default", { ascending: false })
-      .limit(1);
-
-    if (senders && senders.length > 0) {
-      apiKey = senders[0].api_key;
-    }
-
-    if (!apiKey) {
-      console.log("No WhatsApp API key configured");
-      return { success: false, error: "WhatsApp nao configurado" };
-    }
-
-    const formattedPhone = formatPhoneForWhatsApp(phone);
-    console.log(`Sending WhatsApp to ${formattedPhone}`);
-
-    // Basic Auth: API Key como username, senha vazia
-    const authHeader = 'Basic ' + encode(`${apiKey}:`);
-
-    // FormData para ZionTalk
-    const formData = new FormData();
-    formData.append('msg', message);
-    formData.append('mobile_phone', formattedPhone);
-
-    const response = await fetch(
-      'https://app.ziontalk.com/api/send_message/',
-      {
-        method: 'POST',
-        headers: { 'Authorization': authHeader },
-        body: formData,
-      }
-    );
-
-    const success = response.status === 201;
-    
-    if (!success) {
-      const errorText = await response.text();
-      console.error(`WhatsApp API error: ${response.status} - ${errorText}`);
-      return { success: false, error: errorText };
-    }
-
-    console.log("WhatsApp sent successfully");
-    return { success: true };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("WhatsApp send error:", error);
-    return { success: false, error: errorMessage };
-  }
-}
+// Retornar resposta imediata
+return new Response(JSON.stringify({
+  success: true,
+  referralId: referral.id,
+  message: "Indicacao recebida! As notificacoes serao enviadas em instantes."
+}));
 ```
 
----
+4. **Adicionar timeout para SMTP**
+```typescript
+const client = new SMTPClient({
+  connection: {
+    hostname: smtpHost,
+    port: 465,
+    tls: true,
+    auth: { username: smtpUser, password: smtpPassword },
+  },
+  timeout: 15000, // 15 segundos de timeout
+});
+```
 
-## Resumo das Correcoes
-
-| Item | Mudanca |
-|------|---------|
-| Import | Adicionar `encode` de `https://deno.land/std@0.168.0/encoding/base64.ts` |
-| Endpoint | `api.z-api.io` -> `app.ziontalk.com/api/send_message/` |
-| Auth | `Client-Token` header -> Basic Auth com `encode(apiKey + ':')` |
-| Body | JSON -> FormData |
-| Campos | `phone`/`message` -> `mobile_phone`/`msg` |
-| Sucesso | `response.ok` -> `response.status === 201` |
-| Busca sender | Adicionar ordenacao por `is_default` |
+5. **Melhorar logs de erro**
+```typescript
+if (!success) {
+  const errorText = await response.text();
+  // Identificar tipo de erro
+  if (response.status === 500 && errorText.includes("Failed to send")) {
+    console.error(`WhatsApp: Numero ${formattedPhone} provavelmente nao tem WhatsApp`);
+  }
+  // ...
+}
+```
 
 ---
 
 ## Resultado Esperado
 
-Apos a correcao:
-- WhatsApp sera enviado corretamente via ZionTalk
-- Usando a mesma logica que ja funciona em `send-whatsapp`
-- Reutilizando os remetentes cadastrados no banco de dados
+Apos as correcoes:
+
+| Antes | Depois |
+|-------|--------|
+| Timeout por CPU excedida | Resposta imediata ao usuario |
+| Erro 500 bloqueia fluxo | Erro tratado graciosamente |
+| Nenhum feedback | Usuario ve mensagem de sucesso |
+| Notificacoes bloqueadas | Notificacoes enviadas em background |
+
+## Nota sobre Testes
+
+Para validar que o WhatsApp funciona corretamente, use um numero REAL que tenha WhatsApp cadastrado. Numeros de teste ficticios sempre retornarao erro 500 da API ZionTalk.
+
+---
+
+## Secao Tecnica
+
+### Estrutura da Edge Function Otimizada
+
+```text
++------------------+     +---------------------+
+|  Request HTTP    |---->|  Validar dados      |
++------------------+     +---------------------+
+                                |
+                                v
+                         +---------------------+
+                         |  Salvar no banco    |
+                         +---------------------+
+                                |
+        +<----------------------+----------------------->+
+        |                                                |
+        v                                                v
++------------------+                            +------------------+
+| EdgeRuntime      |                            | Response HTTP    |
+| .waitUntil()     |                            | { success: true }|
++------------------+                            +------------------+
+        |
+        v
++---------------------------------------+
+| Background:                           |
+|  1. sendWhatsApp()                    |
+|  2. sendEmail() com timeout           |
+|  3. updateReferralStatus()            |
++---------------------------------------+
+```
+
+### Tratamento de Erros por Tipo
+
+| Status Code | Significado | Acao |
+|-------------|-------------|------|
+| 201 | Sucesso | Marcar como enviado |
+| 400 | Dados invalidos | Log + continuar |
+| 401 | API key invalida | Log + alerta |
+| 500 | Numero sem WhatsApp | Log + continuar com email |
+

@@ -29,29 +29,58 @@ serve(async (req) => {
   }
 
   try {
-    const ZIONTALK_API_KEY = Deno.env.get('ZIONTALK_API_KEY');
-    
-    if (!ZIONTALK_API_KEY) {
-      console.error("ZIONTALK_API_KEY not configured");
+    // Create Supabase client with service role
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    // Fetch the sender to use (default first, then first active, then fallback to env)
+    let apiKey = Deno.env.get('ZIONTALK_API_KEY');
+    let apiSource = 'ENV_FALLBACK';
+
+    const { data: senders, error: sendersError } = await supabase
+      .from('whatsapp_senders')
+      .select('*')
+      .eq('is_active', true)
+      .order('is_default', { ascending: false })
+      .limit(1);
+
+    if (sendersError) {
+      console.error("Error fetching whatsapp_senders:", sendersError);
+    } else if (senders && senders.length > 0) {
+      const sender = senders[0];
+      apiKey = sender.api_key;
+      apiSource = `DB: ${sender.name} (${sender.phone})`;
+      console.log(`Using sender from database: ${sender.name} (${sender.phone})`);
+    } else {
+      console.log("No active senders found, using ENV fallback");
+    }
+
+    // Check if API key is configured (GET request)
+    if (req.method === 'GET') {
+      return new Response(
+        JSON.stringify({ 
+          apiConfigured: !!apiKey,
+          hasEnvKey: !!Deno.env.get('ZIONTALK_API_KEY'),
+          hasDbSenders: senders && senders.length > 0
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!apiKey) {
+      console.error("No API key available");
       return new Response(
         JSON.stringify({ success: false, error: "API key não configurada", apiConfigured: false }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // If it's a GET request, check if API is configured and return env key status
-    if (req.method === 'GET') {
-      return new Response(
-        JSON.stringify({ 
-          apiConfigured: true,
-          hasEnvKey: true
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log(`API Key source: ${apiSource}`);
 
     // Basic Auth: API Key as username, empty password
-    const authHeader = 'Basic ' + encode(`${ZIONTALK_API_KEY}:`);
+    const authHeader = 'Basic ' + encode(`${apiKey}:`);
 
     const { phone, condominiumId, condominiumName }: RequestBody = await req.json();
 
@@ -77,12 +106,6 @@ serve(async (req) => {
     const formattedPhone = cleanPhone.startsWith('55') ? `+${cleanPhone}` : `+55${cleanPhone}`;
 
     console.log(`Sending test WhatsApp to ${formattedPhone}`);
-
-    // Create Supabase client with service role for logging
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
 
     // Create form data for ZionTalk API
     const formData = new FormData();
@@ -123,7 +146,8 @@ serve(async (req) => {
         success, 
         phone: formattedPhone,
         error: errorMessage,
-        apiConfigured: true
+        apiConfigured: true,
+        apiSource
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

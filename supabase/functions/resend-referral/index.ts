@@ -3,6 +3,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
+// Declare EdgeRuntime for background processing
+declare const EdgeRuntime: {
+  waitUntil(promise: Promise<unknown>): void;
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -11,6 +16,17 @@ const corsHeaders = {
 interface ResendRequest {
   referralId: string;
   channel: "whatsapp" | "email" | "both";
+}
+
+interface SyndicReferralData {
+  id: string;
+  syndic_name: string;
+  syndic_phone: string;
+  syndic_email: string;
+  condominium_name: string;
+  referrer_name: string | null;
+  whatsapp_sent: boolean | null;
+  email_sent: boolean | null;
 }
 
 // Função para formatar telefone para WhatsApp
@@ -262,6 +278,64 @@ function getEmailHtml(syndicName: string, referrerName: string, condominiumName:
 `;
 }
 
+// Background processing function
+async function resendNotificationsInBackground(
+  referralId: string,
+  referral: SyndicReferralData,
+  channel: "whatsapp" | "email" | "both"
+): Promise<void> {
+  console.log(`[Resend Background] Starting for ${referralId}, channel: ${channel}`);
+
+  let whatsappSent = referral.whatsapp_sent;
+  let emailSent = referral.email_sent;
+
+  try {
+    // Reenviar WhatsApp se solicitado
+    if (channel === "whatsapp" || channel === "both") {
+      const whatsappMessage = getWhatsAppMessage(
+        referral.syndic_name,
+        referral.referrer_name || "",
+        referral.condominium_name
+      );
+      const result = await sendWhatsApp(referral.syndic_phone, whatsappMessage);
+      whatsappSent = result.success;
+      console.log(`[Resend Background] WhatsApp: ${result.success ? "success" : "failed - " + result.error}`);
+    }
+
+    // Reenviar Email se solicitado
+    if (channel === "email" || channel === "both") {
+      const displayReferrer = referral.referrer_name || "Um morador";
+      const emailSubject = `${displayReferrer} do ${referral.condominium_name} indicou o AVISO PRO para você!`;
+      const emailHtml = getEmailHtml(
+        referral.syndic_name,
+        referral.referrer_name || "",
+        referral.condominium_name
+      );
+      const result = await sendEmail(referral.syndic_email, emailSubject, emailHtml);
+      emailSent = result.success;
+      console.log(`[Resend Background] Email: ${result.success ? "success" : "failed - " + result.error}`);
+    }
+
+    // Atualizar status no banco
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    await supabaseAdmin
+      .from("syndic_referrals")
+      .update({
+        whatsapp_sent: whatsappSent,
+        email_sent: emailSent,
+      })
+      .eq("id", referralId);
+
+    console.log(`[Resend Background] Completed for ${referralId} - WhatsApp: ${whatsappSent}, Email: ${emailSent}`);
+  } catch (error) {
+    console.error(`[Resend Background] Error for ${referralId}:`, error);
+  }
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -307,55 +381,19 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`[Resend] Processing referral ${referralId} for channel: ${channel}`);
+    console.log(`[Resend] Starting background processing for referral ${referralId}, channel: ${channel}`);
 
-    let whatsappSent = referral.whatsapp_sent;
-    let emailSent = referral.email_sent;
-    const results: string[] = [];
+    // Process notifications in background
+    EdgeRuntime.waitUntil(
+      resendNotificationsInBackground(referralId, referral as SyndicReferralData, channel)
+    );
 
-    // Reenviar WhatsApp se solicitado
-    if (channel === "whatsapp" || channel === "both") {
-      const whatsappMessage = getWhatsAppMessage(
-        referral.syndic_name,
-        referral.referrer_name || "",
-        referral.condominium_name
-      );
-      const whatsappResult = await sendWhatsApp(referral.syndic_phone, whatsappMessage);
-      whatsappSent = whatsappResult.success;
-      results.push(`WhatsApp: ${whatsappResult.success ? "enviado" : "falhou - " + whatsappResult.error}`);
-    }
-
-    // Reenviar Email se solicitado
-    if (channel === "email" || channel === "both") {
-      const displayReferrer = referral.referrer_name || "Um morador";
-      const emailSubject = `${displayReferrer} do ${referral.condominium_name} indicou o AVISO PRO para você!`;
-      const emailHtml = getEmailHtml(
-        referral.syndic_name,
-        referral.referrer_name || "",
-        referral.condominium_name
-      );
-      const emailResult = await sendEmail(referral.syndic_email, emailSubject, emailHtml);
-      emailSent = emailResult.success;
-      results.push(`Email: ${emailResult.success ? "enviado" : "falhou - " + emailResult.error}`);
-    }
-
-    // Atualizar status no banco
-    await supabaseAdmin
-      .from("syndic_referrals")
-      .update({
-        whatsapp_sent: whatsappSent,
-        email_sent: emailSent,
-      })
-      .eq("id", referralId);
-
-    console.log(`[Resend] Completed: ${results.join(", ")}`);
-
+    // Return immediate response
     return new Response(
       JSON.stringify({
         success: true,
-        whatsappSent,
-        emailSent,
-        message: results.join("; "),
+        processing: true,
+        message: "Reenvio iniciado. As notificações serão processadas em instantes.",
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -72,3 +72,13 @@ export const PLANS = {
 } as const;
 
 export type PlanType = keyof typeof PLANS;
+
+export const TRIAL_CONFIG = {
+  durationMonths: 3,
+  label: "Teste Grátis",
+  features: [
+    "Acesso completo por 3 meses",
+    "Todas as funcionalidades do plano Pro",
+    "Sem necessidade de cartão de crédito",
+  ],
+};

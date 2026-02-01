@@ -7,9 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, Loader2, Save, Clock, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getTrialStatus } from "@/lib/utils";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Condominium {
   id: string;
@@ -24,6 +28,7 @@ interface Condominium {
   notification_email: boolean;
   notification_whatsapp: boolean;
   notification_sms: boolean;
+  trial_ends_at: string | null;
 }
 
 export default function CondominiumSettingsPage() {
@@ -324,6 +329,44 @@ export default function CondominiumSettingsPage() {
                   {planLabels[condominium.plan]}
                 </span>
               </div>
+
+              {/* Trial Info */}
+              {condominium.trial_ends_at && (() => {
+                const { isActive, daysRemaining, endDate } = getTrialStatus(condominium.trial_ends_at);
+                return (
+                  <>
+                    <div className="flex justify-between items-center py-2 border-t border-border">
+                      <span className="text-sm text-muted-foreground flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Período de teste
+                      </span>
+                      <span className={`text-sm font-medium px-2 py-1 rounded-full ${
+                        isActive 
+                          ? "bg-primary/10 text-primary" 
+                          : "bg-destructive/10 text-destructive"
+                      }`}>
+                        {isActive ? `${daysRemaining} dias restantes` : "Expirado"}
+                      </span>
+                    </div>
+                    {endDate && (
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-sm text-muted-foreground">Expira em</span>
+                        <span className="text-sm">
+                          {format(endDate, "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
+                      </div>
+                    )}
+                    {isActive && daysRemaining <= 14 && (
+                      <Alert className="mt-3 border-destructive/50 bg-destructive/10">
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                        <AlertDescription className="text-destructive">
+                          Seu período de teste expira em breve. Entre em contato para continuar usando o sistema.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
 

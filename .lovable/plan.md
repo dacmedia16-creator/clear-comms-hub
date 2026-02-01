@@ -1,121 +1,117 @@
 
 
-# Destaque Visual no Link de Indicação
+# Adicionar Envio de SMS na Indicação de Síndico
 
 ## Objetivo
 
-Transformar o link simples "Indique para seu síndico" em um elemento visualmente mais chamativo, seguindo a estética do badge "3 meses grátis" já existente no Hero.
+Quando um morador indicar um síndico, além de WhatsApp e Email, o sistema também enviará um SMS para o telefone informado.
 
 ---
 
-## Referência de Estilo
+## Mudanças Necessárias
 
-O badge atual de "3 meses grátis" (linha 18) usa:
-- Fundo colorido (`bg-emerald-100`)
-- Texto colorido (`text-emerald-700`)
-- Borda sutil (`border border-emerald-200`)
-- Cantos arredondados (`rounded-full`)
-- Ícone à esquerda (`Gift`)
+### 1. Banco de Dados
 
----
+Adicionar coluna `sms_sent` na tabela `syndic_referrals` para rastrear o status do envio de SMS.
 
-## Proposta de Design
-
-Aplicar um estilo similar ao link de indicação, mas com cores diferentes para diferenciar:
-
-**Antes (atual):**
-```
-Indique para seu síndico (texto simples com ícone)
-```
-
-**Depois (com destaque):**
-```
-+------------------------------------------+
-|  [UserPlus]  Indique para seu síndico →  |
-+------------------------------------------+
-   (badge com fundo azul claro e borda)
+```sql
+ALTER TABLE syndic_referrals 
+ADD COLUMN sms_sent boolean DEFAULT false;
 ```
 
 ---
 
-## Estilos Propostos
+### 2. Edge Function: `send-referral`
 
-O link será transformado em um badge/pill com:
+**Arquivo:** `supabase/functions/send-referral/index.ts`
 
-| Propriedade | Valor |
-|-------------|-------|
-| Fundo | `bg-blue-50` |
-| Texto | `text-blue-700` |
-| Borda | `border border-blue-200` |
-| Padding | `px-4 py-2` |
-| Cantos | `rounded-full` |
-| Hover | `hover:bg-blue-100` com transição suave |
-| Ícone direita | Seta (`ArrowRight` ou `→`) indicando ação |
+Adicionar:
+- Função `formatPhoneForSMSFire()` para formatar telefone
+- Função `sendSMS()` para chamar a API SMSFire v3
+- Função `getSMSMessage()` com template de mensagem curta (max 160 chars)
+- Incluir envio de SMS na função `sendNotificationsInBackground()`
+- Atualizar `updateReferralStatus()` para incluir `sms_sent`
 
----
-
-## Arquivo a Modificar
-
-### `src/components/landing/Hero.tsx`
-
-Modificar o bloco do link de indicação (linhas 48-57):
-
-**De:**
-```tsx
-<div className="text-center lg:text-left mb-6">
-  <Link 
-    to="/indicar-sindico" 
-    className="inline-flex items-center gap-2 text-primary hover:underline text-sm font-medium transition-colors"
-  >
-    <UserPlus className="w-4 h-4" />
-    Indique para seu síndico
-  </Link>
-</div>
+**Template SMS (máx 160 caracteres):**
 ```
-
-**Para:**
-```tsx
-<div className="text-center lg:text-left mb-6">
-  <Link 
-    to="/indicar-sindico" 
-    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold border border-blue-200 hover:bg-blue-100 transition-colors"
-  >
-    <UserPlus className="w-4 h-4" />
-    Indique para seu síndico
-    <ArrowRight className="w-4 h-4" />
-  </Link>
-</div>
+AVISO PRO: [Referrer] do [Condo] indicou voce! 3 meses GRATIS. Acesse clear-comms-hub.lovable.app
 ```
 
 ---
 
-## Layout Visual Atualizado
+### 3. Edge Function: `resend-referral`
+
+**Arquivo:** `supabase/functions/resend-referral/index.ts`
+
+Atualizar:
+- Interface `ResendRequest` para aceitar canal "sms"
+- Adicionar função `sendSMS()` (mesma lógica do send-referral)
+- Adicionar função `getSMSMessage()`
+- Incluir lógica de reenvio de SMS na função `resendNotificationsInBackground()`
+- Validar canal aceitar "whatsapp", "email", "sms" ou "both"
+
+---
+
+### 4. Hook: `useSyndicReferrals`
+
+**Arquivo:** `src/hooks/useSyndicReferrals.ts`
+
+Atualizar:
+- Interface `SyndicReferral` para incluir `sms_sent`
+- Estatísticas para incluir `failedSMS`
+- Função `resendNotification` aceitar canal "sms"
+
+---
+
+## Fluxo Atualizado
 
 ```text
-[Gift] 3 meses grátis para testar      (badge verde - topo)
-
-Quando é importante,
-vira AVISO.
-
-Descrição...
-
-[Começar agora →]  [Ver demonstração]
-
-[UserPlus] Indique para seu síndico →  (badge azul - DESTAQUE)
-   ↑ Novo visual com fundo, borda e seta
-
-✓ Configuração em 2 minutos
-✓ 3 meses grátis  
-✓ Sem cartão de crédito
+Morador submete indicação
+         |
+         v
++------------------+
+| Salvar no banco  |
+| sms_sent: false  |
++------------------+
+         |
+         v
+EdgeRuntime.waitUntil()
+         |
+         v
++--------------------------------+
+|    Background Processing       |
+|  1. sendWhatsApp() → update    |
+|  2. sendEmail() → update       |
+|  3. sendSMS() → update         |  ← NOVO
++--------------------------------+
 ```
+
+---
+
+## API SMSFire (já configurada)
+
+Usa a mesma integração já existente em `send-sms`:
+- URL: `https://api-v3.smsfire.com.br/sms/send/individual`
+- Headers: `Username` e `Api_Token`
+- Secrets já configurados: `SMSFIRE_USERNAME`, `SMSFIRE_API_TOKEN`
+
+---
+
+## Arquivos a Criar/Modificar
+
+| Arquivo | Ação |
+|---------|------|
+| Tabela `syndic_referrals` | Adicionar coluna `sms_sent` |
+| `supabase/functions/send-referral/index.ts` | Adicionar envio SMS |
+| `supabase/functions/resend-referral/index.ts` | Adicionar reenvio SMS |
+| `src/hooks/useSyndicReferrals.ts` | Incluir stats e tipo SMS |
 
 ---
 
 ## Resultado Esperado
 
-- Link mais visível e clicável
-- Estilo consistente com a linguagem visual do Hero (badges arredondados)
-- Diferenciação de cor (azul vs verde) mantém hierarquia visual
-- Seta indicando que é uma ação/navegação
-- Hover com feedback visual
+Após implementação:
+- Ao indicar um síndico, ele receberá: WhatsApp + Email + **SMS**
+- No painel de indicações, aparecerá o status de envio do SMS
+- Será possível reenviar SMS individualmente se falhar
 

@@ -24,7 +24,7 @@ interface Condominium {
   state: string | null;
   slug: string;
   code: number;
-  plan: "free" | "starter" | "pro";
+  plan: string;
   notification_email: boolean;
   notification_whatsapp: boolean;
   notification_sms: boolean;

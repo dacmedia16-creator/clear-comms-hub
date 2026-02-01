@@ -1,202 +1,257 @@
 
-# Analise do Erro 500 no WhatsApp da Edge Function send-referral
 
-## Diagnostico
+# Painel de Indicacoes de Sindicos no Super Admin
 
-Analisei os logs e o codigo das edge functions para identificar a causa do erro.
+## Objetivo
 
-### Evidencias dos Logs
-
-| Teste | Telefone Formatado | Erro |
-|-------|-------------------|------|
-| 1o teste (18:57) | `5511999998888` (sem +) | `NullPointerException` - formato invalido |
-| 2o teste (19:02) | `+5511999887766` (com +) | `500 - Failed to send the message` |
-
-### Causas Identificadas
-
-**1. Numero de Teste Inexistente**
-O erro 500 "Failed to send the message" ocorre porque o numero `11999887766` nao existe no WhatsApp. A API ZionTalk valida se o destinatario tem WhatsApp antes de enviar.
-
-**2. Timeout do Email (CPU Time exceeded)**
-A conexao SMTP esta demorando muito e causando timeout da edge function (limite de CPU excedido).
-
-### Comparacao com funcoes que funcionam
-
-| Aspecto | send-referral | send-whatsapp/test-whatsapp |
-|---------|--------------|------------------------------|
-| Endpoint | `app.ziontalk.com/api/send_message/` | Identico |
-| Auth | Basic Auth | Identico |
-| FormData | `msg` + `mobile_phone` | Identico |
-| Formato telefone | `+5511999887766` | Identico |
-
-**Conclusao**: A integracao com ZionTalk esta CORRETA. O erro 500 e esperado para numeros invalidos/inexistentes.
+Criar uma nova pagina no Super Admin para visualizar e gerenciar todas as indicacoes de sindicos recebidas atraves do formulario /indicar-sindico, com capacidade de reenviar notificacoes manualmente.
 
 ---
 
-## Solucoes Propostas
+## Arquivos a Criar
 
-### 1. Otimizar Edge Function para Evitar Timeout
+### 1. Hook: `src/hooks/useSyndicReferrals.ts`
 
-O principal problema tecnico e o timeout do SMTP. Solucoes:
-
-**Opcao A - Fire-and-forget (Recomendado)**
-Usar `EdgeRuntime.waitUntil()` para processar WhatsApp e Email em background, igual a `send-whatsapp`:
+Novo hook para buscar e gerenciar indicacoes:
 
 ```typescript
-// Retornar resposta imediata
-EdgeRuntime.waitUntil(sendNotificationsInBackground(...));
-
-return new Response(JSON.stringify({ success: true, ... }));
-```
-
-**Opcao B - Timeout configuravel**
-Adicionar timeout de 10 segundos para conexao SMTP para falhar rapido se o servidor demorar.
-
-### 2. Melhorar Tratamento de Erros
-
-Diferenciar tipos de erro do WhatsApp:
-- Numero invalido/inexistente
-- Problema de API key
-- Rate limiting
-- Erro de rede
-
-### 3. Adicionar Validacao de Telefone
-
-Antes de enviar, verificar se o telefone tem formato brasileiro valido (11 digitos apos limpeza).
-
----
-
-## Plano de Implementacao
-
-### Arquivo: `supabase/functions/send-referral/index.ts`
-
-1. **Adicionar import do EdgeRuntime**
-```typescript
-declare const EdgeRuntime: {
-  waitUntil(promise: Promise<unknown>): void;
-};
-```
-
-2. **Criar funcao de processamento em background**
-```typescript
-async function sendNotificationsInBackground(
-  referralId: string,
-  syndicPhone: string,
-  syndicEmail: string,
-  whatsappMessage: string,
-  emailSubject: string,
-  emailHtml: string
-) {
-  // Enviar WhatsApp
-  const whatsappResult = await sendWhatsApp(syndicPhone, whatsappMessage);
-  
-  // Enviar Email com timeout
-  const emailResult = await sendEmail(syndicEmail, emailSubject, emailHtml);
-  
-  // Atualizar banco
-  await updateReferralStatus(referralId, whatsappResult.success, emailResult.success);
+interface SyndicReferral {
+  id: string;
+  syndic_name: string;
+  syndic_phone: string;
+  syndic_email: string;
+  condominium_name: string;
+  referrer_name: string | null;
+  status: string | null;
+  notes: string | null;
+  whatsapp_sent: boolean | null;
+  email_sent: boolean | null;
+  created_at: string;
 }
 ```
 
-3. **Modificar handler principal**
+**Funcionalidades:**
+- Buscar todas as indicacoes ordenadas por data
+- Atualizar status (pending/contacted/converted/rejected)
+- Adicionar notas
+- Deletar indicacoes
+
+### 2. Pagina: `src/pages/super-admin/SuperAdminReferrals.tsx`
+
+Nova pagina completa com:
+
+**Header:**
+- Link de volta para dashboard
+- Icone e titulo "Indicacoes"
+- Botao de refresh
+
+**Estatisticas:**
+- Total de indicacoes
+- Pendentes (WhatsApp ou Email nao enviados)
+- Status: pending/contacted/converted/rejected
+
+**Filtros:**
+- Busca por nome do sindico, email ou condominio
+- Filtro por status (todos/pending/contacted/converted/rejected)
+- Filtro por problemas de envio (WhatsApp/Email falhos)
+
+**Tabela (Desktop) / Cards (Mobile):**
+- Nome do sindico
+- Telefone
+- Email
+- Condominio
+- Quem indicou
+- Status do envio (WhatsApp/Email com icones)
+- Status geral
+- Data de criacao
+- Acoes: Reenviar WhatsApp, Reenviar Email, Editar notas, Excluir
+
+**Dialogs:**
+- Modal para reenvio manual de WhatsApp/Email
+- Modal para editar notas/status
+- Confirmacao de exclusao
+
+---
+
+## Arquivos a Modificar
+
+### 3. App.tsx
+
+Adicionar nova rota:
+
 ```typescript
-// Salvar no banco
-const { data: referral } = await supabase.from("syndic_referrals").insert(...);
-
-// Processar notificacoes em background
-EdgeRuntime.waitUntil(
-  sendNotificationsInBackground(referral.id, syndicPhone, syndicEmail, ...)
-);
-
-// Retornar resposta imediata
-return new Response(JSON.stringify({
-  success: true,
-  referralId: referral.id,
-  message: "Indicacao recebida! As notificacoes serao enviadas em instantes."
-}));
+<Route path="/super-admin/referrals" element={<SuperAdminReferrals />} />
 ```
 
-4. **Adicionar timeout para SMTP**
+### 4. SuperAdminDashboard.tsx
+
+Adicionar card de acesso rapido para Indicacoes:
+
 ```typescript
-const client = new SMTPClient({
-  connection: {
-    hostname: smtpHost,
-    port: 465,
-    tls: true,
-    auth: { username: smtpUser, password: smtpPassword },
-  },
-  timeout: 15000, // 15 segundos de timeout
-});
+<Card>
+  <CardHeader>
+    <UserPlus className="..." />
+    <CardTitle>Indicacoes de Sindicos</CardTitle>
+    <CardDescription>
+      Visualize e gerencie indicacoes recebidas
+    </CardDescription>
+  </CardHeader>
+  <CardContent>
+    <span>Total: {stats.totalReferrals}</span>
+    <span>Pendentes: {stats.pendingReferrals}</span>
+    <Button>Ver Indicacoes</Button>
+  </CardContent>
+</Card>
 ```
 
-5. **Melhorar logs de erro**
-```typescript
-if (!success) {
-  const errorText = await response.text();
-  // Identificar tipo de erro
-  if (response.status === 500 && errorText.includes("Failed to send")) {
-    console.error(`WhatsApp: Numero ${formattedPhone} provavelmente nao tem WhatsApp`);
-  }
-  // ...
+### 5. Navegacao Mobile (superAdminNavItems)
+
+Como a barra de navegacao ja tem 5 itens (limite visual), a pagina de indicacoes sera acessada pelo Dashboard ou por link direto, sem adicionar ao bottom nav.
+
+---
+
+## Edge Function: Reenvio Manual
+
+### 6. Nova Edge Function: `supabase/functions/resend-referral/index.ts`
+
+Funcao para reenviar notificacoes de indicacoes existentes:
+
+**Request:**
+```json
+{
+  "referralId": "uuid",
+  "channel": "whatsapp" | "email" | "both"
 }
+```
+
+**Logica:**
+1. Buscar indicacao pelo ID
+2. Validar que existe
+3. Reenviar WhatsApp e/ou Email conforme solicitado
+4. Atualizar status no banco
+5. Retornar resultado
+
+---
+
+## Estrutura da Interface
+
+```text
+/super-admin/referrals
++--------------------------------------------------+
+|  [<-]  Indicacoes                     [Refresh]  |
++--------------------------------------------------+
+|                                                  |
+|  +--------+  +--------+  +--------+  +--------+  |
+|  | Total  |  |Pendente|  |Contato |  |Convert.|  |
+|  |   12   |  |   3    |  |   5    |  |   4    |  |
+|  +--------+  +--------+  +--------+  +--------+  |
+|                                                  |
+|  [Buscar...              ] [Status v] [Envios v] |
+|                                                  |
+|  +----------------------------------------------+|
+|  | Nome        | Telefone | Email    | Status   ||
+|  |-------------|----------|----------|----------||
+|  | Joao Silva  | 11999..  | j@e.com  | Pending  ||
+|  |   WA: [X]   Email: [OK]           [Acoes]   ||
+|  +----------------------------------------------+|
+|                                                  |
++--------------------------------------------------+
 ```
 
 ---
 
-## Resultado Esperado
+## Badges de Status de Envio
 
-Apos as correcoes:
+| Situacao | Badge |
+|----------|-------|
+| WhatsApp enviado | Icone verde com check |
+| WhatsApp falhou | Icone vermelho com X |
+| Email enviado | Icone verde com check |
+| Email falhou | Icone vermelho com X |
 
-| Antes | Depois |
-|-------|--------|
-| Timeout por CPU excedida | Resposta imediata ao usuario |
-| Erro 500 bloqueia fluxo | Erro tratado graciosamente |
-| Nenhum feedback | Usuario ve mensagem de sucesso |
-| Notificacoes bloqueadas | Notificacoes enviadas em background |
+---
 
-## Nota sobre Testes
+## Status de Indicacao
 
-Para validar que o WhatsApp funciona corretamente, use um numero REAL que tenha WhatsApp cadastrado. Numeros de teste ficticios sempre retornarao erro 500 da API ZionTalk.
+| Status | Cor | Descricao |
+|--------|-----|-----------|
+| pending | Amarelo | Aguardando contato |
+| contacted | Azul | Contato realizado |
+| converted | Verde | Converteu em cliente |
+| rejected | Vermelho | Nao tem interesse |
 
 ---
 
 ## Secao Tecnica
 
-### Estrutura da Edge Function Otimizada
+### Estrutura de Arquivos
 
 ```text
-+------------------+     +---------------------+
-|  Request HTTP    |---->|  Validar dados      |
-+------------------+     +---------------------+
-                                |
-                                v
-                         +---------------------+
-                         |  Salvar no banco    |
-                         +---------------------+
-                                |
-        +<----------------------+----------------------->+
-        |                                                |
-        v                                                v
-+------------------+                            +------------------+
-| EdgeRuntime      |                            | Response HTTP    |
-| .waitUntil()     |                            | { success: true }|
-+------------------+                            +------------------+
-        |
-        v
-+---------------------------------------+
-| Background:                           |
-|  1. sendWhatsApp()                    |
-|  2. sendEmail() com timeout           |
-|  3. updateReferralStatus()            |
-+---------------------------------------+
+src/
+  hooks/
+    useSyndicReferrals.ts        [NOVO]
+  pages/
+    super-admin/
+      SuperAdminReferrals.tsx    [NOVO]
+  App.tsx                        [MODIFICAR]
+  
+supabase/
+  functions/
+    resend-referral/
+      index.ts                   [NOVO]
+  config.toml                    [MODIFICAR - adicionar funcao]
 ```
 
-### Tratamento de Erros por Tipo
+### Hook useSyndicReferrals
 
-| Status Code | Significado | Acao |
-|-------------|-------------|------|
-| 201 | Sucesso | Marcar como enviado |
-| 400 | Dados invalidos | Log + continuar |
-| 401 | API key invalida | Log + alerta |
-| 500 | Numero sem WhatsApp | Log + continuar com email |
+```typescript
+// Seguindo padrao de useAllCondominiums
+export function useSyndicReferrals() {
+  const [referrals, setReferrals] = useState<SyndicReferral[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchReferrals = async () => { /* ... */ };
+  const updateStatus = async (id, status) => { /* ... */ };
+  const updateNotes = async (id, notes) => { /* ... */ };
+  const deleteReferral = async (id) => { /* ... */ };
+
+  return { referrals, loading, error, refetch, updateStatus, updateNotes, deleteReferral };
+}
+```
+
+### Edge Function resend-referral
+
+```typescript
+// Reutiliza logica de send-referral
+// - Recebe referralId e channel
+// - Busca dados da indicacao no banco
+// - Reenvia WhatsApp/Email usando mesmas funcoes
+// - Atualiza whatsapp_sent/email_sent
+// - Retorna resultado
+```
+
+### Componentes da Pagina
+
+1. **Estatisticas** - Cards com contadores
+2. **Filtros** - Busca + Select de status + Select de problemas
+3. **Tabela/Cards** - Listagem responsiva
+4. **Dialogs:**
+   - ResendDialog - Para reenviar notificacoes
+   - EditNotesDialog - Para editar notas e status
+   - DeleteConfirmDialog - Para confirmar exclusao
+
+---
+
+## Resultado Esperado
+
+Apos implementacao:
+
+1. Super Admin acessa /super-admin/referrals
+2. Ve todas as indicacoes com status de envio
+3. Pode filtrar por status ou problemas de envio
+4. Pode reenviar WhatsApp/Email manualmente
+5. Pode atualizar status e adicionar notas
+6. Pode excluir indicacoes antigas
+7. Acesso rapido pelo card no Dashboard
 

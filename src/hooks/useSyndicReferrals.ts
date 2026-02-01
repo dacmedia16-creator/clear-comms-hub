@@ -12,6 +12,7 @@ export interface SyndicReferral {
   notes: string | null;
   whatsapp_sent: boolean | null;
   email_sent: boolean | null;
+  sms_sent: boolean | null;
   created_at: string | null;
 }
 
@@ -102,7 +103,7 @@ export function useSyndicReferrals() {
 
   const resendNotification = async (
     id: string,
-    channel: "whatsapp" | "email" | "both"
+    channel: "whatsapp" | "email" | "sms" | "both" | "all"
   ): Promise<{ success: boolean; message?: string }> => {
     try {
       const { data, error } = await supabase.functions.invoke("resend-referral", {
@@ -134,6 +135,7 @@ export function useSyndicReferrals() {
     rejected: referrals.filter((r) => r.status === "rejected").length,
     failedWhatsApp: referrals.filter((r) => r.whatsapp_sent === false).length,
     failedEmail: referrals.filter((r) => r.email_sent === false).length,
+    failedSMS: referrals.filter((r) => r.sms_sent === false).length,
   };
 
   return {

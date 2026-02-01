@@ -15,7 +15,7 @@ const corsHeaders = {
 
 interface ResendRequest {
   referralId: string;
-  channel: "whatsapp" | "email" | "both";
+  channel: "whatsapp" | "email" | "sms" | "both" | "all";
 }
 
 interface SyndicReferralData {
@@ -36,6 +36,65 @@ function formatPhoneForWhatsApp(phone: string): string {
     return `+${cleanPhone}`;
   }
   return `+55${cleanPhone}`;
+}
+
+// Função para formatar telefone para SMSFire (apenas números, com 55)
+function formatPhoneForSMSFire(phone: string): string {
+  const cleanPhone = phone.replace(/\D/g, "");
+  if (cleanPhone.startsWith("55")) {
+    return cleanPhone;
+  }
+  return `55${cleanPhone}`;
+}
+
+// Template de mensagem SMS (máx 160 caracteres)
+function getSMSMessage(referrerName: string, condominiumName: string): string {
+  const displayReferrer = referrerName || "Um morador";
+  return `AVISO PRO: ${displayReferrer} do ${condominiumName} indicou voce. 3 meses GRATIS. Acesse clear-comms-hub.lovable.app`;
+}
+
+// Função para enviar SMS via SMSFire
+async function sendSMS(phone: string, message: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const username = Deno.env.get("SMSFIRE_USERNAME");
+    const apiToken = Deno.env.get("SMSFIRE_API_TOKEN");
+
+    if (!username || !apiToken) {
+      console.log("[Resend] SMS credentials not configured");
+      return { success: false, error: "SMS não configurado" };
+    }
+
+    const formattedPhone = formatPhoneForSMSFire(phone);
+    console.log(`[Resend] Sending SMS to ${formattedPhone}`);
+
+    // Higienizar mensagem removendo caracteres problemáticos
+    const sanitizedMessage = message.replace(/[\[\]!]/g, "");
+
+    const url = `https://api-v3.smsfire.com.br/sms/send/individual?to=${formattedPhone}&message=${encodeURIComponent(sanitizedMessage)}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Username": username,
+        "Api_Token": apiToken,
+      },
+    });
+
+    const responseData = await response.json();
+    console.log("[Resend] SMS API response:", JSON.stringify(responseData));
+
+    if (response.ok && responseData.status === "OK") {
+      console.log("[Resend] SMS sent successfully");
+      return { success: true };
+    } else {
+      console.error(`[Resend] SMS API error: ${response.status} - ${JSON.stringify(responseData)}`);
+      return { success: false, error: responseData.message || "Erro no envio" };
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Resend] SMS send error:", error);
+    return { success: false, error: errorMessage };
+  }
 }
 
 // Função para enviar WhatsApp via ZionTalk
@@ -282,16 +341,17 @@ function getEmailHtml(syndicName: string, referrerName: string, condominiumName:
 async function resendNotificationsInBackground(
   referralId: string,
   referral: SyndicReferralData,
-  channel: "whatsapp" | "email" | "both"
+  channel: "whatsapp" | "email" | "sms" | "both" | "all"
 ): Promise<void> {
   console.log(`[Resend Background] Starting for ${referralId}, channel: ${channel}`);
 
   let whatsappSent = referral.whatsapp_sent;
   let emailSent = referral.email_sent;
+  let smsSent = false;
 
   try {
     // Reenviar WhatsApp se solicitado
-    if (channel === "whatsapp" || channel === "both") {
+    if (channel === "whatsapp" || channel === "both" || channel === "all") {
       const whatsappMessage = getWhatsAppMessage(
         referral.syndic_name,
         referral.referrer_name || "",
@@ -303,7 +363,7 @@ async function resendNotificationsInBackground(
     }
 
     // Reenviar Email se solicitado
-    if (channel === "email" || channel === "both") {
+    if (channel === "email" || channel === "both" || channel === "all") {
       const displayReferrer = referral.referrer_name || "Um morador";
       const emailSubject = `${displayReferrer} do ${referral.condominium_name} indicou o AVISO PRO para você!`;
       const emailHtml = getEmailHtml(
@@ -316,21 +376,40 @@ async function resendNotificationsInBackground(
       console.log(`[Resend Background] Email: ${result.success ? "success" : "failed - " + result.error}`);
     }
 
+    // Reenviar SMS se solicitado
+    if (channel === "sms" || channel === "all") {
+      const smsMessage = getSMSMessage(
+        referral.referrer_name || "",
+        referral.condominium_name
+      );
+      const result = await sendSMS(referral.syndic_phone, smsMessage);
+      smsSent = result.success;
+      console.log(`[Resend Background] SMS: ${result.success ? "success" : "failed - " + result.error}`);
+    }
+
     // Atualizar status no banco
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    const updateData: Record<string, boolean | null> = {};
+    if (channel === "whatsapp" || channel === "both" || channel === "all") {
+      updateData.whatsapp_sent = whatsappSent;
+    }
+    if (channel === "email" || channel === "both" || channel === "all") {
+      updateData.email_sent = emailSent;
+    }
+    if (channel === "sms" || channel === "all") {
+      updateData.sms_sent = smsSent;
+    }
+
     await supabaseAdmin
       .from("syndic_referrals")
-      .update({
-        whatsapp_sent: whatsappSent,
-        email_sent: emailSent,
-      })
+      .update(updateData)
       .eq("id", referralId);
 
-    console.log(`[Resend Background] Completed for ${referralId} - WhatsApp: ${whatsappSent}, Email: ${emailSent}`);
+    console.log(`[Resend Background] Completed for ${referralId} - WhatsApp: ${whatsappSent}, Email: ${emailSent}, SMS: ${smsSent}`);
   } catch (error) {
     console.error(`[Resend Background] Error for ${referralId}:`, error);
   }
@@ -353,9 +432,9 @@ serve(async (req: Request) => {
       );
     }
 
-    if (!["whatsapp", "email", "both"].includes(channel)) {
+    if (!["whatsapp", "email", "sms", "both", "all"].includes(channel)) {
       return new Response(
-        JSON.stringify({ error: "channel deve ser 'whatsapp', 'email' ou 'both'" }),
+        JSON.stringify({ error: "channel deve ser 'whatsapp', 'email', 'sms', 'both' ou 'all'" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -21,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, MessageSquare, Pencil, Star, Trash2 } from "lucide-react";
+import { AlertCircle, Loader2, MessageSquare, Pencil, Star, Trash2 } from "lucide-react";
 import { useWhatsAppSenders, WhatsAppSender } from "@/hooks/useWhatsAppSenders";
 import { AddWhatsAppSenderDialog } from "./AddWhatsAppSenderDialog";
 import { EditWhatsAppSenderDialog } from "./EditWhatsAppSenderDialog";
@@ -37,7 +38,7 @@ function formatPhoneDisplay(phone: string): string {
 }
 
 export function WhatsAppSendersCard() {
-  const { senders, loading, createSender, updateSender, deleteSender, setDefault, toggleActive } = useWhatsAppSenders();
+  const { senders, loading, envKeyStatus, hasActiveSenders, createSender, updateSender, deleteSender, setDefault, toggleActive } = useWhatsAppSenders();
   const [editingSender, setEditingSender] = useState<WhatsAppSender | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -81,7 +82,26 @@ export function WhatsAppSendersCard() {
             <AddWhatsAppSenderDialog onAdd={createSender} />
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* ENV Key Status Alert */}
+          {!envKeyStatus.loading && envKeyStatus.hasEnvKey && (
+            <Alert className="border-amber-500/50 bg-amber-500/10">
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+              <AlertTitle className="text-amber-600 dark:text-amber-400">
+                API Key do Ambiente Detectada
+              </AlertTitle>
+              <AlertDescription className="text-sm text-muted-foreground">
+                Existe uma configuração via variável de ambiente que será usada como fallback 
+                se nenhum número estiver cadastrado ou ativo.
+                {!hasActiveSenders && (
+                  <Badge variant="secondary" className="ml-2 bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                    Ativo (Fallback)
+                  </Badge>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -89,8 +109,13 @@ export function WhatsAppSendersCard() {
           ) : senders.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>Nenhum número cadastrado</p>
-              <p className="text-sm">Adicione um número para começar a enviar mensagens</p>
+              <p>Nenhum número cadastrado no banco de dados</p>
+              <p className="text-sm">
+                {envKeyStatus.hasEnvKey 
+                  ? "A API Key do ambiente está sendo usada como fallback"
+                  : "Adicione um número para começar a enviar mensagens"
+                }
+              </p>
             </div>
           ) : (
             <Table>

@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
+export interface EnvKeyStatus {
+  hasEnvKey: boolean;
+  loading: boolean;
+}
+
 export interface WhatsAppSender {
   id: string;
   name: string;
@@ -24,6 +29,7 @@ export interface CreateWhatsAppSender {
 export function useWhatsAppSenders() {
   const [senders, setSenders] = useState<WhatsAppSender[]>([]);
   const [loading, setLoading] = useState(true);
+  const [envKeyStatus, setEnvKeyStatus] = useState<EnvKeyStatus>({ hasEnvKey: false, loading: true });
 
   const fetchSenders = useCallback(async () => {
     setLoading(true);
@@ -156,13 +162,33 @@ export function useWhatsAppSenders() {
     return updateSender(id, { is_active });
   };
 
+  const checkEnvKeyStatus = useCallback(async () => {
+    setEnvKeyStatus(prev => ({ ...prev, loading: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke('test-whatsapp', {
+        method: 'GET',
+      });
+
+      if (error) throw error;
+      setEnvKeyStatus({ hasEnvKey: data?.hasEnvKey ?? false, loading: false });
+    } catch (error) {
+      console.error("Error checking ENV key status:", error);
+      setEnvKeyStatus({ hasEnvKey: false, loading: false });
+    }
+  }, []);
+
   useEffect(() => {
     fetchSenders();
-  }, [fetchSenders]);
+    checkEnvKeyStatus();
+  }, [fetchSenders, checkEnvKeyStatus]);
+
+  const hasActiveSenders = senders.some(s => s.is_active);
 
   return {
     senders,
     loading,
+    envKeyStatus,
+    hasActiveSenders,
     fetchSenders,
     createSender,
     updateSender,

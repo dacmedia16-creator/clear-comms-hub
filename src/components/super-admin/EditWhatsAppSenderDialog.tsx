@@ -1,0 +1,166 @@
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { WhatsAppSender, CreateWhatsAppSender } from "@/hooks/useWhatsAppSenders";
+
+interface EditWhatsAppSenderDialogProps {
+  sender: WhatsAppSender | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onUpdate: (id: string, updates: Partial<CreateWhatsAppSender>) => Promise<boolean>;
+}
+
+function formatPhoneBR(value: string): string {
+  const numbers = value.replace(/\D/g, "").slice(0, 11);
+  if (numbers.length <= 2) return numbers.length ? `(${numbers}` : "";
+  if (numbers.length <= 6) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+  if (numbers.length <= 10) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`;
+  return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+}
+
+export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate }: EditWhatsAppSenderDialogProps) {
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [isActive, setIsActive] = useState(true);
+  const [isDefault, setIsDefault] = useState(false);
+
+  useEffect(() => {
+    if (sender) {
+      setName(sender.name);
+      setPhone(formatPhoneBR(sender.phone));
+      setApiKey(""); // Don't show existing API key for security
+      setIsActive(sender.is_active);
+      setIsDefault(sender.is_default);
+    }
+  }, [sender]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!sender || !name.trim() || !phone.trim()) return;
+
+    setSaving(true);
+    
+    const updates: Partial<CreateWhatsAppSender> = {
+      name: name.trim(),
+      phone: phone.replace(/\D/g, ""),
+      is_active: isActive,
+      is_default: isDefault,
+    };
+
+    // Only update API key if provided
+    if (apiKey.trim()) {
+      updates.api_key = apiKey.trim();
+    }
+
+    const success = await onUpdate(sender.id, updates);
+
+    setSaving(false);
+    if (success) {
+      onOpenChange(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Editar Número de WhatsApp</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do número cadastrado
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="editName">Nome Identificador</Label>
+              <Input
+                id="editName"
+                placeholder="Ex: Número Principal"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="editPhone">Telefone (com DDD)</Label>
+              <Input
+                id="editPhone"
+                placeholder="(11) 99999-9999"
+                value={phone}
+                onChange={(e) => setPhone(formatPhoneBR(e.target.value))}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="editApiKey">Nova API Key (opcional)</Label>
+              <Input
+                id="editApiKey"
+                type="password"
+                placeholder="Deixe vazio para manter a atual"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Preencha apenas se desejar alterar a API Key
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="editIsActive">Número Ativo</Label>
+              <Switch
+                id="editIsActive"
+                checked={isActive}
+                onCheckedChange={setIsActive}
+              />
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="editIsDefault"
+                checked={isDefault}
+                onCheckedChange={(checked) => setIsDefault(checked === true)}
+              />
+              <Label htmlFor="editIsDefault" className="text-sm font-normal cursor-pointer">
+                Definir como número padrão para disparos
+              </Label>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={saving || !name.trim() || !phone.trim()}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar Alterações"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

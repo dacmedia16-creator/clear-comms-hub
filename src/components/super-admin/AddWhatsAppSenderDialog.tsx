@@ -1,0 +1,167 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, Plus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { CreateWhatsAppSender } from "@/hooks/useWhatsAppSenders";
+
+interface AddWhatsAppSenderDialogProps {
+  onAdd: (sender: CreateWhatsAppSender) => Promise<boolean>;
+}
+
+function formatPhoneBR(value: string): string {
+  const numbers = value.replace(/\D/g, "").slice(0, 11);
+  if (numbers.length <= 2) return numbers.length ? `(${numbers}` : "";
+  if (numbers.length <= 6) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+  if (numbers.length <= 10) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`;
+  return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+}
+
+export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [isActive, setIsActive] = useState(true);
+  const [isDefault, setIsDefault] = useState(false);
+
+  const resetForm = () => {
+    setName("");
+    setPhone("");
+    setApiKey("");
+    setIsActive(true);
+    setIsDefault(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name.trim() || !phone.trim() || !apiKey.trim()) return;
+
+    setSaving(true);
+    const success = await onAdd({
+      name: name.trim(),
+      phone: phone.replace(/\D/g, ""),
+      api_key: apiKey.trim(),
+      is_active: isActive,
+      is_default: isDefault,
+    });
+
+    setSaving(false);
+    if (success) {
+      resetForm();
+      setOpen(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      setOpen(isOpen);
+      if (!isOpen) resetForm();
+    }}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Plus className="w-4 h-4 mr-2" />
+          Adicionar Número
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Adicionar Número de WhatsApp</DialogTitle>
+            <DialogDescription>
+              Cadastre um novo número para disparo de mensagens via Zion Talk
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome Identificador</Label>
+              <Input
+                id="name"
+                placeholder="Ex: Número Principal"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone (com DDD)</Label>
+              <Input
+                id="phone"
+                placeholder="(11) 99999-9999"
+                value={phone}
+                onChange={(e) => setPhone(formatPhoneBR(e.target.value))}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="apiKey">API Key do Zion Talk</Label>
+              <Input
+                id="apiKey"
+                type="password"
+                placeholder="Cole a API Key aqui"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                A API Key será armazenada de forma segura no banco de dados
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="isActive">Número Ativo</Label>
+              <Switch
+                id="isActive"
+                checked={isActive}
+                onCheckedChange={setIsActive}
+              />
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isDefault"
+                checked={isDefault}
+                onCheckedChange={(checked) => setIsDefault(checked === true)}
+              />
+              <Label htmlFor="isDefault" className="text-sm font-normal cursor-pointer">
+                Definir como número padrão para disparos
+              </Label>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={saving || !name.trim() || !phone.trim() || !apiKey.trim()}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Adicionar"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

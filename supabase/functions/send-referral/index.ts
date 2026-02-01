@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,19 +16,18 @@ interface ReferralRequest {
   referrerName?: string;
 }
 
-// Função para formatar telefone para WhatsApp (apenas números com código do país)
+// Função para formatar telefone para WhatsApp (com + e código do país)
 function formatPhoneForWhatsApp(phone: string): string {
   const cleanPhone = phone.replace(/\D/g, "");
   if (cleanPhone.startsWith("55")) {
-    return cleanPhone;
+    return `+${cleanPhone}`;
   }
-  return `55${cleanPhone}`;
+  return `+55${cleanPhone}`;
 }
 
 // Função para enviar WhatsApp via ZionTalk
 async function sendWhatsApp(phone: string, message: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // Buscar remetente ativo do banco ou usar variável de ambiente
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -35,12 +35,12 @@ async function sendWhatsApp(phone: string, message: string): Promise<{ success: 
 
     let apiKey = Deno.env.get("ZIONTALK_API_KEY");
 
-    // Tentar buscar do banco primeiro
+    // Buscar remetente ativo do banco (prioriza default)
     const { data: senders } = await supabaseAdmin
       .from("whatsapp_senders")
       .select("api_key")
       .eq("is_active", true)
-      .eq("is_default", true)
+      .order("is_default", { ascending: false })
       .limit(1);
 
     if (senders && senders.length > 0) {
@@ -55,21 +55,28 @@ async function sendWhatsApp(phone: string, message: string): Promise<{ success: 
     const formattedPhone = formatPhoneForWhatsApp(phone);
     console.log(`Sending WhatsApp to ${formattedPhone}`);
 
-    const response = await fetch("https://api.z-api.io/instances/send-text", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Client-Token": apiKey,
-      },
-      body: JSON.stringify({
-        phone: formattedPhone,
-        message: message,
-      }),
-    });
+    // Basic Auth: API Key como username, senha vazia
+    const authHeader = 'Basic ' + encode(`${apiKey}:`);
 
-    if (!response.ok) {
+    // FormData para ZionTalk
+    const formData = new FormData();
+    formData.append('msg', message);
+    formData.append('mobile_phone', formattedPhone);
+
+    const response = await fetch(
+      'https://app.ziontalk.com/api/send_message/',
+      {
+        method: 'POST',
+        headers: { 'Authorization': authHeader },
+        body: formData,
+      }
+    );
+
+    const success = response.status === 201;
+
+    if (!success) {
       const errorText = await response.text();
-      console.error("WhatsApp API error:", errorText);
+      console.error(`WhatsApp API error: ${response.status} - ${errorText}`);
       return { success: false, error: errorText };
     }
 

@@ -31,7 +31,7 @@ export function Hero() {
               WhatsApp e e-mail apenas avisam – a verdade oficial está aqui.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-4">
               <Button asChild size="lg" className="touch-target text-base font-semibold px-8">
               <Link to="/auth/signup">
                   Começar agora
@@ -45,7 +45,18 @@ export function Hero() {
               </Button>
             </div>
 
-            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4 justify-center lg:justify-start text-sm text-muted-foreground mb-6">
+            {/* Link de indicação */}
+            <div className="text-center lg:text-left mb-6">
+              <Link 
+                to="/indicar-sindico" 
+                className="inline-flex items-center gap-2 text-primary hover:underline text-sm font-medium transition-colors"
+              >
+                <UserPlus className="w-4 h-4" />
+                Indique para seu síndico
+              </Link>
+            </div>
+
+            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4 justify-center lg:justify-start text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-primary" />
                 <span>Configuração em 2 minutos</span>
@@ -58,17 +69,6 @@ export function Hero() {
                 <CheckCircle className="w-4 h-4 text-primary" />
                 <span>Sem cartão de crédito</span>
               </div>
-            </div>
-
-            {/* Link de indicação */}
-            <div className="text-center lg:text-left">
-              <Link 
-                to="/indicar-sindico" 
-                className="inline-flex items-center gap-2 text-primary hover:underline text-sm font-medium transition-colors"
-              >
-                <UserPlus className="w-4 h-4" />
-                Indique para seu síndico
-              </Link>
             </div>
           </div>
 

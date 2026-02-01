@@ -6,7 +6,7 @@ import { useAllCondominiums } from "@/hooks/useAllCondominiums";
 import { useAllUsers } from "@/hooks/useAllUsers";
 import { useAllAnnouncements } from "@/hooks/useAllAnnouncements";
 import { useSyndicReferrals } from "@/hooks/useSyndicReferrals";
-import { Bell, Building2, Users, FileText, ArrowLeft, Loader2, LayoutDashboard, UserPlus } from "lucide-react";
+import { Bell, Building2, Users, FileText, ArrowLeft, Loader2, LayoutDashboard, UserPlus, CreditCard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshButton } from "@/components/RefreshButton";
 import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
@@ -254,6 +254,37 @@ export default function SuperAdminDashboard() {
                       <Link to="/super-admin/referrals">
                         <UserPlus className="w-4 h-4 mr-2" />
                         Ver Indicações
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center mb-2">
+                      <CreditCard className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="font-display">Gerenciar Planos</CardTitle>
+                    <CardDescription>
+                      Visualize e altere os planos dos condomínios
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                        Free: {stats.freeCondos}
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+                        Starter: {stats.starterCondos}
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                        Pro: {stats.proCondos}
+                      </span>
+                    </div>
+                    <Button asChild className="w-full">
+                      <Link to="/super-admin/plans">
+                        <CreditCard className="w-4 h-4 mr-2" />
+                        Ver Planos
                       </Link>
                     </Button>
                   </CardContent>

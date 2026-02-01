@@ -1,141 +1,97 @@
 
-# Gerenciamento de Numeros de WhatsApp para Disparo
+# Exibir Numero Atual do WhatsApp (ENV) no Card de Gerenciamento
 
 ## Objetivo
-Criar um sistema para adicionar, gerenciar e selecionar multiplos numeros de WhatsApp para disparo de mensagens na Central de Notificacoes do Super Admin.
+Mostrar o numero de WhatsApp configurado via variavel de ambiente (`ZIONTALK_API_KEY`) na lista de numeros do card de gerenciamento, permitindo que o Super Admin possa visualizar e entender que existe um numero "fallback" configurado no sistema.
 
 ---
 
 ## Arquitetura da Solucao
 
-### 1. Nova Tabela no Banco de Dados
+### Abordagem
+Como a API Key do ambiente nao pode ser gerenciada diretamente pelo frontend (nao podemos habilitar/desabilitar uma variavel de ambiente via interface), a solucao sera:
 
-```sql
-CREATE TABLE whatsapp_senders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,              -- Nome identificador (ex: "Numero Principal")
-  phone TEXT NOT NULL,             -- Numero do WhatsApp
-  api_key TEXT NOT NULL,           -- API Key do Zion Talk para este numero
-  is_active BOOLEAN DEFAULT true,  -- Se esta ativo para uso
-  is_default BOOLEAN DEFAULT false,-- Se e o numero padrao
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+1. **Exibir indicador visual** mostrando que existe uma API configurada via ambiente
+2. **Permitir "migrar"** essa configuracao para o banco de dados para gestao completa
+
+---
+
+## Alteracoes Propostas
+
+### 1. Atualizar Edge Function `test-whatsapp/index.ts`
+Retornar informacao sobre a existencia da API Key do ambiente no GET request:
+
+```typescript
+if (req.method === 'GET') {
+  return new Response(
+    JSON.stringify({ 
+      apiConfigured: true,
+      hasEnvKey: true  // Nova informacao
+    }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
 ```
 
-### 2. Politicas RLS
-- Apenas Super Admins podem visualizar, criar, editar e deletar numeros
+### 2. Atualizar `WhatsAppSendersCard.tsx`
+Adicionar uma secao mostrando o status da API Key do ambiente:
 
----
+- Mostrar um card/alerta informativo quando existe uma API Key configurada via ambiente
+- Indicar que essa e a "configuracao legada" e sugerir migrar para o banco de dados
+- Mostrar status: "Ativo (Fallback)" quando nao houver numeros no banco
 
-## Alteracoes no Frontend
-
-### Arquivo: `src/pages/super-admin/SuperAdminNotifications.tsx`
-
-**Novo Card de Numeros de WhatsApp** (apos os cards de status das APIs):
-- Tabela listando todos os numeros cadastrados
-- Colunas: Nome, Telefone, Status (Ativo/Inativo), Padrao
-- Botao "Adicionar Numero" que abre um dialog
-- Acoes por linha: Editar, Excluir, Definir como Padrao
-
-**Novo Dialog para Adicionar/Editar Numero**:
-- Campo: Nome (identificador)
-- Campo: Telefone (com mascara brasileira)
-- Campo: API Key do Zion Talk
-- Switch: Ativo
-- Checkbox: Definir como padrao
-
----
-
-## Componentes Novos
-
-### 1. `WhatsAppSendersCard.tsx`
-Card que exibe a lista de numeros cadastrados com acoes
-
-### 2. `AddWhatsAppSenderDialog.tsx`
-Dialog para adicionar novo numero de WhatsApp
-
-### 3. `EditWhatsAppSenderDialog.tsx`
-Dialog para editar numero existente
-
----
-
-## Alteracoes na Edge Function
-
-### `supabase/functions/send-whatsapp/index.ts`
-- Buscar o numero padrao (ou o primeiro ativo) da tabela `whatsapp_senders`
-- Usar a API Key associada ao numero selecionado
-- Logar qual numero foi usado no envio
-
----
-
-## Fluxo de Uso
-
+### 3. Logica de Fallback Visual
 ```text
-+---------------------+
-|  Central de         |
-|  Notificacoes       |
-+----------+----------+
-           |
-           v
-+----------+----------+
-|  Card: Numeros      |
-|  WhatsApp           |
-|  [+ Adicionar]      |
-+----------+----------+
-           |
-           v
-+----------+----------+
-|  Dialog: Novo       |
-|  Numero             |
-|  - Nome             |
-|  - Telefone         |
-|  - API Key          |
-|  - Ativo?           |
-|  - Padrao?          |
-+---------------------+
++----------------------------------+
+| Configuracao via Ambiente        |
+| Status: Ativo como Fallback      |
+| [Adicionar ao Banco de Dados]    |
++----------------------------------+
+|                                  |
+| Numeros Cadastrados              |
+| (lista da tabela whatsapp_senders)|
++----------------------------------+
 ```
 
 ---
 
 ## Resumo das Alteracoes
 
-| Tipo | Arquivo/Recurso | Descricao |
-|------|-----------------|-----------|
-| SQL | Migration | Criar tabela `whatsapp_senders` com RLS |
-| React | `SuperAdminNotifications.tsx` | Adicionar secao de gerenciamento de numeros |
-| React | `WhatsAppSendersCard.tsx` (novo) | Componente do card de numeros |
-| React | `AddWhatsAppSenderDialog.tsx` (novo) | Dialog para adicionar numero |
-| Edge | `send-whatsapp/index.ts` | Buscar API Key do numero configurado |
+| Arquivo | Alteracao |
+|---------|-----------|
+| `supabase/functions/test-whatsapp/index.ts` | Retornar `hasEnvKey` no GET |
+| `src/components/super-admin/WhatsAppSendersCard.tsx` | Adicionar secao de status do ENV |
+| `src/hooks/useWhatsAppSenders.ts` | Adicionar funcao para verificar API do ENV |
 
 ---
 
 ## Secao Tecnica
 
-### Estrutura da Tabela
+### Fluxo de Verificacao
+1. Ao carregar o card, fazer GET para `test-whatsapp` 
+2. Verificar se `hasEnvKey === true`
+3. Se sim, mostrar banner informativo sobre a API Key do ambiente
+4. Se nao houver numeros no banco E existir ENV key, mostrar como "Fallback Ativo"
 
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| id | UUID | Identificador unico |
-| name | TEXT | Nome amigavel do numero |
-| phone | TEXT | Numero de telefone formatado |
-| api_key | TEXT | API Key do Zion Talk |
-| is_active | BOOLEAN | Se o numero esta ativo |
-| is_default | BOOLEAN | Se e o numero padrao para disparos |
-| created_at | TIMESTAMPTZ | Data de criacao |
-| updated_at | TIMESTAMPTZ | Data de atualizacao |
+### Interface Visual Proposta
 
-### Politicas RLS
-
-```sql
--- Apenas Super Admins podem gerenciar
-CREATE POLICY "Super admins can manage whatsapp_senders"
-ON whatsapp_senders FOR ALL
-USING (is_super_admin())
-WITH CHECK (is_super_admin());
+```text
++------------------------------------------+
+| Numeros de WhatsApp                      |
++------------------------------------------+
+| [!] API Key do Ambiente Detectada        |
+|     Esta configuracao sera usada como    |
+|     fallback se nenhum numero estiver    |
+|     cadastrado ou ativo.                 |
+|     Status: Ativo (Fallback)             |
++------------------------------------------+
+| Nome     | Telefone   | Status | Padrao  |
+|----------|------------|--------|---------|
+| Numero 1 | (11)99999  |   ON   |   *     |
++------------------------------------------+
 ```
 
-### Logica de Selecao do Numero
-1. Buscar numero com `is_default = true` e `is_active = true`
-2. Se nao existir, buscar primeiro numero com `is_active = true`
-3. Se nenhum, usar a `ZIONTALK_API_KEY` do ambiente (fallback)
+### Consideracoes de Seguranca
+- Nao exibir a API Key do ambiente na interface
+- Apenas indicar que ela existe e esta configurada
+- O valor da API permanece protegido como secret

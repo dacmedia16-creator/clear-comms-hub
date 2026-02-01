@@ -49,10 +49,11 @@ export function Hero() {
             <div className="text-center lg:text-left mb-6">
               <Link 
                 to="/indicar-sindico" 
-                className="inline-flex items-center gap-2 text-primary hover:underline text-sm font-medium transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold border border-blue-200 hover:bg-blue-100 transition-colors"
               >
                 <UserPlus className="w-4 h-4" />
                 Indique para seu síndico
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
 

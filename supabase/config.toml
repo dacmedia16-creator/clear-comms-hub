@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.create-member]
 verify_jwt = false
+
+[functions.send-referral]
+verify_jwt = false

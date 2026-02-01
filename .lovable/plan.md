@@ -1,57 +1,115 @@
 
-# Exibir Numero Atual do WhatsApp (ENV) no Card de Gerenciamento
 
-## Objetivo
-Mostrar o numero de WhatsApp configurado via variavel de ambiente (`ZIONTALK_API_KEY`) na lista de numeros do card de gerenciamento, permitindo que o Super Admin possa visualizar e entender que existe um numero "fallback" configurado no sistema.
+# Corrigir test-whatsapp para Buscar API Key do Banco de Dados
+
+## Problema Identificado
+A funcao `test-whatsapp` usa **apenas** a variavel de ambiente `ZIONTALK_API_KEY` (linha 32), enquanto a funcao `send-whatsapp` corretamente busca primeiro a API Key do banco de dados `whatsapp_senders` (linhas 230-246) e so usa o ENV como fallback.
+
+Isso significa que o teste de disparo esta usando uma API Key diferente da que sera usada no envio real!
+
+## Comparacao do Codigo Atual
+
+**test-whatsapp (INCORRETO):**
+```typescript
+const ZIONTALK_API_KEY = Deno.env.get('ZIONTALK_API_KEY');
+const authHeader = 'Basic ' + encode(`${ZIONTALK_API_KEY}:`);
+```
+
+**send-whatsapp (CORRETO):**
+```typescript
+let apiKey = Deno.env.get('ZIONTALK_API_KEY');
+const { data: senders } = await supabase
+  .from('whatsapp_senders')
+  .select('*')
+  .eq('is_active', true)
+  .order('is_default', { ascending: false })
+  .limit(1);
+
+if (senders && senders.length > 0) {
+  apiKey = senders[0].api_key;
+}
+```
 
 ---
 
-## Arquitetura da Solucao
+## Solucao Proposta
 
-### Abordagem
-Como a API Key do ambiente nao pode ser gerenciada diretamente pelo frontend (nao podemos habilitar/desabilitar uma variavel de ambiente via interface), a solucao sera:
+Atualizar `test-whatsapp/index.ts` para usar a mesma logica de selecao de remetente que `send-whatsapp`:
 
-1. **Exibir indicador visual** mostrando que existe uma API configurada via ambiente
-2. **Permitir "migrar"** essa configuracao para o banco de dados para gestao completa
+1. Criar cliente Supabase no inicio
+2. Buscar o sender ativo e padrao da tabela `whatsapp_senders`
+3. Usar a API Key do banco se disponivel
+4. Usar ENV como fallback
+5. Logar qual fonte de API Key esta sendo usada
 
 ---
 
-## Alteracoes Propostas
+## Alteracao no Arquivo
 
-### 1. Atualizar Edge Function `test-whatsapp/index.ts`
-Retornar informacao sobre a existencia da API Key do ambiente no GET request:
+**Arquivo:** `supabase/functions/test-whatsapp/index.ts`
+
+**Alteracao:** Modificar a logica de obtencao da API Key (linhas 31-54) para:
 
 ```typescript
+// Create Supabase client with service role
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+);
+
+// Fetch the sender to use (default first, then first active, then fallback to env)
+let apiKey = Deno.env.get('ZIONTALK_API_KEY');
+let apiSource = 'ENV_FALLBACK';
+
+const { data: senders, error: sendersError } = await supabase
+  .from('whatsapp_senders')
+  .select('*')
+  .eq('is_active', true)
+  .order('is_default', { ascending: false })
+  .limit(1);
+
+if (sendersError) {
+  console.error("Error fetching whatsapp_senders:", sendersError);
+} else if (senders && senders.length > 0) {
+  const sender = senders[0];
+  apiKey = sender.api_key;
+  apiSource = `DB: ${sender.name} (${sender.phone})`;
+  console.log(`Using sender from database: ${sender.name} (${sender.phone})`);
+} else {
+  console.log("No active senders found, using ENV fallback");
+}
+
+// Check if API key is configured (GET request)
 if (req.method === 'GET') {
   return new Response(
     JSON.stringify({ 
-      apiConfigured: true,
-      hasEnvKey: true  // Nova informacao
+      apiConfigured: !!apiKey,
+      hasEnvKey: !!Deno.env.get('ZIONTALK_API_KEY'),
+      hasDbSenders: senders && senders.length > 0
     }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
+
+if (!apiKey) {
+  console.error("No API key available");
+  return new Response(
+    JSON.stringify({ success: false, error: "API key não configurada", apiConfigured: false }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+console.log(`API Key source: ${apiSource}`);
+const authHeader = 'Basic ' + encode(`${apiKey}:`);
 ```
 
-### 2. Atualizar `WhatsAppSendersCard.tsx`
-Adicionar uma secao mostrando o status da API Key do ambiente:
+---
 
-- Mostrar um card/alerta informativo quando existe uma API Key configurada via ambiente
-- Indicar que essa e a "configuracao legada" e sugerir migrar para o banco de dados
-- Mostrar status: "Ativo (Fallback)" quando nao houver numeros no banco
+## Beneficios
 
-### 3. Logica de Fallback Visual
-```text
-+----------------------------------+
-| Configuracao via Ambiente        |
-| Status: Ativo como Fallback      |
-| [Adicionar ao Banco de Dados]    |
-+----------------------------------+
-|                                  |
-| Numeros Cadastrados              |
-| (lista da tabela whatsapp_senders)|
-+----------------------------------+
-```
+1. **Consistencia**: Teste usara a mesma API Key que o envio real
+2. **Diagnostico**: Logs mostrarao de onde veio a API Key usada
+3. **Validacao Real**: O teste realmente validara o numero que sera usado em producao
 
 ---
 
@@ -59,39 +117,5 @@ Adicionar uma secao mostrando o status da API Key do ambiente:
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| `supabase/functions/test-whatsapp/index.ts` | Retornar `hasEnvKey` no GET |
-| `src/components/super-admin/WhatsAppSendersCard.tsx` | Adicionar secao de status do ENV |
-| `src/hooks/useWhatsAppSenders.ts` | Adicionar funcao para verificar API do ENV |
+| `supabase/functions/test-whatsapp/index.ts` | Adicionar busca de sender do banco de dados antes de usar ENV fallback |
 
----
-
-## Secao Tecnica
-
-### Fluxo de Verificacao
-1. Ao carregar o card, fazer GET para `test-whatsapp` 
-2. Verificar se `hasEnvKey === true`
-3. Se sim, mostrar banner informativo sobre a API Key do ambiente
-4. Se nao houver numeros no banco E existir ENV key, mostrar como "Fallback Ativo"
-
-### Interface Visual Proposta
-
-```text
-+------------------------------------------+
-| Numeros de WhatsApp                      |
-+------------------------------------------+
-| [!] API Key do Ambiente Detectada        |
-|     Esta configuracao sera usada como    |
-|     fallback se nenhum numero estiver    |
-|     cadastrado ou ativo.                 |
-|     Status: Ativo (Fallback)             |
-+------------------------------------------+
-| Nome     | Telefone   | Status | Padrao  |
-|----------|------------|--------|---------|
-| Numero 1 | (11)99999  |   ON   |   *     |
-+------------------------------------------+
-```
-
-### Consideracoes de Seguranca
-- Nao exibir a API Key do ambiente na interface
-- Apenas indicar que ela existe e esta configurada
-- O valor da API permanece protegido como secret

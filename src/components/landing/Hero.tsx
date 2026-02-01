@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Bell, CheckCircle } from "lucide-react";
+import { ArrowRight, Gift, CheckCircle, Bell } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export function Hero() {
@@ -15,9 +15,9 @@ export function Hero() {
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
           {/* Content */}
           <div className="flex-1 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent text-accent-foreground text-sm font-medium mb-6">
-              <Bell className="w-4 h-4" />
-              <span>Comunicação oficial para condomínios</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm font-semibold mb-6 border border-emerald-200">
+              <Gift className="w-4 h-4" />
+              <span>3 meses grátis para testar</span>
             </div>
 
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground mb-6">
@@ -45,9 +45,19 @@ export function Hero() {
               </Button>
             </div>
 
-            <div className="flex items-center gap-2 justify-center lg:justify-start text-sm text-muted-foreground">
-              <CheckCircle className="w-4 h-4 text-primary" />
-              <span>Configuração em 2 minutos</span>
+            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4 justify-center lg:justify-start text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-primary" />
+                <span>Configuração em 2 minutos</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                <span>3 meses grátis</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-primary" />
+                <span>Sem cartão de crédito</span>
+              </div>
             </div>
           </div>
 

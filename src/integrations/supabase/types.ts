@@ -412,6 +412,7 @@ export type Database = {
           id: string
           notes: string | null
           referrer_name: string | null
+          sms_sent: boolean | null
           status: string | null
           syndic_email: string
           syndic_name: string
@@ -425,6 +426,7 @@ export type Database = {
           id?: string
           notes?: string | null
           referrer_name?: string | null
+          sms_sent?: boolean | null
           status?: string | null
           syndic_email: string
           syndic_name: string
@@ -438,6 +440,7 @@ export type Database = {
           id?: string
           notes?: string | null
           referrer_name?: string | null
+          sms_sent?: boolean | null
           status?: string | null
           syndic_email?: string
           syndic_name?: string

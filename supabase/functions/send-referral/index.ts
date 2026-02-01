@@ -30,6 +30,66 @@ function formatPhoneForWhatsApp(phone: string): string {
   return `+55${cleanPhone}`;
 }
 
+// Função para formatar telefone para SMSFire (apenas números, com 55)
+function formatPhoneForSMSFire(phone: string): string {
+  const cleanPhone = phone.replace(/\D/g, "");
+  if (cleanPhone.startsWith("55")) {
+    return cleanPhone;
+  }
+  return `55${cleanPhone}`;
+}
+
+// Template de mensagem SMS (máx 160 caracteres)
+function getSMSMessage(referrerName: string, condominiumName: string): string {
+  const displayReferrer = referrerName || "Um morador";
+  // Manter mensagem curta para SMS
+  return `AVISO PRO: ${displayReferrer} do ${condominiumName} indicou voce. 3 meses GRATIS. Acesse clear-comms-hub.lovable.app`;
+}
+
+// Função para enviar SMS via SMSFire
+async function sendSMS(phone: string, message: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const username = Deno.env.get("SMSFIRE_USERNAME");
+    const apiToken = Deno.env.get("SMSFIRE_API_TOKEN");
+
+    if (!username || !apiToken) {
+      console.log("SMS credentials not configured");
+      return { success: false, error: "SMS não configurado" };
+    }
+
+    const formattedPhone = formatPhoneForSMSFire(phone);
+    console.log(`Sending SMS to ${formattedPhone}`);
+
+    // Higienizar mensagem removendo caracteres problemáticos
+    const sanitizedMessage = message.replace(/[\[\]!]/g, "");
+
+    const url = `https://api-v3.smsfire.com.br/sms/send/individual?to=${formattedPhone}&message=${encodeURIComponent(sanitizedMessage)}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Username": username,
+        "Api_Token": apiToken,
+      },
+    });
+
+    const responseData = await response.json();
+    console.log("SMS API response:", JSON.stringify(responseData));
+
+    if (response.ok && responseData.status === "OK") {
+      console.log("SMS sent successfully");
+      return { success: true };
+    } else {
+      console.error(`SMS API error: ${response.status} - ${JSON.stringify(responseData)}`);
+      return { success: false, error: responseData.message || "Erro no envio" };
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("SMS send error:", error);
+    return { success: false, error: errorMessage };
+  }
+}
+
 // Função para enviar WhatsApp via ZionTalk
 async function sendWhatsApp(phone: string, message: string): Promise<{ success: boolean; error?: string }> {
   try {
@@ -279,7 +339,8 @@ function getEmailHtml(syndicName: string, referrerName: string, condominiumName:
 async function updateReferralStatus(
   referralId: string,
   whatsappSuccess: boolean,
-  emailSuccess: boolean
+  emailSuccess: boolean,
+  smsSuccess: boolean
 ): Promise<void> {
   try {
     const supabaseAdmin = createClient(
@@ -292,10 +353,11 @@ async function updateReferralStatus(
       .update({
         whatsapp_sent: whatsappSuccess,
         email_sent: emailSuccess,
+        sms_sent: smsSuccess,
       })
       .eq("id", referralId);
 
-    console.log(`Referral ${referralId} status updated: whatsapp=${whatsappSuccess}, email=${emailSuccess}`);
+    console.log(`Referral ${referralId} status updated: whatsapp=${whatsappSuccess}, email=${emailSuccess}, sms=${smsSuccess}`);
   } catch (error) {
     console.error("Error updating referral status:", error);
   }
@@ -316,6 +378,7 @@ async function sendNotificationsInBackground(
   const whatsappMessage = getWhatsAppMessage(syndicName, referrerName, condominiumName);
   const emailSubject = `${referrerName || "Um morador"} do ${condominiumName} indicou o AVISO PRO para você!`;
   const emailHtml = getEmailHtml(syndicName, referrerName, condominiumName);
+  const smsMessage = getSMSMessage(referrerName, condominiumName);
 
   // Enviar WhatsApp
   const whatsappResult = await sendWhatsApp(syndicPhone, whatsappMessage);
@@ -325,8 +388,12 @@ async function sendNotificationsInBackground(
   const emailResult = await sendEmail(syndicEmail, emailSubject, emailHtml);
   console.log(`[Background] Email result: ${emailResult.success ? 'success' : 'failed - ' + emailResult.error}`);
 
+  // Enviar SMS
+  const smsResult = await sendSMS(syndicPhone, smsMessage);
+  console.log(`[Background] SMS result: ${smsResult.success ? 'success' : 'failed - ' + smsResult.error}`);
+
   // Atualizar status no banco
-  await updateReferralStatus(referralId, whatsappResult.success, emailResult.success);
+  await updateReferralStatus(referralId, whatsappResult.success, emailResult.success, smsResult.success);
 
   console.log(`[Background] Completed notifications for referral ${referralId}`);
 }

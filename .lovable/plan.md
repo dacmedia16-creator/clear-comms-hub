@@ -1,172 +1,118 @@
 
-# Teste Gratis para Condominio - 3 Meses
+# Adicionar Propaganda de 3 Meses Gratis na Landing Page
 
 ## Objetivo
-Adicionar sistema de periodo de teste gratuito de 3 meses para condominios, permitindo que novos condominios experimentem o sistema antes de precisar contratar um plano pago.
+Destacar visualmente a oferta de 3 meses de teste gratuito para condominios na pagina inicial, incentivando novos cadastros.
 
 ---
 
-## Arquitetura da Solucao
+## Estrategia de Implementacao
 
-### Novo Campo no Banco de Dados
-Adicionar coluna `trial_ends_at` na tabela `condominiums` para controlar quando o periodo de teste termina.
+Vou adicionar o destaque do trial gratuito em **tres pontos estrategicos** da landing page:
 
-### Logica de Trial
-- Quando um condominio e criado, `trial_ends_at` sera definido como `created_at + 3 meses`
-- O sistema verificara se o trial ainda esta ativo comparando `trial_ends_at` com a data atual
-- Super Admin podera editar a data de termino do trial manualmente
-
----
-
-## Alteracoes Propostas
-
-### 1. Migracao do Banco de Dados
-
-```sql
--- Adicionar coluna trial_ends_at
-ALTER TABLE public.condominiums 
-ADD COLUMN trial_ends_at TIMESTAMP WITH TIME ZONE;
-
--- Atualizar condominios existentes: trial_ends_at = created_at + 3 meses
-UPDATE public.condominiums 
-SET trial_ends_at = created_at + INTERVAL '3 months'
-WHERE trial_ends_at IS NULL;
-
--- Definir valor padrao para novos condominios
-ALTER TABLE public.condominiums 
-ALTER COLUMN trial_ends_at SET DEFAULT (now() + INTERVAL '3 months');
-```
-
-### 2. Atualizar `src/lib/constants.ts`
-Adicionar configuracao do periodo de trial:
-
-```typescript
-export const TRIAL_CONFIG = {
-  durationMonths: 3,
-  label: "Teste Gratis",
-  features: [
-    "Acesso completo por 3 meses",
-    "Todas as funcionalidades do plano Pro",
-    "Sem necessidade de cartao de credito",
-  ],
-};
-```
-
-### 3. Atualizar Hook `useAllCondominiums.ts`
-Incluir o campo `trial_ends_at` na interface e busca:
-
-```typescript
-interface Condominium {
-  // ... campos existentes
-  trial_ends_at: string | null;
-}
-```
-
-### 4. Atualizar `SuperAdminCondominiums.tsx`
-- Mostrar status do trial na tabela (badge "Trial Ativo" ou "Trial Expirado")
-- Adicionar campo de data de fim do trial no dialog de edicao
-- Calcular e exibir dias restantes do trial
-
-### 5. Atualizar `CondominiumSettingsPage.tsx`
-- Mostrar informacoes do trial no card "Informacoes do Sistema"
-- Exibir data de expiracao e dias restantes
-- Mostrar alerta quando trial estiver proximo de expirar
-
-### 6. Criar Funcao Helper `getTrialStatus`
-```typescript
-export function getTrialStatus(trialEndsAt: string | null) {
-  if (!trialEndsAt) return { isActive: false, daysRemaining: 0 };
-  
-  const endDate = new Date(trialEndsAt);
-  const now = new Date();
-  const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  
-  return {
-    isActive: daysRemaining > 0,
-    daysRemaining: Math.max(0, daysRemaining),
-    endDate,
-  };
-}
-```
-
----
-
-## Interface Visual
-
-### Na Tabela de Condominios (Super Admin)
-
-| Codigo | Nome | Proprietario | Plano | Trial | Criado em |
-|--------|------|--------------|-------|-------|-----------|
-| 1234 | Residencial X | Joao | Free | 45 dias restantes | 01/02/2026 |
-| 5678 | Condo Y | Maria | Pro | Expirado | 15/01/2026 |
-
-### No Dialog de Edicao
-
-```text
-+-----------------------------+
-| Editar Condominio           |
-+-----------------------------+
-| Nome: [____________]        |
-| Proprietario: [v Selecione] |
-| Plano: [v Free]             |
-| Data Fim Trial: [01/05/2026]|
-| Descricao: [____________]   |
-+-----------------------------+
-```
-
-### Na Pagina de Configuracoes
+### 1. Badge no Hero (Destaque Principal)
+Substituir o badge atual "Comunicacao oficial para condominios" por um badge mais chamativo destacando o trial:
 
 ```text
 +------------------------------------------+
-| Informacoes do Sistema                   |
+|  (Gift icon) 3 MESES GRATIS para testar  |
 +------------------------------------------+
-| Codigo: 1234                             |
-| Link: /c/residencial-x                   |
-| Plano: Free                              |
-| Trial: Ativo - 45 dias restantes         |
-| Expira em: 01/05/2026                    |
-+------------------------------------------+
+```
+
+### 2. Bullet Points Abaixo do CTA
+Adicionar os beneficios do trial logo abaixo do botao "Comecar agora":
+
+```text
+[Comecar agora ->]
+
+(check) Configuracao em 2 minutos
+(check) 3 meses gratis para testar
+(check) Sem cartao de credito
+```
+
+### 3. Secao CTA Final
+Atualizar a secao de call-to-action no final da pagina para reforcar a oferta:
+
+```text
++--------------------------------------------------+
+| Pronto para transformar a comunicacao?           |
+| Comece com 3 meses gratis, sem compromisso.      |
+|                                                  |
+|        [Comecar teste gratis ->]                 |
++--------------------------------------------------+
 ```
 
 ---
 
-## Resumo das Alteracoes
+## Arquivos a Modificar
 
-| Arquivo/Componente | Alteracao |
-|--------------------|-----------|
-| Banco de Dados | Adicionar coluna `trial_ends_at` com default de +3 meses |
-| `src/lib/constants.ts` | Adicionar `TRIAL_CONFIG` |
-| `src/lib/utils.ts` | Adicionar funcao `getTrialStatus()` |
-| `src/hooks/useAllCondominiums.ts` | Incluir `trial_ends_at` na interface |
-| `SuperAdminCondominiums.tsx` | Mostrar status do trial + campo de edicao |
-| `CondominiumSettingsPage.tsx` | Exibir informacoes do trial |
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/components/landing/Hero.tsx` | Trocar badge + adicionar bullets de beneficios do trial |
+| `src/pages/Index.tsx` | Atualizar texto e botao da secao CTA final |
 
 ---
 
-## Secao Tecnica
+## Detalhes Tecnicos
 
-### Migracao SQL Completa
-```sql
--- Adicionar coluna trial_ends_at
-ALTER TABLE public.condominiums 
-ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP WITH TIME ZONE;
+### Hero.tsx - Badge do Trial
 
--- Definir valor padrao para novos registros
-ALTER TABLE public.condominiums 
-ALTER COLUMN trial_ends_at SET DEFAULT (now() + INTERVAL '3 months');
-
--- Atualizar registros existentes (trial de 3 meses a partir da criacao)
-UPDATE public.condominiums 
-SET trial_ends_at = created_at + INTERVAL '3 months'
-WHERE trial_ends_at IS NULL;
+Trocar o badge atual:
+```tsx
+<div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent text-accent-foreground text-sm font-medium mb-6">
+  <Bell className="w-4 h-4" />
+  <span>Comunicacao oficial para condominios</span>
+</div>
 ```
 
-### Fluxo de Verificacao
-1. Sistema busca `trial_ends_at` do condominio
-2. Compara com data atual
-3. Se `trial_ends_at > now()`: Trial ativo
-4. Se `trial_ends_at <= now()`: Trial expirado
-5. Exibe status visual apropriado
+Por um badge chamativo com fundo colorido:
+```tsx
+<div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm font-semibold mb-6 border border-emerald-200">
+  <Gift className="w-4 h-4" />
+  <span>3 meses gratis para testar</span>
+</div>
+```
 
-### Extensao de Trial
-O Super Admin pode alterar manualmente a data de `trial_ends_at` para estender ou encurtar o periodo de trial de qualquer condominio.
+### Hero.tsx - Lista de Beneficios
+
+Expandir a linha de "Configuracao em 2 minutos" para uma lista completa:
+```tsx
+<div className="flex flex-col sm:flex-row flex-wrap items-center gap-4 justify-center lg:justify-start text-sm text-muted-foreground">
+  <div className="flex items-center gap-2">
+    <CheckCircle className="w-4 h-4 text-primary" />
+    <span>Configuracao em 2 minutos</span>
+  </div>
+  <div className="flex items-center gap-2">
+    <CheckCircle className="w-4 h-4 text-emerald-600" />
+    <span>3 meses gratis</span>
+  </div>
+  <div className="flex items-center gap-2">
+    <CheckCircle className="w-4 h-4 text-primary" />
+    <span>Sem cartao de credito</span>
+  </div>
+</div>
+```
+
+### Index.tsx - CTA Final
+
+Atualizar textos da secao final:
+```tsx
+<h2>Pronto para transformar a comunicacao do seu condominio?</h2>
+<p>Comece com 3 meses gratis. Sem compromisso, sem cartao de credito.</p>
+<Button>
+  Comecar teste gratis
+  <ArrowRight />
+</Button>
+```
+
+---
+
+## Visual Final Esperado
+
+A landing page tera destaque visual para a oferta de trial em:
+
+1. **Topo**: Badge verde chamativo "3 meses gratis para testar"
+2. **Abaixo do CTA principal**: Lista de beneficios incluindo trial
+3. **Final da pagina**: Reforco da oferta antes do footer
+
+Isso garante que visitantes vejam a oferta independente de onde estejam na pagina.

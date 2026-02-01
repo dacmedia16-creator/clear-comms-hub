@@ -33,9 +33,10 @@ import { useAllCondominiums } from "@/hooks/useAllCondominiums";
 import { useAllUsers } from "@/hooks/useAllUsers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, Building2, Plus, ArrowLeft, Loader2, Pencil, Trash2, ExternalLink, Search, Users, LayoutDashboard, FileText } from "lucide-react";
+import { Bell, Building2, Plus, ArrowLeft, Loader2, Pencil, Trash2, ExternalLink, Search, Users, LayoutDashboard, FileText, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { getTrialStatus } from "@/lib/utils";
 import { RefreshButton } from "@/components/RefreshButton";
 import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
 import { MobileCardItem } from "@/components/mobile/MobileCardItem";
@@ -65,6 +66,7 @@ export default function SuperAdminCondominiums() {
     description: "",
     owner_id: "",
     plan: "free" as "free" | "starter" | "pro",
+    trial_ends_at: "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -75,7 +77,7 @@ export default function SuperAdminCondominiums() {
   );
 
   const resetForm = () => {
-    setFormData({ name: "", description: "", owner_id: "", plan: "free" });
+    setFormData({ name: "", description: "", owner_id: "", plan: "free", trial_ends_at: "" });
     setSelectedCondo(null);
   };
 
@@ -127,6 +129,7 @@ export default function SuperAdminCondominiums() {
           description: formData.description.trim() || null,
           owner_id: formData.owner_id,
           plan: formData.plan,
+          trial_ends_at: formData.trial_ends_at ? new Date(formData.trial_ends_at).toISOString() : null,
         })
         .eq("id", selectedCondo.id);
 
@@ -170,8 +173,27 @@ export default function SuperAdminCondominiums() {
       description: condo.description || "",
       owner_id: condo.owner_id,
       plan: condo.plan,
+      trial_ends_at: condo.trial_ends_at ? format(new Date(condo.trial_ends_at), "yyyy-MM-dd") : "",
     });
     setEditDialogOpen(true);
+  };
+
+  const renderTrialBadge = (trialEndsAt: string | null) => {
+    const { isActive, daysRemaining } = getTrialStatus(trialEndsAt);
+    
+    if (isActive) {
+      return (
+        <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+          {daysRemaining} dias restantes
+        </span>
+      );
+    }
+    
+    return (
+      <span className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive">
+        Expirado
+      </span>
+    );
   };
 
   return (
@@ -361,6 +383,7 @@ export default function SuperAdminCondominiums() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Proprietário</TableHead>
                     <TableHead>Plano</TableHead>
+                    <TableHead>Trial</TableHead>
                     <TableHead>Criado em</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -368,7 +391,7 @@ export default function SuperAdminCondominiums() {
                 <TableBody>
                   {filteredCondos.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         Nenhum condomínio encontrado
                       </TableCell>
                     </TableRow>
@@ -400,6 +423,9 @@ export default function SuperAdminCondominiums() {
                           }`}>
                             {condo.plan}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          {renderTrialBadge(condo.trial_ends_at)}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {format(new Date(condo.created_at), "dd/MM/yyyy", { locale: ptBR })}
@@ -484,6 +510,20 @@ export default function SuperAdminCondominiums() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Data Fim do Trial
+                </Label>
+                <Input
+                  type="date"
+                  value={formData.trial_ends_at}
+                  onChange={(e) => setFormData({ ...formData, trial_ends_at: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Deixe vazio para remover o trial. Altere para estender ou encurtar o período.
+                </p>
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>

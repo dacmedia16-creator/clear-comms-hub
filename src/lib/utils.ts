@@ -34,3 +34,18 @@ export function formatBlock(value: string): string {
   }
   return trimmed;
 }
+
+// Calcula status do periodo de trial
+export function getTrialStatus(trialEndsAt: string | null) {
+  if (!trialEndsAt) return { isActive: false, daysRemaining: 0, endDate: null };
+  
+  const endDate = new Date(trialEndsAt);
+  const now = new Date();
+  const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  
+  return {
+    isActive: daysRemaining > 0,
+    daysRemaining: Math.max(0, daysRemaining),
+    endDate,
+  };
+}

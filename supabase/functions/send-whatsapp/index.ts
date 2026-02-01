@@ -213,19 +213,6 @@ serve(async (req) => {
   }
 
   try {
-    const ZIONTALK_API_KEY = Deno.env.get('ZIONTALK_API_KEY');
-    
-    if (!ZIONTALK_API_KEY) {
-      console.error("ZIONTALK_API_KEY not configured");
-      return new Response(
-        JSON.stringify({ error: "API key não configurada" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Basic Auth: API Key as username, empty password
-    const authHeader = 'Basic ' + encode(`${ZIONTALK_API_KEY}:`);
-
     const { announcement, condominium, baseUrl }: RequestBody = await req.json();
 
     console.log(`Processing WhatsApp send for announcement ${announcement.id} in condominium ${condominium.id}`);
@@ -235,6 +222,39 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+
+    // Fetch the sender to use (default first, then first active, then fallback to env)
+    let apiKey = Deno.env.get('ZIONTALK_API_KEY');
+    let senderPhone = 'ENV_DEFAULT';
+
+    const { data: senders, error: sendersError } = await supabase
+      .from('whatsapp_senders')
+      .select('*')
+      .eq('is_active', true)
+      .order('is_default', { ascending: false })
+      .limit(1);
+
+    if (sendersError) {
+      console.error("Error fetching whatsapp_senders:", sendersError);
+    } else if (senders && senders.length > 0) {
+      const sender = senders[0];
+      apiKey = sender.api_key;
+      senderPhone = sender.phone;
+      console.log(`Using sender: ${sender.name} (${senderPhone})`);
+    } else {
+      console.log("No active senders found, using ENV fallback");
+    }
+
+    if (!apiKey) {
+      console.error("No API key available (no senders and ZIONTALK_API_KEY not configured)");
+      return new Response(
+        JSON.stringify({ error: "API key não configurada. Cadastre um número de WhatsApp na Central de Notificações." }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Basic Auth: API Key as username, empty password
+    const authHeader = 'Basic ' + encode(`${apiKey}:`);
 
     // Fetch members from BOTH sources: profiles (authenticated) and condo_members (manual)
     const { data: rolesData, error: membersError } = await supabase

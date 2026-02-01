@@ -46,6 +46,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { RefreshButton } from "@/components/RefreshButton";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { WhatsAppSendersCard } from "@/components/super-admin/WhatsAppSendersCard";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
@@ -425,6 +426,9 @@ export default function SuperAdminNotifications() {
                   );
                 })}
               </div>
+
+              {/* WhatsApp Senders Management */}
+              <WhatsAppSendersCard />
 
               {/* Condominiums Table */}
               <Card>

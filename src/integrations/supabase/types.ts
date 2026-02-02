@@ -459,7 +459,7 @@ export type Database = {
           referrer_name: string | null
           sms_sent: boolean | null
           status: string | null
-          syndic_email: string
+          syndic_email: string | null
           syndic_name: string
           syndic_phone: string
           whatsapp_sent: boolean | null
@@ -473,7 +473,7 @@ export type Database = {
           referrer_name?: string | null
           sms_sent?: boolean | null
           status?: string | null
-          syndic_email: string
+          syndic_email?: string | null
           syndic_name: string
           syndic_phone: string
           whatsapp_sent?: boolean | null
@@ -487,7 +487,7 @@ export type Database = {
           referrer_name?: string | null
           sms_sent?: boolean | null
           status?: string | null
-          syndic_email?: string
+          syndic_email?: string | null
           syndic_name?: string
           syndic_phone?: string
           whatsapp_sent?: boolean | null

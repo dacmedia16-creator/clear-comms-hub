@@ -14,7 +14,12 @@ import { supabase } from "@/integrations/supabase/client";
 const referralSchema = z.object({
   syndicName: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
   syndicPhone: z.string().trim().min(10, "Telefone inválido").max(20, "Telefone muito longo"),
-  syndicEmail: z.string().trim().email("Email inválido").max(255, "Email muito longo"),
+  syndicEmail: z.string().trim().max(255, "Email muito longo")
+    .refine((val) => val === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
+      message: "Email inválido"
+    })
+    .optional()
+    .or(z.literal("")),
   condominiumName: z.string().trim().min(2, "Nome do condomínio obrigatório").max(200, "Nome muito longo"),
   referrerName: z.string().trim().max(100, "Nome muito longo").optional(),
 });
@@ -97,7 +102,7 @@ export default function ReferSyndicPage() {
               </div>
               <CardTitle className="text-2xl">Indicação Enviada!</CardTitle>
               <CardDescription className="text-base">
-                O síndico receberá uma mensagem via WhatsApp e Email com informações sobre o AVISO PRO.
+                O síndico receberá uma mensagem via WhatsApp com informações sobre o AVISO PRO.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -179,7 +184,7 @@ export default function ReferSyndicPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="syndicEmail">Email do Síndico *</Label>
+                <Label htmlFor="syndicEmail">Email do Síndico (opcional)</Label>
                 <Input
                   id="syndicEmail"
                   type="email"
@@ -190,6 +195,9 @@ export default function ReferSyndicPage() {
                 {errors.syndicEmail && (
                   <p className="text-sm text-destructive">{errors.syndicEmail.message}</p>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  Deixe em branco se não souber
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -236,7 +244,7 @@ export default function ReferSyndicPage() {
               </Button>
 
               <p className="text-xs text-center text-muted-foreground pt-2">
-                O síndico receberá uma mensagem via WhatsApp e Email apresentando o AVISO PRO.
+                O síndico receberá uma mensagem via WhatsApp apresentando o AVISO PRO.
               </p>
             </form>
           </CardContent>

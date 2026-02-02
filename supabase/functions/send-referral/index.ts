@@ -16,7 +16,7 @@ const corsHeaders = {
 interface ReferralRequest {
   syndicName: string;
   syndicPhone: string;
-  syndicEmail: string;
+  syndicEmail?: string;
   condominiumName: string;
   referrerName?: string;
 }
@@ -367,7 +367,7 @@ async function updateReferralStatus(
 async function sendNotificationsInBackground(
   referralId: string,
   syndicPhone: string,
-  syndicEmail: string,
+  syndicEmail: string | undefined,
   syndicName: string,
   condominiumName: string,
   referrerName: string
@@ -376,17 +376,22 @@ async function sendNotificationsInBackground(
 
   // Preparar mensagens
   const whatsappMessage = getWhatsAppMessage(syndicName, referrerName, condominiumName);
-  const emailSubject = `${referrerName || "Um morador"} do ${condominiumName} indicou o AVISO PRO para você!`;
-  const emailHtml = getEmailHtml(syndicName, referrerName, condominiumName);
   const smsMessage = getSMSMessage(referrerName, condominiumName);
 
   // Enviar WhatsApp
   const whatsappResult = await sendWhatsApp(syndicPhone, whatsappMessage);
   console.log(`[Background] WhatsApp result: ${whatsappResult.success ? 'success' : 'failed - ' + whatsappResult.error}`);
 
-  // Enviar Email
-  const emailResult = await sendEmail(syndicEmail, emailSubject, emailHtml);
-  console.log(`[Background] Email result: ${emailResult.success ? 'success' : 'failed - ' + emailResult.error}`);
+  // Enviar Email apenas se fornecido
+  let emailResult: { success: boolean; error?: string } = { success: false, error: "Email não fornecido" };
+  if (syndicEmail && syndicEmail.trim()) {
+    const emailSubject = `${referrerName || "Um morador"} do ${condominiumName} indicou o AVISO PRO para você!`;
+    const emailHtml = getEmailHtml(syndicName, referrerName, condominiumName);
+    emailResult = await sendEmail(syndicEmail, emailSubject, emailHtml);
+    console.log(`[Background] Email result: ${emailResult.success ? 'success' : 'failed - ' + emailResult.error}`);
+  } else {
+    console.log(`[Background] Email skipped: not provided`);
+  }
 
   // Enviar SMS
   const smsResult = await sendSMS(syndicPhone, smsMessage);
@@ -407,21 +412,23 @@ serve(async (req: Request) => {
   try {
     const { syndicName, syndicPhone, syndicEmail, condominiumName, referrerName }: ReferralRequest = await req.json();
 
-    // Validação básica
-    if (!syndicName || !syndicPhone || !syndicEmail || !condominiumName) {
+    // Validação básica - email não é mais obrigatório
+    if (!syndicName || !syndicPhone || !condominiumName) {
       return new Response(
         JSON.stringify({ error: "Campos obrigatórios não preenchidos" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Validar email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(syndicEmail)) {
-      return new Response(
-        JSON.stringify({ error: "Email inválido" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Validar formato do email apenas se fornecido
+    if (syndicEmail && syndicEmail.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(syndicEmail)) {
+        return new Response(
+          JSON.stringify({ error: "Email inválido" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Criar cliente Supabase com service role para bypass RLS
@@ -438,7 +445,7 @@ serve(async (req: Request) => {
       .insert({
         syndic_name: syndicName.trim(),
         syndic_phone: syndicPhone.trim(),
-        syndic_email: syndicEmail.trim().toLowerCase(),
+        syndic_email: syndicEmail?.trim().toLowerCase() || null,
         condominium_name: condominiumName.trim(),
         referrer_name: referrerName?.trim() || null,
       })
@@ -460,7 +467,7 @@ serve(async (req: Request) => {
       sendNotificationsInBackground(
         referral.id,
         syndicPhone.trim(),
-        syndicEmail.trim().toLowerCase(),
+        syndicEmail?.trim().toLowerCase(),
         syndicName.trim(),
         condominiumName.trim(),
         referrerName?.trim() || ""

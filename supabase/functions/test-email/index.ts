@@ -36,7 +36,7 @@ async function sendZeptoEmail(
         'Authorization': apiKey,
       },
       body: JSON.stringify({
-        from: { address: 'noreply@avisopro.com.br', name: 'AvisoPro' },
+        from: { address: 'aviso@avisopro.com.br', name: 'AvisoPro' },
         to: [{ email_address: { address: to, name: toName || to } }],
         subject: subject,
         htmlbody: htmlBody,
@@ -94,7 +94,7 @@ serve(async (req) => {
       console.log('Testing ZeptoMail API connection...');
       
       const result = await sendZeptoEmail(
-        'noreply@avisopro.com.br',
+        'aviso@avisopro.com.br',
         'AvisoPro Test',
         'ZeptoMail API Connection Test',
         '<p>This is a test message to verify ZeptoMail API connection.</p>'

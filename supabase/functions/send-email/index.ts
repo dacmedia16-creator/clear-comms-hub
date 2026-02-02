@@ -87,7 +87,7 @@ async function sendZeptoEmail(
         'Authorization': apiKey,
       },
       body: JSON.stringify({
-        from: { address: 'noreply@avisopro.com.br', name: 'AvisoPro' },
+        from: { address: 'aviso@avisopro.com.br', name: 'AvisoPro' },
         to: [{ email_address: { address: to, name: toName || to } }],
         subject: subject,
         htmlbody: htmlBody,

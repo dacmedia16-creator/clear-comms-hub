@@ -63,136 +63,48 @@ const CATEGORY_LABELS: Record<string, { label: string; emoji: string; color: str
   urgente: { label: 'Urgente', emoji: '⚠️', color: '#DC2626' },
 };
 
-// Simple SMTP implementation using Deno's native TLS
-async function sendSmtpEmail(
-  host: string,
-  port: number,
-  username: string,
-  password: string,
-  from: string,
+// ZeptoMail API implementation
+async function sendZeptoEmail(
   to: string,
+  toName: string,
   subject: string,
   htmlBody: string
 ): Promise<{ success: boolean; error?: string }> {
-  let conn: Deno.TlsConn | null = null;
+  const apiKey = Deno.env.get('ZEPTOMAIL_API_KEY');
   
+  if (!apiKey) {
+    return { success: false, error: 'ZEPTOMAIL_API_KEY not configured' };
+  }
+
   try {
-    conn = await Deno.connectTls({
-      hostname: host,
-      port: port,
+    console.log(`Sending email via ZeptoMail API to: ${to}`);
+    
+    const response = await fetch('https://api.zeptomail.com/v1.1/email', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': apiKey,
+      },
+      body: JSON.stringify({
+        from: { address: 'noreply@avisopro.com.br', name: 'AvisoPro' },
+        to: [{ email_address: { address: to, name: toName || to } }],
+        subject: subject,
+        htmlbody: htmlBody,
+      }),
     });
 
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    async function readLine(): Promise<string> {
-      while (!buffer.includes("\r\n")) {
-        const chunk = new Uint8Array(1024);
-        const n = await conn!.read(chunk);
-        if (n === null) throw new Error("Connection closed");
-        buffer += decoder.decode(chunk.subarray(0, n));
-      }
-      const idx = buffer.indexOf("\r\n");
-      const line = buffer.substring(0, idx);
-      buffer = buffer.substring(idx + 2);
-      return line;
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`✓ Email sent successfully to ${to}`, data);
+      return { success: true };
+    } else {
+      const errorData = await response.text();
+      console.error(`✗ Failed to send email to ${to}:`, errorData);
+      return { success: false, error: errorData };
     }
-
-    async function readResponse(): Promise<string> {
-      const lines: string[] = [];
-      while (true) {
-        const line = await readLine();
-        lines.push(line);
-        // If line[3] is space (not hyphen), it's the last line
-        if (line.length >= 4 && line[3] === ' ') break;
-        // Also break if it's a single-line response
-        if (line.length < 4) break;
-      }
-      return lines.join("\r\n");
-    }
-
-    async function sendCommand(cmd: string): Promise<string> {
-      await conn!.write(encoder.encode(cmd + "\r\n"));
-      return await readResponse();
-    }
-
-    // Read greeting
-    const greeting = await readResponse();
-    const greetingCode = greeting.substring(0, 3);
-    if (greetingCode !== "220") {
-      throw new Error(`Unexpected greeting: ${greeting}`);
-    }
-
-    // EHLO
-    const ehloResp = await sendCommand(`EHLO localhost`);
-    if (!ehloResp.startsWith("250")) {
-      throw new Error(`EHLO failed: ${ehloResp}`);
-    }
-
-    // AUTH LOGIN
-    const authResp = await sendCommand("AUTH LOGIN");
-    if (!authResp.startsWith("334")) {
-      throw new Error(`AUTH LOGIN failed: ${authResp}`);
-    }
-
-    // Send username (base64)
-    const userResp = await sendCommand(btoa(username));
-    if (!userResp.startsWith("334")) {
-      throw new Error(`Username rejected: ${userResp}`);
-    }
-
-    // Send password (base64)
-    const passResp = await sendCommand(btoa(password));
-    if (!passResp.startsWith("235")) {
-      throw new Error(`Authentication failed: ${passResp.trim()}`);
-    }
-
-    // MAIL FROM
-    const fromResp = await sendCommand(`MAIL FROM:<${from}>`);
-    if (!fromResp.startsWith("250")) {
-      throw new Error(`MAIL FROM failed: ${fromResp}`);
-    }
-
-    // RCPT TO
-    const toResp = await sendCommand(`RCPT TO:<${to}>`);
-    if (!toResp.startsWith("250")) {
-      throw new Error(`RCPT TO failed: ${toResp}`);
-    }
-
-    // DATA
-    const dataResp = await sendCommand("DATA");
-    if (!dataResp.startsWith("354")) {
-      throw new Error(`DATA failed: ${dataResp}`);
-    }
-
-    // Send email content
-    const emailContent = [
-      `From: ${from}`,
-      `To: ${to}`,
-      `Subject: ${subject}`,
-      `MIME-Version: 1.0`,
-      `Content-Type: text/html; charset=UTF-8`,
-      ``,
-      htmlBody,
-      `.`
-    ].join("\r\n");
-
-    const sendResp = await sendCommand(emailContent);
-    if (!sendResp.startsWith("250")) {
-      throw new Error(`Send failed: ${sendResp}`);
-    }
-
-    // QUIT
-    await sendCommand("QUIT");
-
-    conn.close();
-    return { success: true };
-
   } catch (error) {
-    if (conn) {
-      try { conn.close(); } catch {}
-    }
+    console.error(`✗ Exception sending email to ${to}:`, error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : String(error) 
@@ -303,12 +215,8 @@ async function sendEmailsInBackground(
   baseUrl: string,
   supabase: SupabaseClient
 ) {
-  console.log(`[Background] Iniciando envio de emails para ${members.length} membros...`);
+  console.log(`[Background] Iniciando envio de emails para ${members.length} membros via ZeptoMail API...`);
 
-  const host = Deno.env.get('ZOHO_SMTP_HOST') || 'smtppro.zoho.com';
-  const username = Deno.env.get('ZOHO_SMTP_USER')!;
-  const password = Deno.env.get('ZOHO_SMTP_PASSWORD')!;
-  
   const subject = `[${condominium.name}] ${announcement.title}`;
   const htmlContent = generateEmailHtml(announcement, condominium, baseUrl);
 
@@ -324,13 +232,9 @@ async function sendEmailsInBackground(
 
     console.log(`[Background] Enviando email ${i + 1} de ${members.length}: ${member.email} (${member.full_name || 'Unknown'})`);
 
-    const result = await sendSmtpEmail(
-      host,
-      465,
-      username,
-      password,
-      username,
+    const result = await sendZeptoEmail(
       member.email,
+      member.full_name || member.email,
       subject,
       htmlContent
     );
@@ -338,7 +242,7 @@ async function sendEmailsInBackground(
     if (result.success) {
       console.log(`[Background] ✓ Email enviado com sucesso para ${member.email}`);
     } else {
-      console.error(`[Background] Falha ao enviar para ${member.email}: ${result.error}`);
+      console.error(`[Background] ✗ Falha ao enviar para ${member.email}: ${result.error}`);
     }
 
     // Log the result
@@ -363,13 +267,12 @@ serve(async (req) => {
 
   try {
     // Check required environment variables
-    const ZOHO_SMTP_USER = Deno.env.get('ZOHO_SMTP_USER');
-    const ZOHO_SMTP_PASSWORD = Deno.env.get('ZOHO_SMTP_PASSWORD');
+    const ZEPTOMAIL_API_KEY = Deno.env.get('ZEPTOMAIL_API_KEY');
 
-    if (!ZOHO_SMTP_USER || !ZOHO_SMTP_PASSWORD) {
-      console.error("SMTP credentials not configured");
+    if (!ZEPTOMAIL_API_KEY) {
+      console.error("ZeptoMail API key not configured");
       return new Response(
-        JSON.stringify({ error: "Credenciais SMTP não configuradas" }),
+        JSON.stringify({ error: "API de email não configurada" }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

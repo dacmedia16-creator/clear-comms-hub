@@ -1,58 +1,53 @@
 
+## Diagnóstico (por que ainda dá erro)
+Você testou na versão **Publicada (produção)** e o erro continua sendo **NOT NULL (syndic_email)**.
 
-# Corrigir Erro de Indicação - Permitir Email NULL no Banco
+Isso quase sempre acontece porque:
+- a correção do banco (permitir `syndic_email` = NULL) foi aplicada no **ambiente de teste/preview**, mas
+- a versão **publicada (produção)** ainda está usando o schema antigo (com `syndic_email NOT NULL`).
 
-## Problema Identificado
-
-O erro está nos logs da edge function:
-
-```
-Database insert error: {
-  code: "23502",
-  message: 'null value in column "syndic_email" violates not-null constraint'
-}
-```
-
-A tabela `syndic_referrals` foi criada com a coluna `syndic_email` como NOT NULL, mas o código foi atualizado para permitir email opcional sem atualizar o banco.
+No Lovable Cloud, **Preview (teste)** e **Publicado (produção)** são ambientes separados. Mudanças de banco feitas no teste só chegam na produção quando você **Publica** o projeto (deploy do schema).
 
 ---
 
-## Solução
+## O que vamos fazer (passo a passo)
 
-Executar uma migração SQL para alterar a coluna `syndic_email` e permitir valores NULL.
+### 1) Confirmar que a migração existe no projeto
+- Verificar que existe um arquivo em `supabase/migrations/` contendo:
+  ```sql
+  ALTER TABLE public.syndic_referrals
+  ALTER COLUMN syndic_email DROP NOT NULL;
+  ```
+- Essa migração é o “pacote” que precisa ser enviado para produção via Publish.
+
+### 2) Publicar para levar o schema para produção
+- Fazer **Publish** do projeto (isso envia código + migrações do banco para o ambiente publicado).
+- Objetivo: atualizar a tabela `syndic_referrals` em produção para aceitar `NULL` no email.
+
+### 3) Teste end-to-end no ambiente publicado
+No site publicado:
+- Abrir o formulário de indicação
+- Preencher: Nome, Telefone, Condomínio
+- Deixar **Email em branco**
+- Enviar
+- Esperado: salvar indicação sem erro (e disparar WhatsApp; email é ignorado)
+
+### 4) Se ainda falhar após publicar (plano B)
+Se, mesmo após publicar, continuar o NOT NULL:
+- Checar se o site publicado está realmente na última versão (cache/navegador):
+  - fazer hard refresh (Ctrl+Shift+R) e/ou testar aba anônima
+- Conferir se a função “send-referral” em produção está recebendo `syndicEmail: ""` e convertendo para `null` antes de inserir
+  - (se necessário, ajustar logs da função para imprimir o payload e o valor final enviado ao insert)
 
 ---
 
-## Mudança Necessária
-
-### Migração SQL
-
-```sql
-ALTER TABLE public.syndic_referrals 
-ALTER COLUMN syndic_email DROP NOT NULL;
-```
+## Critérios de sucesso
+- Enviar indicação **sem email** no **site publicado** funciona sem erro.
+- A tabela em produção aceita `syndic_email` nulo.
+- Reenvio/gestão no Super Admin continua funcionando.
 
 ---
 
-## Por que isso aconteceu
-
-| Componente | Status | Permite NULL? |
-|------------|--------|---------------|
-| Frontend (Zod schema) | Atualizado | Sim |
-| Edge Function (validação) | Atualizado | Sim |
-| Edge Function (insert) | Atualizado | Sim (passa null) |
-| Banco de Dados | **Não atualizado** | **Não** |
-
----
-
-## Após a Correção
-
-O fluxo funcionará assim:
-
-1. Usuário preenche formulário sem email
-2. Frontend valida e envia `syndicEmail: ""`
-3. Edge function converte para `null`
-4. Banco aceita o `null` (após migração)
-5. Indicação salva com sucesso
-6. WhatsApp e SMS são enviados (email ignorado)
+## Observação técnica importante
+Vi que houve uma alteração em `src/integrations/supabase/types.ts`. Esse arquivo normalmente é auto-gerado; em geral, a correção real precisa ser no banco + publish (e não depender de editar types manualmente). O que resolve o erro de produção é o **schema publicado** aceitar NULL.
 

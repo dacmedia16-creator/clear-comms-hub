@@ -1,78 +1,127 @@
 
 
-# Adicionar Informações de Contato no Footer
+# Tornar Email Opcional no Formulário de Indicação
 
 ## Objetivo
 
-Incluir as informações de contato da empresa no rodapé do site para que visitantes possam entrar em contato facilmente.
+Alterar o formulário de indicação para que o email do síndico seja opcional, permitindo indicações apenas com telefone.
 
 ---
 
-## Dados a Adicionar
+## Situação Atual
 
-| Campo | Valor |
-|-------|-------|
-| **Endereço** | Rua Horacio Cenci, 9 - Parque Campolim, Sorocaba - SP, 18047-800 |
-| **Telefone** | (15) 98178-8214 |
-
----
-
-## Mudanças Planejadas
-
-### Arquivo: `src/components/landing/Footer.tsx`
-
-Adicionar uma nova coluna "Contato" ao grid do footer com:
-
-1. **Ícone de localização** com o endereço completo
-2. **Ícone de WhatsApp/telefone** com o número clicável
+| Campo | Status Atual | Status Desejado |
+|-------|--------------|-----------------|
+| Nome do Síndico | Obrigatório | Obrigatório |
+| Telefone | Obrigatório | Obrigatório |
+| Email | Obrigatório | **Opcional** |
+| Nome do Condomínio | Obrigatório | Obrigatório |
+| Seu Nome | Opcional | Opcional |
 
 ---
 
-## Layout Atualizado
+## Mudanças Necessárias
+
+### 1. Formulário Frontend (`src/pages/ReferSyndicPage.tsx`)
+
+**Schema de validação:**
+
+```typescript
+// De:
+syndicEmail: z.string().trim().email("Email inválido").max(255, "Email muito longo"),
+
+// Para:
+syndicEmail: z.string().trim().email("Email inválido").max(255, "Email muito longo").optional().or(z.literal("")),
+```
+
+**Label do campo:**
+- De: "Email do Síndico *"
+- Para: "Email do Síndico (opcional)"
+
+**Mensagem de sucesso:**
+- De: "O síndico receberá sua indicação via WhatsApp e Email."
+- Para: "O síndico receberá sua indicação via WhatsApp." (ou mencionar email se fornecido)
+
+---
+
+### 2. Edge Function (`supabase/functions/send-referral/index.ts`)
+
+**Validação:**
+- Remover email da validação de campos obrigatórios (linha 411)
+- Tornar validação de formato de email condicional (apenas se preenchido)
+
+**Envio de email:**
+- Só chamar `sendEmail()` se o email foi fornecido
+- Ajustar log e status de acordo
+
+---
+
+## Layout do Campo Atualizado
 
 ```text
-+------------------------------------------------------------------+
-|  [Logo] AVISO PRO        Produto       Legal        Contato      |
-|                                                                  |
-|  O canal oficial de      Demonstração  Termos       Endereço:    |
-|  comunicação do seu      Features      Privacidade  Rua Horacio  |
-|  condomínio...           Indique                    Cenci, 9...  |
-|                                                                  |
-|                                                     WhatsApp:    |
-|                                                     (15) 98178.. |
-+------------------------------------------------------------------+
-|              © 2026 AVISO PRO. Todos os direitos reservados.     |
-+------------------------------------------------------------------+
++------------------------------------------+
+|  Email do Síndico (opcional)             |
+|  [sindico@email.com_________________]    |
+|  Deixe em branco se não souber           |
++------------------------------------------+
 ```
 
 ---
 
-## Seção Tecnica
+## Seção Técnica
 
-### Estrutura do Grid
+### Mudanças no Schema Zod (ReferSyndicPage.tsx)
 
-Ajustar o grid de `md:grid-cols-4` para acomodar a nova coluna:
-- Brand: `md:col-span-1` (reduzir de 2 para 1)
-- Produto: 1 coluna
-- Legal: 1 coluna
-- Contato: 1 coluna (nova)
-
-### Ícones a Importar
-
-Do `lucide-react`:
-- `MapPin` - para o endereço
-- `Phone` ou `MessageCircle` - para o WhatsApp
-
-### Link Clicável do Telefone
-
-```tsx
-<a href="tel:+5515981788214" className="...">
-  (15) 98178-8214
-</a>
-
-// Ou link direto para WhatsApp:
-<a href="https://wa.me/5515981788214" target="_blank" className="...">
-  (15) 98178-8214
-</a>
+```typescript
+const referralSchema = z.object({
+  syndicName: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
+  syndicPhone: z.string().trim().min(10, "Telefone inválido").max(20, "Telefone muito longo"),
+  // Email agora é opcional - aceita string vazia ou email válido
+  syndicEmail: z.string().trim().max(255, "Email muito longo")
+    .refine((val) => val === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
+      message: "Email inválido"
+    })
+    .optional(),
+  condominiumName: z.string().trim().min(2, "Nome do condomínio obrigatório").max(200, "Nome muito longo"),
+  referrerName: z.string().trim().max(100, "Nome muito longo").optional(),
+});
 ```
+
+### Mudanças na Edge Function (send-referral/index.ts)
+
+```typescript
+// Validação - email não é mais obrigatório
+if (!syndicName || !syndicPhone || !condominiumName) {
+  return new Response(
+    JSON.stringify({ error: "Campos obrigatórios não preenchidos" }),
+    { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+// Validar formato do email apenas se fornecido
+if (syndicEmail && syndicEmail.trim()) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(syndicEmail)) {
+    return new Response(
+      JSON.stringify({ error: "Email inválido" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// No sendNotificationsInBackground - só enviar email se fornecido
+let emailResult = { success: false, error: "Email não fornecido" };
+if (syndicEmail && syndicEmail.trim()) {
+  emailResult = await sendEmail(syndicEmail, emailSubject, emailHtml);
+}
+```
+
+---
+
+## Arquivos a Modificar
+
+| Arquivo | Mudança |
+|---------|---------|
+| `src/pages/ReferSyndicPage.tsx` | Schema Zod, label do campo, mensagens |
+| `supabase/functions/send-referral/index.ts` | Validação e lógica condicional de envio |
 

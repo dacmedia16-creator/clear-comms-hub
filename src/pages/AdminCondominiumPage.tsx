@@ -45,6 +45,7 @@ import { useSendEmail } from "@/hooks/useSendEmail";
 import { useToast } from "@/hooks/use-toast";
 import { getCategoryConfig, CategorySlug } from "@/lib/category-config";
 import { useCategoriesForOrganization } from "@/hooks/useCategoriesForOrganization";
+import { getAnnouncementTemplates, AnnouncementTemplate } from "@/lib/announcement-templates";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
@@ -87,6 +88,7 @@ export default function AdminCondominiumPage() {
   const isMobile = useIsMobile();
   const { terms, organizationType } = useOrganizationTerms(condoId);
   const availableCategories = useCategoriesForOrganization(organizationType);
+  const availableTemplates = getAnnouncementTemplates(organizationType);
 
   const [condominium, setCondominium] = useState<Condominium | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -432,8 +434,41 @@ export default function AdminCondominiumPage() {
       </header>
 
       {/* Main Content */}
-      <main className="container px-4 mx-auto py-8">
-        <div className="flex items-center justify-between mb-6">
+      <main className="container px-4 mx-auto py-8 space-y-8">
+        {/* Quick Actions for segment */}
+        <div>
+          <h2 className="font-display text-lg font-semibold mb-4">Ações rápidas</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {availableTemplates.slice(0, 4).map((template) => {
+              const catConfig = getCategoryConfig(template.category);
+              return (
+                <Card
+                  key={template.id}
+                  className="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all"
+                  onClick={() => {
+                    setTitle(template.title);
+                    setSummary(template.summary);
+                    setContent(template.content);
+                    setCategory(template.category);
+                    setIsUrgent(template.isUrgent);
+                    setCreateDialogOpen(true);
+                  }}
+                >
+                  <CardContent className="p-4 flex flex-col items-center text-center">
+                    <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center mb-2">
+                      <catConfig.icon className="w-5 h-5 text-primary" />
+                    </div>
+                    <span className="font-medium text-sm text-foreground">{template.name}</span>
+                    <span className="text-xs text-muted-foreground line-clamp-1">{template.summary}</span>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Announcements Section */}
+        <div className="flex items-center justify-between">
           <div>
             <h2 className="font-display text-xl font-semibold">Avisos</h2>
             <p className="text-sm text-muted-foreground">{announcements.length} avisos publicados</p>
@@ -454,6 +489,45 @@ export default function AdminCondominiumPage() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateAnnouncement} className="space-y-4 mt-4">
+                {/* Template Selector */}
+                <div className="space-y-2">
+                  <Label htmlFor="template">Usar template (opcional)</Label>
+                  <Select
+                    value=""
+                    onValueChange={(templateId) => {
+                      const template = availableTemplates.find((t) => t.id === templateId);
+                      if (template) {
+                        setTitle(template.title);
+                        setSummary(template.summary);
+                        setContent(template.content);
+                        setCategory(template.category);
+                        setIsUrgent(template.isUrgent);
+                        toast({
+                          title: "Template aplicado",
+                          description: `"${template.name}" carregado. Edite conforme necessário.`,
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="template" className="bg-card">
+                      <SelectValue placeholder="Selecione um template..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card max-h-60">
+                      {availableTemplates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-muted-foreground" />
+                            <span>{template.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Templates pré-configurados para {terms.organizationPlural.toLowerCase()}
+                  </p>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="title">Título do aviso *</Label>
                   <Input

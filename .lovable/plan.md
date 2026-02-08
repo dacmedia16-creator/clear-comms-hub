@@ -42,53 +42,49 @@ Transformar o AVISO PRO de uma plataforma focada em condominios para uma solucao
 - Headlines e CTAs personalizados por segmento
 - Integracao na landing page principal (Index.tsx)
 
+### ✅ Fase 6 - Dashboard Personalizado por Segmento (Concluida)
+- Arquivo `src/lib/announcement-templates.ts` com templates por tipo de organizacao
+- Templates para Condominios, Escolas, Empresas, Clinicas, Academias, Igrejas
+- Seletor de templates no formulario de criacao de avisos
+- Acoes rapidas com cards de templates na pagina de administracao
+- Componentes `DashboardQuickActions` e `DashboardStats` para widgets
+
 ---
 
 ## Proxima Fase
 
-### 🔄 Fase 6 - Dashboard Personalizado por Segmento
-
 #### Objetivo
-Adaptar o dashboard e painel administrativo para mostrar widgets, metricas e templates especificos para cada tipo de organizacao.
+Conectar o AVISO PRO a sistemas externos para automacao e integracao de dados.
 
-#### 6.1 Widgets por Segmento
+#### 7.1 APIs e Webhooks
 
-| Segmento | Widgets Especificos |
-|----------|---------------------|
-| **Condominio** | Proximas assembleias, manutencoes pendentes, inadimplencia |
-| **Escola** | Calendario escolar, proximas reunioes, eventos do mes |
-| **Empresa** | Comunicados RH, treinamentos, compliance pendente |
-| **Clinica** | Campanhas ativas, horarios alterados, procedimentos |
+| Funcionalidade | Descricao |
+|----------------|-----------|
+| Webhook de avisos | Notificar sistemas externos sobre novos avisos |
+| API REST | Endpoints para integracao com ERPs e sistemas escolares |
+| Import em lote | Importar membros via CSV/Excel de sistemas externos |
 
-#### 6.2 Templates de Avisos Pre-Configurados
+#### 7.2 Integrações Especificas
 
-Cada tipo de organizacao tera templates prontos para acelerar a criacao de avisos:
-
-| Segmento | Templates |
-|----------|-----------|
-| Condominio | Convocacao Assembleia, Aviso de Manutencao, Boleto Disponivel |
-| Escola | Reuniao de Pais, Alteracao Calendario, Evento Escolar |
-| Empresa | Comunicado RH, Treinamento Obrigatorio, Aviso Compliance |
-
-#### 6.3 Metricas Relevantes
-
-- Engajamento por tipo de aviso
-- Taxa de leitura por categoria
-- Horarios de maior acesso
+| Segmento | Integracoes Potenciais |
+|----------|------------------------|
+| Escola | SIGEduc, Totvs Educacional |
+| Empresa | SAP, Totvs Protheus, Gupy |
+| Condominio | SuperLogica, CondoMaster |
 
 ---
 
 ## Fases Futuras
 
-### Fase 7 - Integracao com Sistemas Externos
-- API para sistemas escolares
-- Integracao com ERPs empresariais
-- Webhooks para automacoes
-
 ### Fase 8 - White Label por Segmento
 - Temas visuais por tipo de organizacao
 - Logos e branding customizaveis
 - Dominios personalizados
+
+### Fase 9 - Analytics Avançado
+- Dashboard de metricas de engajamento
+- Relatorios por categoria e segmento
+- Exportacao de dados
 
 ---
 
@@ -99,9 +95,12 @@ Cada tipo de organizacao tera templates prontos para acelerar a criacao de aviso
 | `src/lib/organization-types.ts` | Tipos e terminologia por segmento |
 | `src/lib/category-config.ts` | Categorias de avisos por segmento |
 | `src/lib/signup-config.ts` | Configuracao de formularios de signup |
+| `src/lib/announcement-templates.ts` | Templates de avisos por segmento |
 | `src/hooks/useOrganizationTerms.ts` | Hook para terminologia dinamica |
 | `src/hooks/useCategoriesForOrganization.ts` | Hook para categorias por tipo |
 | `src/hooks/useOrganizationFromCode.ts` | Hook para detectar tipo via codigo |
+| `src/components/landing/SegmentGrid.tsx` | Grid de segmentos na landing |
+| `src/components/landing/UseCaseTabs.tsx` | Casos de uso por segmento |
 
 ---
 

@@ -601,7 +601,7 @@ export default function AdminCondominiumPage() {
                   <FileUpload
                     files={selectedFiles}
                     onFilesChange={setSelectedFiles}
-                    maxSizeMB={5}
+                    maxSizeMB={20}
                   />
                 </div>
 

@@ -7,8 +7,8 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import SignupTypePage from "./pages/auth/SignupTypePage";
-import SignupResidentPage from "./pages/auth/SignupResidentPage";
-import SignupSyndicPage from "./pages/auth/SignupSyndicPage";
+import SignupMemberPage from "./pages/auth/SignupMemberPage";
+import SignupManagerPage from "./pages/auth/SignupManagerPage";
 import DashboardPage from "./pages/DashboardPage";
 import AdminCondominiumPage from "./pages/AdminCondominiumPage";
 import CondoMembersPage from "./pages/CondoMembersPage";
@@ -40,8 +40,12 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/auth/signup" element={<SignupTypePage />} />
-            <Route path="/auth/signup/resident" element={<SignupResidentPage />} />
-            <Route path="/auth/signup/syndic" element={<SignupSyndicPage />} />
+            {/* New dynamic signup routes */}
+            <Route path="/auth/signup/member" element={<SignupMemberPage />} />
+            <Route path="/auth/signup/manager" element={<SignupManagerPage />} />
+            {/* Legacy redirects for backward compatibility */}
+            <Route path="/auth/signup/resident" element={<Navigate to="/auth/signup/member" replace />} />
+            <Route path="/auth/signup/syndic" element={<Navigate to="/auth/signup/manager" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/demo" element={<DemoPage />} />
             <Route path="/indicar-sindico" element={<ReferSyndicPage />} />

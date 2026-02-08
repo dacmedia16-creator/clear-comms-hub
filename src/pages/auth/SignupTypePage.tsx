@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
-import { Bell, ArrowLeft, Home, Building2 } from "lucide-react";
+import { Bell, ArrowLeft, Users, Briefcase } from "lucide-react";
 
 export default function SignupTypePage() {
   return (
@@ -33,38 +33,38 @@ export default function SignupTypePage() {
 
           {/* Options */}
           <div className="grid sm:grid-cols-2 gap-4 md:gap-6">
-            {/* Morador */}
-            <Link to="/auth/signup/resident">
+            {/* Membro */}
+            <Link to="/auth/signup/member">
               <Card className="p-6 md:p-8 hover:border-primary hover:shadow-lg transition-all cursor-pointer group h-full">
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                    <Home className="w-8 h-8 text-primary" />
+                    <Users className="w-8 h-8 text-primary" />
                   </div>
                   <div>
                     <h2 className="text-xl font-display font-semibold text-foreground mb-2">
-                      Sou Morador
+                      Sou Membro
                     </h2>
                     <p className="text-muted-foreground text-sm">
-                      Quero receber os avisos do meu condomínio
+                      Quero receber os avisos da minha organização
                     </p>
                   </div>
                 </div>
               </Card>
             </Link>
 
-            {/* Síndico */}
-            <Link to="/auth/signup/syndic">
+            {/* Gestor */}
+            <Link to="/auth/signup/manager">
               <Card className="p-6 md:p-8 hover:border-primary hover:shadow-lg transition-all cursor-pointer group h-full">
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                    <Building2 className="w-8 h-8 text-primary" />
+                    <Briefcase className="w-8 h-8 text-primary" />
                   </div>
                   <div>
                     <h2 className="text-xl font-display font-semibold text-foreground mb-2">
-                      Sou Síndico
+                      Sou Gestor
                     </h2>
                     <p className="text-muted-foreground text-sm">
-                      Quero criar e gerenciar os avisos do condomínio
+                      Quero criar e gerenciar avisos
                     </p>
                   </div>
                 </div>

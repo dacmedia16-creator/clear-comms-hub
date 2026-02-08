@@ -33,7 +33,7 @@ export function Header() {
               <Link to="/auth">Entrar</Link>
             </Button>
             <Button asChild>
-              <Link to="/auth/signup">Criar conta</Link>
+              <Link to="/auth/signup">Criar canal</Link>
             </Button>
           </div>
 
@@ -74,7 +74,7 @@ export function Header() {
                   <Link to="/auth">Entrar</Link>
                 </Button>
                 <Button asChild className="w-full touch-target">
-                  <Link to="/auth/signup">Criar conta</Link>
+                  <Link to="/auth/signup">Criar canal</Link>
                 </Button>
               </div>
             </nav>

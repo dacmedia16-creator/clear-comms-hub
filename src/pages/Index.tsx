@@ -2,6 +2,7 @@ import { Header } from "@/components/landing/Header";
 import { Hero } from "@/components/landing/Hero";
 import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
 import { HowItWorks } from "@/components/landing/HowItWorks";
+import { TrustSection } from "@/components/landing/TrustSection";
 import { Footer } from "@/components/landing/Footer";
 import { SalesChatbot } from "@/components/landing/SalesChatbot";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,8 @@ const Index = () => {
           <FeatureShowcase />
         </section>
         
+        <TrustSection />
+        
         <section id="how-it-works">
           <HowItWorks />
         </section>
@@ -28,14 +31,14 @@ const Index = () => {
         <section className="py-16 md:py-24">
           <div className="container px-4 mx-auto text-center">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Pronto para transformar a comunicação do seu condomínio?
+              Crie o canal oficial da sua organização
             </h2>
             <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
-              Comece com 3 meses grátis. Sem compromisso, sem cartão de crédito.
+              Teste grátis por 3 meses. Sem cartão, sem compromisso.
             </p>
             <Button asChild size="lg" className="touch-target text-base font-semibold px-8">
               <Link to="/auth/signup">
-                Começar teste grátis
+                Criar meu canal oficial
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
             </Button>

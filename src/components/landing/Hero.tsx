@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Gift, CheckCircle, Bell, UserPlus } from "lucide-react";
+import { ArrowRight, Gift, CheckCircle, Bell, UserPlus, MessageSquareOff } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export function Hero() {
@@ -27,14 +27,14 @@ export function Hero() {
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed">
-              Centralize toda a comunicação oficial do seu condomínio em uma única timeline. 
-              WhatsApp e e-mail apenas avisam – a verdade oficial está aqui.
+              O canal oficial de avisos da sua organização. Uma linha do tempo. 
+              Tudo registrado. WhatsApp e e-mail apenas lembram.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-4">
               <Button asChild size="lg" className="touch-target text-base font-semibold px-8">
               <Link to="/auth/signup">
-                  Começar agora
+                  Criar meu canal oficial
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Link>
               </Button>
@@ -57,10 +57,10 @@ export function Hero() {
               </Link>
             </div>
 
-            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4 justify-center lg:justify-start text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4 justify-center lg:justify-start text-sm text-muted-foreground mb-6">
               <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-primary" />
-                <span>Configuração em 2 minutos</span>
+                <MessageSquareOff className="w-4 h-4 text-primary" />
+                <span>Sem grupo de WhatsApp</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-emerald-600" />
@@ -71,6 +71,11 @@ export function Hero() {
                 <span>Sem cartão de crédito</span>
               </div>
             </div>
+
+            {/* Segmentos */}
+            <p className="text-sm text-muted-foreground/80">
+              Para condomínios, escolas, empresas, clínicas, associações e igrejas.
+            </p>
           </div>
 
           {/* Visual */}
@@ -82,7 +87,7 @@ export function Hero() {
                   {/* Header */}
                   <div className="text-center pb-3 border-b border-border">
                     <h3 className="font-display font-bold text-lg">Condomínio Jardins</h3>
-                    <p className="text-sm text-muted-foreground">Avisos Oficiais</p>
+                    <p className="text-sm text-muted-foreground">Canal Oficial</p>
                   </div>
 
                   {/* Sample announcements */}

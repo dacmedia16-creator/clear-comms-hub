@@ -1,168 +1,271 @@
 
 
-# Plano: Reposicionamento Completo do Site AVISO PRO
+# Plano: Estruturação Multi-Segmento do AVISO PRO
 
 ## Visão Geral
 
-Atualização completa do site para comunicar claramente que o AVISO PRO é um **canal oficial de comunicação**, não uma ferramenta de conversa ou rede social. A frase central "Quando é importante, vira AVISO" será reforçada em todos os pontos de contato.
+Expandir o sistema para atender **escolas, empresas, clínicas, associações e academias** além de condomínios, mantendo a terminologia atual como padrão e permitindo seleção de tipo na criação. As categorias serão híbridas: base universal + adicionais por segmento.
 
 ---
 
-## 1. Hero Section (Hero.tsx)
+## 1. Arquitetura de Dados
 
-### Mudanças no Texto
+### Nova Coluna na Tabela `condominiums`
 
-| Elemento | Atual | Novo |
-|----------|-------|------|
-| **Headline** | "Quando é importante, vira AVISO." | **Mantém** (já está perfeita) |
-| **Subtítulo** | "Centralize toda a comunicação oficial do seu condomínio em uma única timeline. WhatsApp e e-mail apenas avisam – a verdade oficial está aqui." | "O canal oficial de avisos da sua organização. Uma linha do tempo. Tudo registrado. WhatsApp e e-mail apenas lembram." |
-| **CTA Principal** | "Começar agora" | "Criar meu canal oficial" |
-| **Badges de benefícios** | "Configuração em 2 minutos" | "Sem grupo de WhatsApp" |
+| Campo | Tipo | Default | Descrição |
+|-------|------|---------|-----------|
+| `organization_type` | ENUM | `'condominium'` | Tipo da organização |
 
-### Nova Seção de Segmentos
+### Novo Enum `organization_type`
 
-Adicionar após os badges uma linha sutil:
-
-"Para condomínios, escolas, empresas, clínicas, associações e igrejas."
-
-### Mockup Visual
-
-Atualizar texto interno do mockup:
-- Header: "Canal Oficial" (ao invés de apenas "Avisos Oficiais")
-
----
-
-## 2. Seção "Como Funciona" (HowItWorks.tsx)
-
-### Reestruturar em 4 Passos Claros
-
-| Passo | Título Atual | Novo Título | Nova Descrição |
-|-------|--------------|-------------|----------------|
-| 01 | "Cadastre seu Condomínio" | "Crie o aviso" | "Escreva o comunicado importante e escolha a categoria." |
-| 02 | "Crie seus Avisos" | "Publique na linha do tempo" | "O aviso fica registrado oficialmente, com data e hora." |
-| 03 | "Publique e Notifique" | "WhatsApp e e-mail avisam" | "Todos recebem um lembrete com o link. Só isso." |
-| 04 | "Moradores Visualizam" | "Consulta sempre disponível" | "A informação fica acessível a qualquer momento. Sem login." |
-
-### Novo Subtítulo da Seção
-
-**Atual:** "Em 4 passos simples, sua comunicação com os moradores será transformada."
-
-**Novo:** "Sem grupo. Sem confusão. Sem perda de informação."
+```sql
+CREATE TYPE public.organization_type AS ENUM (
+  'condominium',  -- Condomínio (padrão)
+  'school',       -- Escola
+  'company',      -- Empresa
+  'clinic',       -- Clínica
+  'association',  -- Associação
+  'gym',          -- Academia
+  'church',       -- Igreja
+  'club',         -- Clube
+  'other'         -- Outros
+);
+```
 
 ---
 
-## 3. Seção de Funcionalidades (FeatureShowcase.tsx)
+## 2. Terminologia Dinâmica
 
-### Reescrever Focando em Benefícios
+Mapa de tradução por tipo de organização:
 
-| Funcionalidade | Título Atual | Novo Título | Nova Descrição |
-|----------------|--------------|-------------|----------------|
-| Timeline | "Timeline Cronológica" | "Tudo fica registrado" | "Cada aviso tem data, hora e fica disponível para consulta. Fim do 'eu não vi'." |
-| Filtros | "Filtros por Categoria" | "Encontre rápido o que importa" | "Urgente, financeiro, manutenção... Cada tipo de aviso no seu lugar." |
-| Dashboard | "Dashboard do Síndico" | "Você comprova que comunicou" | "Histórico completo de avisos enviados. Documentação que protege o gestor." |
-| Notificações | "Notificações Instantâneas" | "Ninguém pode dizer que não viu" | "WhatsApp e e-mail avisam sobre o novo comunicado. A informação oficial está na linha do tempo." |
+| Termo Base | condominium | school | company | clinic | gym | church |
+|------------|-------------|--------|---------|--------|-----|--------|
+| **Organização** | Condomínio | Escola | Empresa | Clínica | Academia | Igreja |
+| **Gestor** | Síndico | Diretor | Gestor | Administrador | Proprietário | Pastor |
+| **Membro** | Morador | Aluno/Responsável | Colaborador | Paciente | Aluno | Membro |
+| **Bloco** | Bloco | Série/Turma | Departamento | Setor | Turma | Ministério |
+| **Unidade** | Unidade | Sala | Cargo | Área | - | Grupo |
 
-### Atualizar Header da Seção
+### Arquivo de Constantes
 
-**Atual:** "Conheça o sistema por dentro" / "Veja como o Mural Digital facilita..."
-
-**Novo:** "Por que usar um canal oficial?" / "Clareza, registro e menos ruído na comunicação."
-
----
-
-## 4. Nova Seção: Confiança e LGPD
-
-Adicionar nova seção entre FeatureShowcase e HowItWorks ou antes do CTA final.
-
-### Conteúdo
-
-**Título:** "Seus contatos protegidos"
-
-**Texto:**
-- Os dados são usados apenas para enviar avisos oficiais
-- Sem propaganda, sem spam, sem compartilhamento
-- Opção de descadastro a qualquer momento
-
-**Ícones sugeridos:** Shield, Lock, UserX (para descadastro)
-
----
-
-## 5. CTA Final (Index.tsx)
-
-### Atualizar Texto
-
-**Título Atual:** "Pronto para transformar a comunicação do seu condomínio?"
-
-**Novo:** "Crie o canal oficial da sua organização"
-
-**Subtítulo Atual:** "Comece com 3 meses grátis. Sem compromisso, sem cartão de crédito."
-
-**Novo:** "Teste grátis por 3 meses. Sem cartão, sem compromisso."
-
-**Botão Atual:** "Começar teste grátis"
-
-**Novo:** "Criar meu canal oficial"
+```typescript
+// src/lib/organization-types.ts
+export const ORGANIZATION_TYPES = {
+  condominium: {
+    label: "Condomínio",
+    icon: Building2,
+    terms: {
+      organization: "Condomínio",
+      manager: "Síndico",
+      member: "Morador",
+      block: "Bloco",
+      unit: "Unidade",
+    },
+  },
+  school: {
+    label: "Escola",
+    icon: GraduationCap,
+    terms: {
+      organization: "Escola",
+      manager: "Diretor",
+      member: "Aluno",
+      block: "Série",
+      unit: "Turma",
+    },
+  },
+  // ... demais tipos
+};
+```
 
 ---
 
-## 6. Footer (Footer.tsx)
+## 3. Categorias Híbridas
 
-### Atualizar Tagline
+### Categorias Base (Universais)
 
-**Atual:** "O canal oficial de comunicação do seu condomínio."
+Manter as 6 categorias atuais como disponíveis para todos:
+- Informativo
+- Financeiro
+- Manutenção
+- Convivência
+- Segurança
+- Urgente
 
-**Novo:** "O canal oficial de avisos importantes." (mais genérico para outros segmentos)
+### Categorias Adicionais por Segmento
+
+| Segmento | Categorias Extras |
+|----------|-------------------|
+| **Escola** | Pedagógico, Eventos, Calendário Escolar |
+| **Empresa** | RH, Operacional, Compliance |
+| **Clínica** | Atendimento, Horários, Saúde |
+| **Academia** | Treinos, Horários, Promoções |
+| **Igreja** | Cultos, Eventos, Pastoral |
+
+### Estrutura de Dados
+
+Nova tabela `category_templates`:
+
+```sql
+CREATE TABLE public.category_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT NOT NULL UNIQUE,
+  label TEXT NOT NULL,
+  icon_name TEXT NOT NULL,
+  color_class TEXT NOT NULL,
+  organization_types organization_type[] DEFAULT '{}',
+  is_universal BOOLEAN DEFAULT false,
+  display_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
 
 ---
 
-## 7. Header (Header.tsx)
+## 4. Modificações na Interface
 
-### Pequeno Ajuste no CTA
+### 4.1 Criação de Organização (Super Admin)
 
-**Atual:** "Criar conta"
+Adicionar seletor de tipo no dialog de criação:
 
-**Novo:** "Criar canal" (mais alinhado com o posicionamento)
+```
+┌─────────────────────────────────────────┐
+│ Criar Nova Organização                  │
+├─────────────────────────────────────────┤
+│ Tipo de Organização                     │
+│ ┌─────────────────────────────────────┐ │
+│ │ 🏢 Condomínio                    ▼ │ │
+│ └─────────────────────────────────────┘ │
+│                                         │
+│ Nome *                                  │
+│ ┌─────────────────────────────────────┐ │
+│ │ Ex: Residencial Jardins             │ │
+│ └─────────────────────────────────────┘ │
+│ ...                                     │
+└─────────────────────────────────────────┘
+```
+
+### 4.2 Dashboard
+
+Exibir ícone correspondente ao tipo:
+- 🏢 Building2 → Condomínio
+- 🎓 GraduationCap → Escola
+- 🏛️ Briefcase → Empresa
+- 🏥 Stethoscope → Clínica
+- 💪 Dumbbell → Academia
+- ⛪ Church → Igreja
+
+### 4.3 Página de Membros
+
+Labels dinâmicos baseados no tipo:
+- "Moradores" → "Alunos" (escola)
+- "Bloco" → "Série" (escola)
+- "Unidade" → "Turma" (escola)
 
 ---
 
-## Arquivos a Modificar
+## 5. Modificações na Landing Page
+
+### Hero Section
+
+Atualizar o mockup visual para ser mais genérico:
+
+**Atual:**
+```
+Condomínio Jardins
+Canal Oficial
+```
+
+**Novo:**
+```
+Organização Exemplo
+Canal Oficial
+```
+
+Manter a menção aos segmentos no texto abaixo do CTA:
+> "Para condomínios, escolas, empresas, clínicas, associações e academias."
+
+### Seção "Como Funciona"
+
+Manter textos genéricos já implementados (não menciona "condomínio").
+
+---
+
+## 6. Arquivos a Modificar
 
 | Arquivo | Mudanças |
 |---------|----------|
-| `src/components/landing/Hero.tsx` | Subtítulo, CTAs, badges, menção a segmentos |
-| `src/components/landing/HowItWorks.tsx` | Títulos, descrições, subtítulo da seção |
-| `src/components/landing/FeatureShowcase.tsx` | Títulos, descrições, header da seção |
-| `src/components/landing/Footer.tsx` | Tagline |
-| `src/components/landing/Header.tsx` | CTA "Criar canal" |
-| `src/pages/Index.tsx` | Seção CTA final + nova seção LGPD |
+| `src/lib/organization-types.ts` | **CRIAR** - Constantes e mapeamentos |
+| `src/lib/constants.ts` | Mover categorias para `category-config.ts` |
+| `src/lib/category-config.ts` | **CRIAR** - Categorias híbridas |
+| `src/pages/super-admin/SuperAdminCondominiums.tsx` | Adicionar seletor de tipo |
+| `src/pages/DashboardPage.tsx` | Ícones dinâmicos por tipo |
+| `src/pages/CondoMembersPage.tsx` | Labels dinâmicos |
+| `src/components/landing/Hero.tsx` | Mockup genérico |
 
 ---
 
-## Novo Componente a Criar
+## 7. Migração de Banco de Dados
 
-| Arquivo | Propósito |
-|---------|-----------|
-| `src/components/landing/TrustSection.tsx` | Seção sobre privacidade e LGPD |
+```sql
+-- 1. Criar enum de tipos
+CREATE TYPE public.organization_type AS ENUM (
+  'condominium', 'school', 'company', 'clinic', 
+  'association', 'gym', 'church', 'club', 'other'
+);
+
+-- 2. Adicionar coluna na tabela condominiums
+ALTER TABLE public.condominiums 
+ADD COLUMN organization_type organization_type DEFAULT 'condominium';
+
+-- 3. Tabela de templates de categorias (opcional para fase 2)
+CREATE TABLE public.category_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT NOT NULL UNIQUE,
+  label TEXT NOT NULL,
+  icon_name TEXT NOT NULL,
+  color_class TEXT NOT NULL,
+  organization_types organization_type[] DEFAULT '{}',
+  is_universal BOOLEAN DEFAULT false,
+  display_order INTEGER DEFAULT 0
+);
+
+-- 4. Popular categorias universais
+INSERT INTO public.category_templates (slug, label, icon_name, color_class, is_universal, display_order) VALUES
+('informativo', 'Informativo', 'Info', 'bg-blue-100 text-blue-700', true, 1),
+('financeiro', 'Financeiro', 'DollarSign', 'bg-emerald-100 text-emerald-700', true, 2),
+('manutencao', 'Manutenção', 'Wrench', 'bg-orange-100 text-orange-700', true, 3),
+('convivencia', 'Convivência', 'Users', 'bg-purple-100 text-purple-700', true, 4),
+('seguranca', 'Segurança', 'Shield', 'bg-red-100 text-red-700', true, 5),
+('urgente', 'Urgente', 'AlertTriangle', 'bg-red-500 text-white', true, 6);
+```
 
 ---
 
-## Palavras a Evitar vs Preferir
+## 8. Fases de Implementação
 
-| Evitar | Preferir |
-|--------|----------|
-| mural digital | canal oficial |
-| plataforma | linha do tempo |
-| sistema | avisos importantes |
-| ferramenta | registro |
-| aplicativo | fonte oficial |
+### Fase 1: Base Multi-Segmento
+1. Migração do banco (enum + coluna)
+2. Criar `organization-types.ts`
+3. Atualizar Super Admin para permitir seleção de tipo
+4. Atualizar Dashboard com ícones dinâmicos
+
+### Fase 2: Terminologia Dinâmica
+1. Hook `useOrganizationTerms(type)`
+2. Atualizar páginas de membros
+3. Atualizar formulários de criação
+
+### Fase 3: Categorias por Segmento
+1. Tabela `category_templates`
+2. Popular categorias extras
+3. Atualizar formulário de criação de avisos
 
 ---
 
 ## Resultado Esperado
 
-Visitante entende em 10 segundos:
-1. AVISO PRO é a **fonte oficial** da informação
-2. WhatsApp **só avisa**, não é o canal
-3. O aviso **fica registrado**
-4. Isso **evita confusão** e protege quem comunica
+- Super Admin pode criar organizações de qualquer tipo
+- Cada tipo tem ícone visual distinto no dashboard
+- Terminologia se adapta ao contexto (morador→aluno em escolas)
+- Categorias base funcionam para todos + extras por segmento
+- Sistema preparado para expansão comercial multi-vertical
 

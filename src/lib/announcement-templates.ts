@@ -448,6 +448,105 @@ Diretoria`,
       category: "informativo",
       isUrgent: false,
     },
+    {
+      id: "assoc-election",
+      name: "Eleição de Diretoria",
+      title: "Convocação para Eleição da Nova Diretoria",
+      summary: "Eleição para renovação da diretoria da associação.",
+      content: `Prezados associados,
+
+Convocamos todos os associados em dia com suas obrigações para a eleição da nova diretoria:
+
+📅 Data: [DATA]
+🕐 Horário: [HORÁRIO]
+📍 Local: [LOCAL]
+
+📋 Chapas inscritas:
+• [CHAPA 1]
+• [CHAPA 2]
+
+Documentos necessários: RG e comprovante de associação.
+
+Sua participação é fundamental para a democracia da nossa associação!
+
+Atenciosamente,
+Comissão Eleitoral`,
+      category: "informativo",
+      isUrgent: false,
+    },
+    {
+      id: "assoc-payment",
+      name: "Mensalidade/Anuidade",
+      title: "Aviso de Mensalidade",
+      summary: "Lembrete sobre pagamento da contribuição.",
+      content: `Prezados associados,
+
+Lembramos que a contribuição referente a [MÊS/ANO] está disponível para pagamento:
+
+💰 Valor: R$ [VALOR]
+📅 Vencimento: [DATA]
+🏦 Formas de pagamento: [FORMAS]
+
+Associados em dia têm acesso a todos os benefícios.
+
+Dúvidas: [CONTATO]
+
+Atenciosamente,
+Tesouraria`,
+      category: "financeiro",
+      isUrgent: false,
+    },
+    {
+      id: "assoc-benefit",
+      name: "Novo Benefício/Parceria",
+      title: "Nova Parceria para Associados",
+      summary: "Novos benefícios exclusivos para membros.",
+      content: `Prezados associados,
+
+Temos o prazer de anunciar uma nova parceria:
+
+🤝 Parceiro: [NOME DO PARCEIRO]
+🎁 Benefício: [DESCRIÇÃO DO BENEFÍCIO]
+📍 Local: [ENDEREÇO]
+📅 Válido até: [DATA]
+
+Como utilizar: [INSTRUÇÕES]
+
+Aproveite este benefício exclusivo!
+
+Atenciosamente,
+Diretoria`,
+      category: "informativo",
+      isUrgent: false,
+    },
+    {
+      id: "assoc-event",
+      name: "Evento da Associação",
+      title: "Convite para Evento",
+      summary: "Evento especial para associados e familiares.",
+      content: `Prezados associados,
+
+Convidamos você e sua família para:
+
+🎉 [NOME DO EVENTO]
+📅 Data: [DATA]
+🕐 Horário: [HORÁRIO]
+📍 Local: [LOCAL]
+
+Programação:
+• [ATIVIDADE 1]
+• [ATIVIDADE 2]
+• [ATIVIDADE 3]
+
+Inscrições: [COMO SE INSCREVER]
+
+Contamos com sua presença!
+
+Atenciosamente,
+Diretoria Social`,
+      category: "eventos",
+      isUrgent: false,
+    },
   ],
   club: [
     {
@@ -469,6 +568,155 @@ Traga sua família!
 Atenciosamente,
 Diretoria Social`,
       category: "eventos",
+      isUrgent: false,
+    },
+    {
+      id: "club-pool",
+      name: "Aviso da Piscina",
+      title: "Informativo sobre a Piscina",
+      summary: "Normas e horários de funcionamento da piscina.",
+      content: `Prezados sócios,
+
+Informamos sobre o funcionamento da piscina:
+
+🏊 Horário: [HORÁRIO DE FUNCIONAMENTO]
+📅 Período: [PERÍODO]
+
+Regras importantes:
+• Uso obrigatório de touca
+• Ducha antes de entrar na piscina
+• Proibido uso de óleos e bronzeadores
+• Crianças menores de [IDADE] devem estar acompanhadas
+
+Boa diversão!
+
+Administração do Clube`,
+      category: "convivencia",
+      isUrgent: false,
+    },
+    {
+      id: "club-sports",
+      name: "Torneio/Competição",
+      title: "Inscrições Abertas para Torneio",
+      summary: "Torneio esportivo do clube.",
+      content: `Prezados sócios,
+
+Estão abertas as inscrições para:
+
+🏆 [NOME DO TORNEIO]
+🎯 Modalidade: [MODALIDADE]
+📅 Data: [DATA]
+🕐 Horário: [HORÁRIO]
+
+Categorias:
+• [CATEGORIA 1]
+• [CATEGORIA 2]
+
+Inscrições: [LOCAL/PRAZO]
+Taxa: [VALOR OU GRATUITO]
+
+Venha participar e torcer!
+
+Diretoria de Esportes`,
+      category: "eventos",
+      isUrgent: false,
+    },
+    {
+      id: "club-restaurant",
+      name: "Restaurante/Bar",
+      title: "Novidades no Restaurante do Clube",
+      summary: "Informações sobre o restaurante e bar.",
+      content: `Prezados sócios,
+
+O restaurante do clube informa:
+
+🍽️ [NOVIDADE/INFORMAÇÃO]
+
+Horário de funcionamento:
+• Almoço: [HORÁRIO]
+• Jantar: [HORÁRIO]
+• Bar: [HORÁRIO]
+
+Cardápio especial: [DESCRIÇÃO]
+
+Reservas: [CONTATO]
+
+Bom apetite!
+
+Administração`,
+      category: "informativo",
+      isUrgent: false,
+    },
+    {
+      id: "club-maintenance",
+      name: "Manutenção de Área",
+      title: "Manutenção Programada",
+      summary: "Área do clube em manutenção.",
+      content: `Prezados sócios,
+
+Informamos que a seguinte área estará em manutenção:
+
+📍 Local: [ÁREA]
+📅 Período: [DATA INÍCIO] a [DATA FIM]
+🔧 Serviço: [TIPO DE MANUTENÇÃO]
+
+Alternativas disponíveis: [ALTERNATIVAS]
+
+Pedimos desculpas pelo transtorno.
+
+Atenciosamente,
+Administração`,
+      category: "manutencao",
+      isUrgent: false,
+    },
+    {
+      id: "club-assembly",
+      name: "Assembleia de Sócios",
+      title: "Convocação para Assembleia Geral",
+      summary: "Assembleia para deliberações importantes.",
+      content: `Prezados sócios,
+
+Convocamos para a Assembleia Geral:
+
+📅 Data: [DATA]
+🕐 Horário: [HORÁRIO]
+📍 Local: [LOCAL]
+
+Pauta:
+1. [PAUTA 1]
+2. [PAUTA 2]
+3. [PAUTA 3]
+
+Direito a voto: sócios proprietários em dia.
+
+Sua presença é fundamental!
+
+Atenciosamente,
+Diretoria`,
+      category: "informativo",
+      isUrgent: false,
+    },
+    {
+      id: "club-classes",
+      name: "Aulas e Atividades",
+      title: "Novas Aulas Disponíveis",
+      summary: "Grade de aulas e atividades do clube.",
+      content: `Prezados sócios,
+
+Confira as atividades disponíveis:
+
+🎾 [MODALIDADE 1]: [DIAS E HORÁRIOS]
+🏊 [MODALIDADE 2]: [DIAS E HORÁRIOS]
+⚽ [MODALIDADE 3]: [DIAS E HORÁRIOS]
+
+Instrutor(es): [NOMES]
+Vagas limitadas!
+
+Inscrições na secretaria ou pelo [CONTATO].
+
+Atenciosamente,
+Diretoria de Esportes`,
+      category: "informativo",
       isUrgent: false,
     },
   ],

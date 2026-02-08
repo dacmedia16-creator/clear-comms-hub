@@ -837,6 +837,9 @@ export type Database = {
         | "church"
         | "club"
         | "other"
+        | "healthcare"
+        | "community"
+        | "franchise"
       plan_type: "free" | "starter" | "pro"
     }
     CompositeTypes: {
@@ -994,6 +997,9 @@ export const Constants = {
         "church",
         "club",
         "other",
+        "healthcare",
+        "community",
+        "franchise",
       ],
       plan_type: ["free", "starter", "pro"],
     },

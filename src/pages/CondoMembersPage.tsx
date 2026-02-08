@@ -25,7 +25,7 @@ import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottom
 import { MobileCardItem } from "@/components/mobile/MobileCardItem";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ImportMembersDialog, ParsedMember } from "@/components/ImportMembersDialog";
-import { useOrganizationTerms } from "@/hooks/useOrganizationTerms";
+import { useOrganizationBehavior } from "@/hooks/useOrganizationBehavior";
 import { getRoleLabel } from "@/lib/organization-types";
 
 const roleColors: Record<string, string> = {
@@ -42,7 +42,7 @@ export default function CondoMembersPage() {
   const { members, loading, createMember, removeMember, approveMember, importMembers, updateMember } = useCondoMembers(condoId || "");
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const { terms } = useOrganizationTerms(condoId);
+  const { terms, behavior, placeholders } = useOrganizationBehavior(condoId);
 
   const [condoName, setCondoName] = useState<string>("");
   const [condoSlug, setCondoSlug] = useState<string>("");
@@ -260,6 +260,7 @@ export default function CondoMembersPage() {
         onOpenChange={setEditDialogOpen}
         onSave={handleSaveMember}
         terms={terms}
+        behavior={behavior}
       />
 
       {/* Import Members Dialog */}
@@ -268,6 +269,7 @@ export default function CondoMembersPage() {
         onOpenChange={setImportDialogOpen}
         onImport={handleImportMembers}
         terms={terms}
+        behavior={behavior}
       />
 
       {/* Add Member Dialog - only create new, no existing users list */}
@@ -278,6 +280,7 @@ export default function CondoMembersPage() {
         onAddExisting={async () => ({ success: false, error: "Não disponível" })}
         onCreateNew={handleCreateNew}
         terms={terms}
+        behavior={behavior}
       />
 
       {/* Main Content */}
@@ -380,7 +383,7 @@ export default function CondoMembersPage() {
                 <TableRow>
                   <TableHead>Usuário</TableHead>
                   <TableHead>Telefone</TableHead>
-                  <TableHead>{terms.block}/{terms.unit}</TableHead>
+                  <TableHead>{behavior.requiresLocation ? `${terms.block}/${terms.unit}` : terms.block}</TableHead>
                   <TableHead>Função</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Adicionado em</TableHead>

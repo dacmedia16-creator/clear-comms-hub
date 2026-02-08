@@ -17,8 +17,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { CondoMember, getMemberDisplayName, getMemberEmail, getMemberPhone } from "@/hooks/useCondoMembers";
-import { isValidBlock, isValidUnit, formatBlock } from "@/lib/utils";
-import { OrganizationTerms, getOrganizationTerms } from "@/lib/organization-types";
+import { validateLocationOptional, formatBlock } from "@/lib/utils";
+import { 
+  OrganizationTerms, 
+  OrganizationBehavior,
+  getOrganizationTerms,
+  getOrganizationBehavior,
+  getLocationPlaceholders
+} from "@/lib/organization-types";
 
 export interface UpdateMemberData {
   fullName?: string;
@@ -34,6 +40,7 @@ interface EditMemberDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (roleId: string, data: UpdateMemberData) => Promise<{ success: boolean; error?: string }>;
   terms?: OrganizationTerms;
+  behavior?: OrganizationBehavior;
 }
 
 export function EditMemberDialog({
@@ -42,6 +49,7 @@ export function EditMemberDialog({
   onOpenChange,
   onSave,
   terms = getOrganizationTerms("condominium"),
+  behavior = getOrganizationBehavior("condominium"),
 }: EditMemberDialogProps) {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -49,10 +57,14 @@ export function EditMemberDialog({
   const [block, setBlock] = useState("");
   const [unit, setUnit] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Is this a manual condo_member (editable) or authenticated profile (read-only personal data)
   const isCondoMember = !!member?.member_id;
   const isProfile = !!member?.user_id && !member?.member_id;
+
+  // Get placeholders
+  const placeholders = getLocationPlaceholders();
 
   useEffect(() => {
     if (member && open) {
@@ -61,35 +73,71 @@ export function EditMemberDialog({
       setEmail(getMemberEmail(member) || "");
       setBlock(member.block || "");
       setUnit(member.unit || "");
+      setError(null);
     }
   }, [member, open]);
 
-  // Handler para Bloco - aceita numeros ou uma letra
+  // Handler para Bloco - adapta validação conforme o tipo de organização
   const handleBlockChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Permitir vazio, letra unica ou numero sem zero inicial
-    if (value === "" || /^[A-Za-z]$/.test(value) || /^[1-9][0-9]*$/.test(value)) {
-      setBlock(formatBlock(value));
+    if (behavior.blockValidation === "flexible") {
+      if (value.length <= 50) {
+        setBlock(value);
+      }
+    } else {
+      if (value === "" || /^[A-Za-z]$/.test(value) || /^[1-9][0-9]*$/.test(value)) {
+        setBlock(formatBlock(value));
+      }
     }
   };
 
-  // Handler para Unidade - aceita apenas numeros
+  // Handler para Unidade - adapta validação conforme o tipo de organização
   const handleUnitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Permitir apenas numeros
-    if (value === "" || /^[0-9]+$/.test(value)) {
-      setUnit(value);
+    if (behavior.unitValidation === "flexible") {
+      if (value.length <= 50) {
+        setUnit(value);
+      }
+    } else {
+      if (value === "" || /^[0-9]+$/.test(value)) {
+        setUnit(value);
+      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!member) return;
+    setError(null);
 
-    if (!isValidBlock(block)) {
+    // Validar campos de localização
+    const blockValid = validateLocationOptional(
+      block,
+      "block",
+      behavior.blockValidation,
+      behavior.requiresLocation
+    );
+    const unitValid = validateLocationOptional(
+      unit,
+      "unit",
+      behavior.unitValidation,
+      behavior.requiresLocation
+    );
+
+    if (!blockValid) {
+      if (behavior.blockValidation === "strict") {
+        setError(`${terms.block} deve ser um número (sem zero inicial) ou uma letra`);
+      } else {
+        setError(`${terms.block} é obrigatório`);
+      }
       return;
     }
-    if (!isValidUnit(unit)) {
+    if (!unitValid) {
+      if (behavior.unitValidation === "strict") {
+        setError(`${terms.unit} deve conter apenas números`);
+      } else {
+        setError(`${terms.unit} é obrigatório`);
+      }
       return;
     }
 
@@ -110,6 +158,8 @@ export function EditMemberDialog({
       const result = await onSave(member.id, data);
       if (result.success) {
         onOpenChange(false);
+      } else {
+        setError(result.error || "Erro ao salvar");
       }
     } finally {
       setSaving(false);
@@ -126,6 +176,8 @@ export function EditMemberDialog({
       </Tooltip>
     </TooltipProvider>
   );
+
+  const isRequired = behavior.requiresLocation;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -199,25 +251,29 @@ export function EditMemberDialog({
           {/* Location Section */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="block">{terms.block} *</Label>
+              <Label htmlFor="block">
+                {terms.block} {isRequired && "*"}
+              </Label>
               <Input
                 id="block"
                 value={block}
                 onChange={handleBlockChange}
-                placeholder="Ex: 1, A"
-                maxLength={10}
-                required
+                placeholder={`Ex: ${placeholders.block}`}
+                maxLength={behavior.blockValidation === "flexible" ? 50 : 10}
+                required={isRequired}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="unit">{terms.unit} *</Label>
+              <Label htmlFor="unit">
+                {terms.unit} {isRequired && "*"}
+              </Label>
               <Input
                 id="unit"
                 value={unit}
                 onChange={handleUnitChange}
-                placeholder="Ex: 101"
-                maxLength={10}
-                required
+                placeholder={`Ex: ${placeholders.unit}`}
+                maxLength={behavior.unitValidation === "flexible" ? 50 : 10}
+                required={isRequired}
               />
             </div>
           </div>
@@ -229,6 +285,10 @@ export function EditMemberDialog({
             </p>
           )}
 
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
+          )}
+
           <DialogFooter>
             <Button
               type="button"
@@ -238,7 +298,7 @@ export function EditMemberDialog({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={saving || !isValidBlock(block) || !isValidUnit(unit)}>
+            <Button type="submit" disabled={saving}>
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Salvar
             </Button>

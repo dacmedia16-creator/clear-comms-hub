@@ -13,14 +13,20 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-import { isValidBlock, isValidUnit, formatBlock } from "@/lib/utils";
-import { OrganizationTerms, getOrganizationTerms, getRoleLabel } from "@/lib/organization-types";
+import { validateLocationOptional, formatBlock } from "@/lib/utils";
+import { 
+  OrganizationTerms, 
+  OrganizationBehavior,
+  getOrganizationTerms, 
+  getOrganizationBehavior,
+  getLocationPlaceholders,
+  getRoleLabel 
+} from "@/lib/organization-types";
 
 interface User {
   id: string;
@@ -44,6 +50,7 @@ interface AddMemberDialogProps {
     role: Role;
   }) => Promise<{ success: boolean; error?: string }>;
   terms?: OrganizationTerms;
+  behavior?: OrganizationBehavior;
 }
 
 export function AddMemberDialog({
@@ -53,6 +60,7 @@ export function AddMemberDialog({
   onAddExisting,
   onCreateNew,
   terms = getOrganizationTerms("condominium"),
+  behavior = getOrganizationBehavior("condominium"),
 }: AddMemberDialogProps) {
   const [activeTab, setActiveTab] = useState("new");
   const [saving, setSaving] = useState(false);
@@ -72,16 +80,35 @@ export function AddMemberDialog({
   const [existingUnit, setExistingUnit] = useState("");
   const [existingRole, setExistingRole] = useState<Role>("resident");
 
+  // Get placeholders
+  const placeholders = getLocationPlaceholders();
+
   // Handlers para validação em tempo real
   const handleBlockChange = (value: string, setter: (v: string) => void) => {
-    if (value === "" || /^[A-Za-z]$/.test(value) || /^[1-9][0-9]*$/.test(value)) {
-      setter(formatBlock(value));
+    if (behavior.blockValidation === "flexible") {
+      // Texto livre - aceita qualquer coisa até 50 chars
+      if (value.length <= 50) {
+        setter(value);
+      }
+    } else {
+      // Validação estrita - número ou letra única
+      if (value === "" || /^[A-Za-z]$/.test(value) || /^[1-9][0-9]*$/.test(value)) {
+        setter(formatBlock(value));
+      }
     }
   };
 
   const handleUnitChange = (value: string, setter: (v: string) => void) => {
-    if (value === "" || /^[0-9]+$/.test(value)) {
-      setter(value);
+    if (behavior.unitValidation === "flexible") {
+      // Texto livre - aceita qualquer coisa até 50 chars
+      if (value.length <= 50) {
+        setter(value);
+      }
+    } else {
+      // Validação estrita - apenas números
+      if (value === "" || /^[0-9]+$/.test(value)) {
+        setter(value);
+      }
     }
   };
 
@@ -104,6 +131,35 @@ export function AddMemberDialog({
     onOpenChange(false);
   };
 
+  const validateLocationFields = (blockValue: string, unitValue: string): string | null => {
+    const blockValid = validateLocationOptional(
+      blockValue,
+      "block",
+      behavior.blockValidation,
+      behavior.requiresLocation
+    );
+    const unitValid = validateLocationOptional(
+      unitValue,
+      "unit",
+      behavior.unitValidation,
+      behavior.requiresLocation
+    );
+
+    if (!blockValid) {
+      if (behavior.blockValidation === "strict") {
+        return `${terms.block} deve ser um número (sem zero inicial) ou uma letra`;
+      }
+      return `${terms.block} é obrigatório`;
+    }
+    if (!unitValid) {
+      if (behavior.unitValidation === "strict") {
+        return `${terms.unit} deve conter apenas números`;
+      }
+      return `${terms.unit} é obrigatório`;
+    }
+    return null;
+  };
+
   const handleSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -121,12 +177,10 @@ export function AddMemberDialog({
       setError("Email inválido");
       return;
     }
-    if (!isValidBlock(block)) {
-      setError(`${terms.block} deve ser um número (sem zero inicial) ou uma letra`);
-      return;
-    }
-    if (!isValidUnit(unit)) {
-      setError(`${terms.unit} deve conter apenas números`);
+
+    const locationError = validateLocationFields(block, unit);
+    if (locationError) {
+      setError(locationError);
       return;
     }
 
@@ -156,12 +210,10 @@ export function AddMemberDialog({
       setError("Selecione um usuário");
       return;
     }
-    if (!isValidBlock(existingBlock)) {
-      setError(`${terms.block} deve ser um número (sem zero inicial) ou uma letra`);
-      return;
-    }
-    if (!isValidUnit(existingUnit)) {
-      setError(`${terms.unit} deve conter apenas números`);
+
+    const locationError = validateLocationFields(existingBlock, existingUnit);
+    if (locationError) {
+      setError(locationError);
       return;
     }
 
@@ -174,6 +226,49 @@ export function AddMemberDialog({
     } else {
       setError(result.error || "Erro ao adicionar membro");
     }
+  };
+
+  // Helper to render location fields
+  const renderLocationFields = (
+    blockValue: string,
+    unitValue: string,
+    onBlockChange: (v: string) => void,
+    onUnitChange: (v: string) => void,
+    prefix: string = ""
+  ) => {
+    const blockId = `${prefix}block`;
+    const unitId = `${prefix}unit`;
+    const isRequired = behavior.requiresLocation;
+
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor={blockId}>
+            {terms.block} {isRequired && "*"}
+          </Label>
+          <Input
+            id={blockId}
+            value={blockValue}
+            onChange={(e) => handleBlockChange(e.target.value, onBlockChange)}
+            placeholder={`Ex: ${placeholders.block}`}
+            maxLength={behavior.blockValidation === "flexible" ? 50 : 10}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor={unitId}>
+            {terms.unit} {isRequired && "*"}
+          </Label>
+          <Input
+            id={unitId}
+            value={unitValue}
+            onChange={(e) => handleUnitChange(e.target.value, onUnitChange)}
+            placeholder={`Ex: ${placeholders.unit}`}
+            maxLength={behavior.unitValidation === "flexible" ? 50 : 10}
+          />
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -227,29 +322,7 @@ export function AddMemberDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="block">{terms.block} *</Label>
-                  <Input
-                    id="block"
-                    value={block}
-                    onChange={(e) => handleBlockChange(e.target.value, setBlock)}
-                    placeholder="Ex: 1, A"
-                    maxLength={10}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="unit">{terms.unit} *</Label>
-                  <Input
-                    id="unit"
-                    value={unit}
-                    onChange={(e) => handleUnitChange(e.target.value, setUnit)}
-                    placeholder="Ex: 101"
-                    maxLength={10}
-                  />
-                </div>
-              </div>
+              {renderLocationFields(block, unit, setBlock, setUnit)}
 
               <div className="space-y-2">
                 <Label>Função *</Label>
@@ -306,29 +379,13 @@ export function AddMemberDialog({
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="existingBlock">{terms.block} *</Label>
-                  <Input
-                    id="existingBlock"
-                    value={existingBlock}
-                    onChange={(e) => handleBlockChange(e.target.value, setExistingBlock)}
-                    placeholder="Ex: 1, A"
-                    maxLength={10}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="existingUnit">{terms.unit} *</Label>
-                  <Input
-                    id="existingUnit"
-                    value={existingUnit}
-                    onChange={(e) => handleUnitChange(e.target.value, setExistingUnit)}
-                    placeholder="Ex: 101"
-                    maxLength={10}
-                  />
-                </div>
-              </div>
+              {renderLocationFields(
+                existingBlock,
+                existingUnit,
+                setExistingBlock,
+                setExistingUnit,
+                "existing"
+              )}
 
               <div className="space-y-2">
                 <Label>Função *</Label>

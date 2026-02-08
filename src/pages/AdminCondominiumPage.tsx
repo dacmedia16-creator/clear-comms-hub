@@ -56,7 +56,8 @@ import { FileUpload } from "@/components/FileUpload";
 import { useCondoBlocks } from "@/hooks/useCondoBlocks";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { useOrganizationTerms } from "@/hooks/useOrganizationTerms";
+import { useOrganizationBehavior } from "@/hooks/useOrganizationBehavior";
+import { getOrganizationBehavior } from "@/lib/organization-types";
 
 interface Announcement {
   id: string;
@@ -86,7 +87,7 @@ export default function AdminCondominiumPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const { terms, organizationType } = useOrganizationTerms(condoId);
+  const { terms, behavior, organizationType } = useOrganizationBehavior(condoId);
   const availableCategories = useCategoriesForOrganization(organizationType);
   const availableTemplates = getAnnouncementTemplates(organizationType);
 
@@ -605,82 +606,94 @@ export default function AdminCondominiumPage() {
                   />
                 </div>
 
-                {/* Recipient Targeting */}
-                <div className="border-t pt-4 mt-2">
-                  <Label className="text-sm font-medium mb-3 flex items-center gap-2">
-                    <Building2 className="w-4 h-4" />
-                    Destinatários
-                  </Label>
-                  
-                  <RadioGroup 
-                    value={recipientType} 
-                    onValueChange={(v) => setRecipientType(v as "all" | "blocks" | "units")}
-                    className="space-y-3"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="all" id="recipient-all" />
-                      <Label htmlFor="recipient-all" className="cursor-pointer font-normal">
-                        Todos os moradores
-                      </Label>
-                    </div>
+                {/* Recipient Targeting - only show for orgs that use location targeting */}
+                {behavior.showLocationTargeting && blocks.length > 0 && (
+                  <div className="border-t pt-4 mt-2">
+                    <Label className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <Building2 className="w-4 h-4" />
+                      Destinatários
+                    </Label>
                     
-                    <div className="flex items-start space-x-2">
-                      <RadioGroupItem value="blocks" id="recipient-blocks" className="mt-1" />
-                      <div className="flex-1">
-                        <Label htmlFor="recipient-blocks" className="cursor-pointer font-normal">
-                          Blocos específicos
+                    <RadioGroup 
+                      value={recipientType} 
+                      onValueChange={(v) => setRecipientType(v as "all" | "blocks" | "units")}
+                      className="space-y-3"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="all" id="recipient-all" />
+                        <Label htmlFor="recipient-all" className="cursor-pointer font-normal">
+                          Todos os {terms.memberPlural.toLowerCase()}
                         </Label>
-                        {recipientType === "blocks" && blocks.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {blocks.map((block) => (
-                              <Badge
-                                key={block}
-                                variant={selectedBlocks.includes(block) ? "default" : "outline"}
-                                className="cursor-pointer"
-                                onClick={() => {
-                                  setSelectedBlocks(prev =>
-                                    prev.includes(block)
-                                      ? prev.filter(b => b !== block)
-                                      : [...prev, block]
-                                  );
-                                }}
-                              >
-                                {block}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                        {recipientType === "blocks" && blocks.length === 0 && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Nenhum bloco cadastrado ainda.
-                          </p>
-                        )}
                       </div>
-                    </div>
-                    
-                    <div className="flex items-start space-x-2">
-                      <RadioGroupItem value="units" id="recipient-units" className="mt-1" />
-                      <div className="flex-1">
-                        <Label htmlFor="recipient-units" className="cursor-pointer font-normal">
-                          Unidades específicas
-                        </Label>
-                        {recipientType === "units" && (
-                          <Input
-                            placeholder="101, 102, 203..."
-                            value={targetUnits}
-                            onChange={(e) => setTargetUnits(e.target.value)}
-                            className="mt-2"
-                          />
-                        )}
+                      
+                      <div className="flex items-start space-x-2">
+                        <RadioGroupItem value="blocks" id="recipient-blocks" className="mt-1" />
+                        <div className="flex-1">
+                          <Label htmlFor="recipient-blocks" className="cursor-pointer font-normal">
+                            {terms.blockPlural} específicos
+                          </Label>
+                          {recipientType === "blocks" && blocks.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {blocks.map((block) => (
+                                <Badge
+                                  key={block}
+                                  variant={selectedBlocks.includes(block) ? "default" : "outline"}
+                                  className="cursor-pointer"
+                                  onClick={() => {
+                                    setSelectedBlocks(prev =>
+                                      prev.includes(block)
+                                        ? prev.filter(b => b !== block)
+                                        : [...prev, block]
+                                    );
+                                  }}
+                                >
+                                  {block}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                          {recipientType === "blocks" && blocks.length === 0 && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Nenhum {terms.block.toLowerCase()} cadastrado ainda.
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </RadioGroup>
-                </div>
+                      
+                      <div className="flex items-start space-x-2">
+                        <RadioGroupItem value="units" id="recipient-units" className="mt-1" />
+                        <div className="flex-1">
+                          <Label htmlFor="recipient-units" className="cursor-pointer font-normal">
+                            {terms.unitPlural} específicas
+                          </Label>
+                          {recipientType === "units" && (
+                            <Input
+                              placeholder={`101, 102, 203...`}
+                              value={targetUnits}
+                              onChange={(e) => setTargetUnits(e.target.value)}
+                              className="mt-2"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
+
+                {/* Message for orgs without location targeting */}
+                {!behavior.showLocationTargeting && (
+                  <div className="border-t pt-4 mt-2">
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Este aviso será enviado para todos os {terms.memberPlural.toLowerCase()}.
+                    </p>
+                  </div>
+                )}
 
                 {/* Notification Options */}
                 <div className="border-t pt-4 mt-2">
                   <Label className="text-sm font-medium mb-3 block">
-                    Notificar moradores
+                    Notificar {terms.memberPlural.toLowerCase()}
                   </Label>
                   
                   <div className="space-y-3">
@@ -699,8 +712,8 @@ export default function AdminCondominiumPage() {
                         </Label>
                         <p className="text-xs text-muted-foreground">
                           {condominium?.notification_whatsapp 
-                            ? "Notificar moradores com telefone cadastrado"
-                            : "Habilite nas configurações do condomínio"}
+                            ? `Notificar ${terms.memberPlural.toLowerCase()} com telefone cadastrado`
+                            : `Habilite nas configurações da ${terms.organization.toLowerCase()}`}
                         </p>
                       </div>
                     </div>
@@ -720,8 +733,8 @@ export default function AdminCondominiumPage() {
                         </Label>
                         <p className="text-xs text-muted-foreground">
                           {condominium?.notification_sms 
-                            ? "Notificar moradores com telefone cadastrado"
-                            : "Habilite nas configurações do condomínio"}
+                            ? `Notificar ${terms.memberPlural.toLowerCase()} com telefone cadastrado`
+                            : `Habilite nas configurações da ${terms.organization.toLowerCase()}`}
                         </p>
                       </div>
                     </div>
@@ -741,8 +754,8 @@ export default function AdminCondominiumPage() {
                         </Label>
                         <p className="text-xs text-muted-foreground">
                           {condominium?.notification_email 
-                            ? "Notificar moradores com email cadastrado"
-                            : "Habilite nas configurações do condomínio"}
+                            ? `Notificar ${terms.memberPlural.toLowerCase()} com email cadastrado`
+                            : `Habilite nas configurações da ${terms.organization.toLowerCase()}`}
                         </p>
                       </div>
                     </div>

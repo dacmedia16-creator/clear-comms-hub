@@ -18,6 +18,7 @@ import CondominiumSettingsPage from "./pages/CondominiumSettingsPage";
 import IntegrationsPage from "./pages/IntegrationsPage";
 import TimelinePage from "./pages/TimelinePage";
 import SuperAdminDashboard from "./pages/super-admin/SuperAdminDashboard";
+import SuperAdminSegments from "./pages/super-admin/SuperAdminSegments";
 import SuperAdminCondominiums from "./pages/super-admin/SuperAdminCondominiums";
 import SuperAdminCondoMembers from "./pages/super-admin/SuperAdminCondoMembers";
 import SuperAdminUsers from "./pages/super-admin/SuperAdminUsers";
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/admin/:condoId/members" element={<CondoMembersPage />} />
             <Route path="/c/:slug" element={<TimelinePage />} />
             <Route path="/super-admin" element={<SuperAdminDashboard />} />
+            <Route path="/super-admin/segments" element={<SuperAdminSegments />} />
             <Route path="/super-admin/condominiums" element={<SuperAdminCondominiums />} />
             <Route path="/super-admin/condominiums/:condoId/members" element={<SuperAdminCondoMembers />} />
             <Route path="/super-admin/users" element={<SuperAdminUsers />} />

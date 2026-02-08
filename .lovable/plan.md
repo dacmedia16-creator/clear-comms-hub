@@ -1,6 +1,41 @@
 
 
-# Plano: Fase 3 - Sistema de Categorias Híbridas por Segmento
+# Plano de Expansão: AVISO PRO Multi-Segmento
+
+## Visão Geral
+Expandir o AVISO PRO para atender diferentes tipos de organizações além de condomínios.
+
+---
+
+## ✅ Fase 1: Infraestrutura Base (CONCLUÍDA)
+- Campo `organization_type` na tabela `condominiums`
+- Mapeamento de termos por tipo de organização
+- Super Admin pode selecionar tipo ao criar organizações
+
+## ✅ Fase 2: Terminologia Dinâmica (CONCLUÍDA)
+- Hook `useOrganizationTerms` busca tipo e retorna termos
+- Páginas de membros usam terminologia dinâmica
+- Função `getRoleLabel()` para labels de funções
+
+## ✅ Fase 3: Categorias Híbridas por Segmento (CONCLUÍDA)
+- `CATEGORY_CONFIG` com categorias universais e específicas
+- Enum `announcement_category` expandido com novos valores
+- Hook `useCategoriesForOrganization` filtra categorias
+- AdminCondominiumPage e TimelinePage usam categorias dinâmicas
+- WhatsApp templates para novas categorias
+
+---
+
+## 🔜 Fase 4: Onboarding Dinâmico (Pendente)
+- Fluxo de signup adaptado por tipo de organização
+- Templates de blocos/unidades por segmento
+- Passo de configuração inicial personalizado
+
+## 🔜 Fase 5: Analytics e Relatórios (Pendente)
+- Métricas específicas por segmento
+- Dashboard personalizado por tipo
+
+---
 
 ## Visão Geral
 

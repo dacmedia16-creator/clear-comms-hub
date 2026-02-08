@@ -43,7 +43,8 @@ import { useSendWhatsApp } from "@/hooks/useSendWhatsApp";
 import { useSendSMS } from "@/hooks/useSendSMS";
 import { useSendEmail } from "@/hooks/useSendEmail";
 import { useToast } from "@/hooks/use-toast";
-import { ANNOUNCEMENT_CATEGORIES, AnnouncementCategory } from "@/lib/constants";
+import { getCategoryConfig, CategorySlug } from "@/lib/category-config";
+import { useCategoriesForOrganization } from "@/hooks/useCategoriesForOrganization";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { RefreshButton } from "@/components/RefreshButton";
@@ -61,7 +62,7 @@ interface Announcement {
   title: string;
   summary: string | null;
   content: string;
-  category: AnnouncementCategory;
+  category: string;
   is_pinned: boolean;
   is_urgent: boolean;
   published_at: string;
@@ -84,7 +85,8 @@ export default function AdminCondominiumPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const { terms } = useOrganizationTerms(condoId);
+  const { terms, organizationType } = useOrganizationTerms(condoId);
+  const availableCategories = useCategoriesForOrganization(organizationType);
 
   const [condominium, setCondominium] = useState<Condominium | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -105,7 +107,7 @@ export default function AdminCondominiumPage() {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [content, setContent] = useState("");
-  const [category, setCategory] = useState<AnnouncementCategory>("informativo");
+  const [category, setCategory] = useState<string>("informativo");
   const [isPinned, setIsPinned] = useState(false);
   const [isUrgent, setIsUrgent] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -206,7 +208,7 @@ export default function AdminCondominiumPage() {
           title: title.trim(),
           summary: summary.trim() || null,
           content: content.trim(),
-          category,
+          category: category as any,
           is_pinned: isPinned,
           is_urgent: isUrgent || category === "urgente",
           created_by: profile.id,
@@ -465,13 +467,13 @@ export default function AdminCondominiumPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="category">Categoria *</Label>
-                  <Select value={category} onValueChange={(v) => setCategory(v as AnnouncementCategory)}>
+                  <Select value={category} onValueChange={(v) => setCategory(v)}>
                     <SelectTrigger id="category" className="bg-card">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-card">
-                      {Object.entries(ANNOUNCEMENT_CATEGORIES).map(([key, cat]) => (
-                        <SelectItem key={key} value={key}>
+                      {availableCategories.map((cat) => (
+                        <SelectItem key={cat.slug} value={cat.slug}>
                           <div className="flex items-center gap-2">
                             <cat.icon className="w-4 h-4" />
                             <span>{cat.label}</span>
@@ -707,7 +709,7 @@ export default function AdminCondominiumPage() {
         ) : (
           <div className="space-y-4">
             {announcements.map((announcement) => {
-              const categoryInfo = ANNOUNCEMENT_CATEGORIES[announcement.category];
+              const categoryInfo = getCategoryConfig(announcement.category);
               const Icon = categoryInfo.icon;
 
               return (

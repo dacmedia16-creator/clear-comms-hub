@@ -23,13 +23,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, Building2, LogOut, Plus, FileText, Settings, Loader2, ExternalLink, Shield, User, ChevronDown, Users } from "lucide-react";
+import { Bell, Building2, LogOut, Plus, FileText, Settings, Loader2, ExternalLink, Shield, User, ChevronDown, Users, Grid3X3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { RefreshButton } from "@/components/RefreshButton";
 import { PendingApprovalScreen } from "@/components/PendingApprovalScreen";
 import { getOrganizationIcon, getOrganizationTerms } from "@/lib/organization-types";
+import { useAllCondominiums } from "@/hooks/useAllCondominiums";
 
 // Role labels and styles
 const roleLabels: Record<string, string> = {
@@ -61,8 +62,11 @@ export default function DashboardPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { profile, condominiums, pendingRoles, loading: profileLoading, refetch } = useProfile();
   const { isSuperAdmin } = useSuperAdmin();
+  const { condominiums: allCondominiums } = useAllCondominiums();
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  const totalOrganizations = allCondominiums.length;
 
   // Check if user is only a resident (no admin roles)
   const hasOnlyResidentRoles = condominiums.length > 0 && 
@@ -268,6 +272,38 @@ export default function DashboardPage() {
             </Dialog>
           )}
         </div>
+
+        {/* Segments Card - Super Admin Only */}
+        {isSuperAdmin && (
+          <Card className="mb-8 bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
+            <CardContent className="p-6">
+              <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mb-4">
+                <Grid3X3 className="w-6 h-6 text-primary" />
+              </div>
+              
+              <h3 className="font-display text-xl font-bold mb-1">
+                Segmentos de Organização
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                Visualize e crie organizações por categoria: Condomínios, Clínicas, Empresas, etc.
+              </p>
+              
+              <div className="flex gap-2 mb-4">
+                <Badge variant="secondary" className="bg-muted">6 categorias</Badge>
+                <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                  {totalOrganizations} organizações
+                </Badge>
+              </div>
+              
+              <Button asChild className="w-full">
+                <Link to="/super-admin/segments">
+                  <Grid3X3 className="w-4 h-4 mr-2" />
+                  Ver Segmentos
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Condominiums Grid */}
         {condominiums.length === 0 ? (

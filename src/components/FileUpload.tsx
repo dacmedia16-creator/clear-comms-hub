@@ -15,8 +15,19 @@ interface FileUploadProps {
   files: File[];
   onFilesChange: (files: File[]) => void;
   maxSizeMB?: number;
+  maxVideoSizeMB?: number;
   accept?: string;
   className?: string;
+}
+
+function isVideoFile(file: File): boolean {
+  const type = file.type;
+  const name = file.name.toLowerCase();
+  return type.startsWith("video/") || 
+         name.endsWith(".mp4") || 
+         name.endsWith(".webm") || 
+         name.endsWith(".mov") || 
+         name.endsWith(".avi");
 }
 
 function formatFileSize(bytes: number): string {
@@ -61,6 +72,7 @@ export function FileUpload({
   files,
   onFilesChange,
   maxSizeMB = 20,
+  maxVideoSizeMB = 300,
   accept = ".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.mp4,.webm,.mov,.avi",
   className,
 }: FileUploadProps) {
@@ -69,6 +81,7 @@ export function FileUpload({
   const [error, setError] = useState<string | null>(null);
 
   const maxSizeBytes = maxSizeMB * 1024 * 1024;
+  const maxVideoSizeBytes = maxVideoSizeMB * 1024 * 1024;
 
   const handleFiles = (newFiles: FileList | null) => {
     if (!newFiles) return;
@@ -78,8 +91,12 @@ export function FileUpload({
     const errors: string[] = [];
 
     Array.from(newFiles).forEach((file) => {
-      if (file.size > maxSizeBytes) {
-        errors.push(`${file.name} excede o limite de ${maxSizeMB}MB`);
+      const isVideo = isVideoFile(file);
+      const maxSize = isVideo ? maxVideoSizeBytes : maxSizeBytes;
+      const limitLabel = isVideo ? maxVideoSizeMB : maxSizeMB;
+      
+      if (file.size > maxSize) {
+        errors.push(`${file.name} excede o limite de ${limitLabel}MB`);
       } else {
         validFiles.push(file);
       }
@@ -148,7 +165,7 @@ export function FileUpload({
           ou arraste e solte aqui
         </p>
         <p className="text-xs text-muted-foreground mt-2">
-          PDF, imagens, vídeos, documentos (máx {maxSizeMB}MB)
+          PDF, imagens, documentos (máx {maxSizeMB}MB) • Vídeos (máx {maxVideoSizeMB}MB)
         </p>
       </div>
 

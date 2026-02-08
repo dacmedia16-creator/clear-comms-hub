@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
+import type { OrganizationType } from "@/lib/organization-types";
 
 interface Profile {
   id: string;
@@ -19,6 +20,7 @@ interface Condominium {
   logo_url: string | null;
   plan: string;
   owner_id: string;
+  organization_type?: OrganizationType;
 }
 
 interface CondominiumWithRole extends Condominium {

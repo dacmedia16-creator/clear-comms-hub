@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { OrganizationType } from "@/lib/organization-types";
 
 interface Condominium {
   id: string;
@@ -12,6 +13,7 @@ interface Condominium {
   owner_id: string;
   created_at: string;
   trial_ends_at: string | null;
+  organization_type: OrganizationType;
   owner?: {
     id: string;
     full_name: string | null;

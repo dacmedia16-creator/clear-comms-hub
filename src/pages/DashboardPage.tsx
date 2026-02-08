@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { RefreshButton } from "@/components/RefreshButton";
 import { PendingApprovalScreen } from "@/components/PendingApprovalScreen";
+import { getOrganizationIcon, getOrganizationTerms } from "@/lib/organization-types";
 
 // Role labels and styles
 const roleLabels: Record<string, string> = {
@@ -291,68 +292,73 @@ export default function DashboardPage() {
           </Card>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {condominiums.map((condo) => (
-              <Card key={condo.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center">
-                      <Building2 className="w-6 h-6 text-primary" />
-                    </div>
-                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-muted text-muted-foreground capitalize">
-                      {condo.plan}
-                    </span>
-                  </div>
-                  <CardTitle className="font-display mt-3">{condo.name}</CardTitle>
-                  <Badge className={`${roleStyles[condo.userRole || "resident"]} mt-1`} variant="secondary">
-                    {roleLabels[condo.userRole || "resident"]}
-                  </Badge>
-                  {condo.description && (
-                    <CardDescription className="line-clamp-2 mt-2">{condo.description}</CardDescription>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col gap-2">
-                    {canManageAnnouncements(condo.userRole) ? (
-                      <Button asChild className="w-full touch-target">
-                        <Link to={`/admin/${condo.id}`}>
-                          <FileText className="w-4 h-4 mr-2" />
-                          {condo.userRole === 'collaborator' ? 'Criar avisos' : 'Gerenciar avisos'}
-                        </Link>
-                      </Button>
-                    ) : (
-                      <Button asChild className="w-full touch-target">
-                        <Link to={`/c/${condo.slug}`} target="_blank">
-                          <FileText className="w-4 h-4 mr-2" />
-                          Ver avisos
-                        </Link>
-                      </Button>
-                    )}
-                    {canAccessSettings(condo.userRole) && (
-                      <div className="flex gap-2">
-                        <Button asChild variant="outline" className="flex-1">
-                          <Link to={`/admin/${condo.id}/settings`}>
-                            <Settings className="w-4 h-4 mr-1" />
-                            Config
-                          </Link>
-                        </Button>
-                        <Button asChild variant="outline" className="flex-1">
-                          <Link to={`/admin/${condo.id}/members`}>
-                            <Users className="w-4 h-4 mr-1" />
-                            Moradores
-                          </Link>
-                        </Button>
-                        <Button asChild variant="outline" className="flex-1">
-                          <Link to={`/c/${condo.slug}`} target="_blank">
-                            <ExternalLink className="w-4 h-4 mr-1" />
-                            Ver timeline
-                          </Link>
-                        </Button>
+            {condominiums.map((condo) => {
+              const OrgIcon = getOrganizationIcon(condo.organization_type);
+              const terms = getOrganizationTerms(condo.organization_type);
+              
+              return (
+                <Card key={condo.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center">
+                        <OrgIcon className="w-6 h-6 text-primary" />
                       </div>
+                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-muted text-muted-foreground capitalize">
+                        {condo.plan}
+                      </span>
+                    </div>
+                    <CardTitle className="font-display mt-3">{condo.name}</CardTitle>
+                    <Badge className={`${roleStyles[condo.userRole || "resident"]} mt-1`} variant="secondary">
+                      {roleLabels[condo.userRole || "resident"]}
+                    </Badge>
+                    {condo.description && (
+                      <CardDescription className="line-clamp-2 mt-2">{condo.description}</CardDescription>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-col gap-2">
+                      {canManageAnnouncements(condo.userRole) ? (
+                        <Button asChild className="w-full touch-target">
+                          <Link to={`/admin/${condo.id}`}>
+                            <FileText className="w-4 h-4 mr-2" />
+                            {condo.userRole === 'collaborator' ? 'Criar avisos' : 'Gerenciar avisos'}
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button asChild className="w-full touch-target">
+                          <Link to={`/c/${condo.slug}`} target="_blank">
+                            <FileText className="w-4 h-4 mr-2" />
+                            Ver avisos
+                          </Link>
+                        </Button>
+                      )}
+                      {canAccessSettings(condo.userRole) && (
+                        <div className="flex gap-2">
+                          <Button asChild variant="outline" className="flex-1">
+                            <Link to={`/admin/${condo.id}/settings`}>
+                              <Settings className="w-4 h-4 mr-1" />
+                              Config
+                            </Link>
+                          </Button>
+                          <Button asChild variant="outline" className="flex-1">
+                            <Link to={`/admin/${condo.id}/members`}>
+                              <Users className="w-4 h-4 mr-1" />
+                              {terms.memberPlural}
+                            </Link>
+                          </Button>
+                          <Button asChild variant="outline" className="flex-1">
+                            <Link to={`/c/${condo.slug}`} target="_blank">
+                              <ExternalLink className="w-4 h-4 mr-1" />
+                              Ver timeline
+                            </Link>
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>

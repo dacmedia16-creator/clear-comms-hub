@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { SuperAdminGuard } from "@/components/SuperAdminGuard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ import { useAllCondominiums } from "@/hooks/useAllCondominiums";
 import { useAllUsers } from "@/hooks/useAllUsers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, Building2, Plus, ArrowLeft, Loader2, Pencil, Trash2, ExternalLink, Search, Users, LayoutDashboard, FileText, Calendar } from "lucide-react";
+import { Bell, Building2, Plus, ArrowLeft, Loader2, Pencil, Trash2, ExternalLink, Search, Users, LayoutDashboard, FileText, Calendar, X } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { getTrialStatus } from "@/lib/utils";
@@ -41,7 +41,8 @@ import { RefreshButton } from "@/components/RefreshButton";
 import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
 import { MobileCardItem } from "@/components/mobile/MobileCardItem";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ORGANIZATION_TYPE_OPTIONS, getOrganizationIcon, type OrganizationType } from "@/lib/organization-types";
+import { ORGANIZATION_TYPES, ORGANIZATION_TYPE_OPTIONS, getOrganizationIcon, type OrganizationType } from "@/lib/organization-types";
+import { Badge } from "@/components/ui/badge";
 
 const superAdminNavItems: MobileNavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/super-admin" },
@@ -56,6 +57,8 @@ export default function SuperAdminCondominiums() {
   const { users } = useAllUsers();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const typeFilter = searchParams.get("type") as OrganizationType | null;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -68,15 +71,25 @@ export default function SuperAdminCondominiums() {
     owner_id: "",
     plan: "free" as "free" | "starter" | "pro",
     trial_ends_at: "",
-    organization_type: "condominium" as OrganizationType,
+    organization_type: (typeFilter || "condominium") as OrganizationType,
   });
   const [saving, setSaving] = useState(false);
 
-  const filteredCondos = condominiums.filter(condo =>
-    condo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    condo.owner?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    condo.slug.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCondos = condominiums.filter(condo => {
+    // Filtro por tipo de organização (do parâmetro URL)
+    if (typeFilter && (condo.organization_type || "condominium") !== typeFilter) {
+      return false;
+    }
+    // Filtro por texto de busca
+    return (
+      condo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      condo.owner?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      condo.slug.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
+  // Get icon for current filter
+  const FilterIcon = typeFilter && ORGANIZATION_TYPES[typeFilter] ? getOrganizationIcon(typeFilter) : Building2;
 
   const resetForm = () => {
     setFormData({ name: "", description: "", owner_id: "", plan: "free", trial_ends_at: "", organization_type: "condominium" });
@@ -214,9 +227,13 @@ export default function SuperAdminCondominiums() {
                 </Link>
                 <div className="flex items-center gap-2">
                   <div className="w-9 h-9 rounded-lg bg-destructive flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-destructive-foreground" />
+                    <FilterIcon className="w-5 h-5 text-destructive-foreground" />
                   </div>
-                  <span className="font-display text-xl font-bold text-foreground">Condomínios</span>
+                  <span className="font-display text-xl font-bold text-foreground">
+                    {typeFilter && ORGANIZATION_TYPES[typeFilter] 
+                      ? ORGANIZATION_TYPES[typeFilter].terms.organizationPlural 
+                      : "Organizações"}
+                  </span>
                 </div>
               </div>
 
@@ -325,6 +342,26 @@ export default function SuperAdminCondominiums() {
 
         {/* Main Content */}
         <main className="container px-4 mx-auto py-8">
+          {/* Filter indicator */}
+          {typeFilter && ORGANIZATION_TYPES[typeFilter] && (
+            <div className="flex items-center gap-2 mb-4 p-3 bg-accent rounded-lg flex-wrap">
+              <FilterIcon className="w-5 h-5 text-primary" />
+              <span className="font-medium">{ORGANIZATION_TYPES[typeFilter].label}</span>
+              <Badge variant="secondary">
+                {filteredCondos.length} de {condominiums.length}
+              </Badge>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setSearchParams({})}
+                className="ml-auto"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Limpar filtro
+              </Button>
+            </div>
+          )}
+
           {/* Search */}
           <div className="mb-6">
             <div className="relative max-w-md">

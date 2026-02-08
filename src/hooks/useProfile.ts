@@ -20,7 +20,7 @@ interface Condominium {
   logo_url: string | null;
   plan: string;
   owner_id: string;
-  organization_type?: OrganizationType;
+  organization_type?: string | null;
 }
 
 interface CondominiumWithRole extends Condominium {

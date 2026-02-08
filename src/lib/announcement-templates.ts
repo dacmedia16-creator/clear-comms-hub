@@ -106,75 +106,70 @@ Administração`,
       isUrgent: false,
     },
   ],
-  school: [
+  healthcare: [
     {
-      id: "school-meeting",
-      name: "Reunião de Pais",
-      title: "Convocação para Reunião de Pais",
-      summary: "Reunião para tratar do desempenho escolar.",
-      content: `Prezados pais e responsáveis,
+      id: "health-hours",
+      name: "Alteração de Horário",
+      title: "Alteração no Horário de Atendimento",
+      summary: "Mudança nos horários da instituição.",
+      content: `Prezados pacientes,
 
-Convidamos para a reunião de pais:
+Informamos alteração no horário de atendimento:
 
 📅 Data: [DATA]
-🕐 Horário: [HORÁRIO]
-📍 Local: [SALA/AUDITÓRIO]
-
-Pauta:
-• Desempenho acadêmico do bimestre
-• Informes sobre atividades pedagógicas
-• Calendário de provas
-
-A presença é fundamental para o acompanhamento escolar do(a) aluno(a).
-
-Atenciosamente,
-Coordenação Pedagógica`,
-      category: "pedagogico",
-      isUrgent: false,
-    },
-    {
-      id: "school-calendar",
-      name: "Alteração de Calendário",
-      title: "Alteração no Calendário Escolar",
-      summary: "Mudança importante nas datas letivas.",
-      content: `Prezados pais e responsáveis,
-
-Informamos alteração no calendário escolar:
-
-📅 [DESCRIÇÃO DA ALTERAÇÃO]
+🕐 Novo horário: [NOVO HORÁRIO]
 
 Motivo: [MOTIVO]
 
-As aulas seguirão normalmente nos demais dias.
+Agendamentos marcados para este período serão remarcados.
 
-Qualquer dúvida, entre em contato com a secretaria.
+Dúvidas: [TELEFONE/EMAIL]
 
 Atenciosamente,
-Direção`,
-      category: "calendario",
+Administração`,
+      category: "horarios",
       isUrgent: false,
     },
     {
-      id: "school-event",
-      name: "Evento Escolar",
-      title: "Convite para Evento Escolar",
-      summary: "Evento especial na escola.",
-      content: `Prezados pais e alunos,
+      id: "health-campaign",
+      name: "Campanha de Saúde",
+      title: "Campanha de Saúde",
+      summary: "Ação de prevenção e cuidados.",
+      content: `Prezados pacientes,
 
-Convidamos para o evento:
+Convidamos para nossa campanha de saúde:
 
-🎉 [NOME DO EVENTO]
-📅 Data: [DATA]
-🕐 Horário: [HORÁRIO]
-📍 Local: [LOCAL]
+🏥 [NOME DA CAMPANHA]
+📅 Período: [PERÍODO]
+💉 Serviços: [SERVIÇOS OFERECIDOS]
 
-Descrição: [DESCRIÇÃO DO EVENTO]
+Agende seu horário: [CONTATO]
 
-Contamos com a presença de todos!
+Cuide da sua saúde!
 
 Atenciosamente,
-Coordenação`,
-      category: "eventos",
+Equipe de Saúde`,
+      category: "atendimento",
+      isUrgent: false,
+    },
+    {
+      id: "health-service",
+      name: "Novo Serviço",
+      title: "Novo Serviço Disponível",
+      summary: "Nova especialidade ou exame disponível.",
+      content: `Prezados pacientes,
+
+Temos o prazer de anunciar um novo serviço:
+
+🏥 [NOME DO SERVIÇO]
+👨‍⚕️ Especialista: [NOME]
+📅 Disponível a partir de: [DATA]
+
+Agendamentos: [CONTATO]
+
+Atenciosamente,
+Administração`,
+      category: "informativo",
       isUrgent: false,
     },
   ],
@@ -247,116 +242,97 @@ Departamento de Compliance`,
       category: "compliance",
       isUrgent: false,
     },
-  ],
-  clinic: [
     {
-      id: "clinic-hours",
-      name: "Alteração de Horário",
-      title: "Alteração no Horário de Atendimento",
-      summary: "Mudança nos horários da clínica.",
-      content: `Prezados pacientes,
+      id: "company-event",
+      name: "Evento Corporativo",
+      title: "Convite para Evento",
+      summary: "Evento da empresa.",
+      content: `Prezados colaboradores,
 
-Informamos alteração no horário de atendimento:
+Convidamos para:
+
+🎉 [NOME DO EVENTO]
+📅 Data: [DATA]
+🕐 Horário: [HORÁRIO]
+📍 Local: [LOCAL]
+
+Descrição: [DESCRIÇÃO]
+
+Contamos com sua presença!
+
+Atenciosamente,
+RH`,
+      category: "eventos",
+      isUrgent: false,
+    },
+  ],
+  community: [
+    {
+      id: "community-meeting",
+      name: "Reunião de Membros",
+      title: "Convocação para Reunião",
+      summary: "Reunião geral dos membros.",
+      content: `Prezados membros,
+
+Convocamos para reunião:
 
 📅 Data: [DATA]
-🕐 Novo horário: [NOVO HORÁRIO]
+🕐 Horário: [HORÁRIO]
+📍 Local: [LOCAL]
 
-Motivo: [MOTIVO]
+Pauta:
+1. [PAUTA 1]
+2. [PAUTA 2]
+3. Assuntos gerais
 
-Agendamentos marcados para este período serão remarcados.
-
-Dúvidas: [TELEFONE/EMAIL]
-
-Atenciosamente,
-Clínica [NOME]`,
-      category: "horarios",
-      isUrgent: false,
-    },
-    {
-      id: "clinic-campaign",
-      name: "Campanha de Saúde",
-      title: "Campanha de Saúde",
-      summary: "Ação de prevenção e cuidados.",
-      content: `Prezados pacientes,
-
-Convidamos para nossa campanha de saúde:
-
-🏥 [NOME DA CAMPANHA]
-📅 Período: [PERÍODO]
-💉 Serviços: [SERVIÇOS OFERECIDOS]
-
-Agende seu horário: [CONTATO]
-
-Cuide da sua saúde!
+Sua participação é importante!
 
 Atenciosamente,
-Equipe de Saúde`,
-      category: "atendimento",
-      isUrgent: false,
-    },
-  ],
-  gym: [
-    {
-      id: "gym-schedule",
-      name: "Grade de Aulas",
-      title: "Atualização na Grade de Aulas",
-      summary: "Mudanças nos horários das modalidades.",
-      content: `Prezados alunos,
-
-Informamos alterações na grade de aulas:
-
-📅 A partir de: [DATA]
-
-Mudanças:
-🏋️ [MODALIDADE 1]: [NOVO HORÁRIO]
-🏋️ [MODALIDADE 2]: [NOVO HORÁRIO]
-
-Dúvidas na recepção.
-
-Bons treinos!
-Equipe [NOME DA ACADEMIA]`,
-      category: "horarios",
+Diretoria`,
+      category: "informativo",
       isUrgent: false,
     },
     {
-      id: "gym-maintenance",
-      name: "Manutenção de Equipamentos",
-      title: "Manutenção de Equipamentos",
-      summary: "Equipamentos em manutenção temporária.",
-      content: `Prezados alunos,
+      id: "community-event",
+      name: "Evento da Comunidade",
+      title: "Convite para Evento",
+      summary: "Evento especial para membros.",
+      content: `Prezados membros,
 
-Informamos que os seguintes equipamentos estarão em manutenção:
+Convidamos você e sua família para:
 
-🔧 Equipamentos: [LISTA]
-📅 Período: [DATA INÍCIO] a [DATA FIM]
+🎉 [NOME DO EVENTO]
+📅 Data: [DATA]
+🕐 Horário: [HORÁRIO]
+📍 Local: [LOCAL]
 
-Alternativas disponíveis: [ALTERNATIVAS]
+Contamos com sua presença!
 
-Agradecemos a compreensão.
-
-Equipe [NOME DA ACADEMIA]`,
-      category: "manutencao",
+Atenciosamente,
+Diretoria`,
+      category: "eventos",
       isUrgent: false,
     },
     {
-      id: "gym-event",
-      name: "Desafio/Evento",
-      title: "Desafio Fitness",
-      summary: "Participe do nosso desafio especial!",
-      content: `Prezados alunos,
+      id: "community-payment",
+      name: "Mensalidade/Anuidade",
+      title: "Aviso de Mensalidade",
+      summary: "Lembrete sobre pagamento da contribuição.",
+      content: `Prezados membros,
 
-Participe do nosso desafio:
+Lembramos que a contribuição referente a [MÊS/ANO] está disponível para pagamento:
 
-🏆 [NOME DO DESAFIO]
-📅 Período: [PERÍODO]
-🎯 Objetivo: [OBJETIVO]
-🎁 Prêmios: [PRÊMIOS]
+💰 Valor: R$ [VALOR]
+📅 Vencimento: [DATA]
+🏦 Formas de pagamento: [FORMAS]
 
-Inscrições: [COMO SE INSCREVER]
+Membros em dia têm acesso a todos os benefícios.
 
-Vamos juntos!
-Equipe [NOME DA ACADEMIA]`,
-      category: "treinos",
+Dúvidas: [CONTATO]
+
+Atenciosamente,
+Tesouraria`,
+      category: "financeiro",
       isUrgent: false,
     },
   ],
@@ -422,111 +398,84 @@ Com amor em Cristo,
       isUrgent: false,
     },
   ],
-  association: [
+  franchise: [
     {
-      id: "assoc-meeting",
-      name: "Reunião de Associados",
-      title: "Convocação para Reunião",
-      summary: "Reunião geral dos associados.",
-      content: `Prezados associados,
+      id: "franchise-operations",
+      name: "Comunicado Operacional",
+      title: "Comunicado da Matriz",
+      summary: "Aviso operacional para todas as unidades.",
+      content: `Prezados franqueados,
 
-Convocamos para reunião:
+Comunicamos:
 
-📅 Data: [DATA]
-🕐 Horário: [HORÁRIO]
-📍 Local: [LOCAL]
+📋 [ASSUNTO]
 
-Pauta:
-1. [PAUTA 1]
-2. [PAUTA 2]
-3. Assuntos gerais
+Detalhes:
+[DESCRIÇÃO]
 
-Sua participação é importante!
-
-Atenciosamente,
-Diretoria`,
-      category: "informativo",
-      isUrgent: false,
-    },
-    {
-      id: "assoc-election",
-      name: "Eleição de Diretoria",
-      title: "Convocação para Eleição da Nova Diretoria",
-      summary: "Eleição para renovação da diretoria da associação.",
-      content: `Prezados associados,
-
-Convocamos todos os associados em dia com suas obrigações para a eleição da nova diretoria:
-
-📅 Data: [DATA]
-🕐 Horário: [HORÁRIO]
-📍 Local: [LOCAL]
-
-📋 Chapas inscritas:
-• [CHAPA 1]
-• [CHAPA 2]
-
-Documentos necessários: RG e comprovante de associação.
-
-Sua participação é fundamental para a democracia da nossa associação!
-
-Atenciosamente,
-Comissão Eleitoral`,
-      category: "informativo",
-      isUrgent: false,
-    },
-    {
-      id: "assoc-payment",
-      name: "Mensalidade/Anuidade",
-      title: "Aviso de Mensalidade",
-      summary: "Lembrete sobre pagamento da contribuição.",
-      content: `Prezados associados,
-
-Lembramos que a contribuição referente a [MÊS/ANO] está disponível para pagamento:
-
-💰 Valor: R$ [VALOR]
-📅 Vencimento: [DATA]
-🏦 Formas de pagamento: [FORMAS]
-
-Associados em dia têm acesso a todos os benefícios.
+Ação necessária: [O QUE DEVE SER FEITO]
+Prazo: [PRAZO]
 
 Dúvidas: [CONTATO]
 
 Atenciosamente,
-Tesouraria`,
-      category: "financeiro",
+Matriz`,
+      category: "operacoes",
       isUrgent: false,
     },
     {
-      id: "assoc-benefit",
-      name: "Novo Benefício/Parceria",
-      title: "Nova Parceria para Associados",
-      summary: "Novos benefícios exclusivos para membros.",
-      content: `Prezados associados,
+      id: "franchise-promo",
+      name: "Campanha Promocional",
+      title: "Nova Campanha Promocional",
+      summary: "Campanha de marketing para a rede.",
+      content: `Prezados franqueados,
 
-Temos o prazer de anunciar uma nova parceria:
+Lançamos nova campanha promocional:
 
-🤝 Parceiro: [NOME DO PARCEIRO]
-🎁 Benefício: [DESCRIÇÃO DO BENEFÍCIO]
-📍 Local: [ENDEREÇO]
-📅 Válido até: [DATA]
+🎯 [NOME DA CAMPANHA]
+📅 Período: [DATA INÍCIO] a [DATA FIM]
+💰 Desconto/Oferta: [DETALHES]
 
-Como utilizar: [INSTRUÇÕES]
+Materiais de apoio: [LINK/INSTRUÇÕES]
 
-Aproveite este benefício exclusivo!
+Dúvidas com o marketing: [CONTATO]
 
 Atenciosamente,
-Diretoria`,
-      category: "informativo",
+Departamento de Marketing`,
+      category: "operacoes",
       isUrgent: false,
     },
     {
-      id: "assoc-event",
-      name: "Evento da Associação",
-      title: "Convite para Evento",
-      summary: "Evento especial para associados e familiares.",
-      content: `Prezados associados,
+      id: "franchise-training",
+      name: "Treinamento da Rede",
+      title: "Treinamento Obrigatório",
+      summary: "Capacitação para franqueados e equipes.",
+      content: `Prezados franqueados,
 
-Convidamos você e sua família para:
+Comunicamos treinamento obrigatório:
+
+📚 Tema: [TEMA]
+📅 Data: [DATA]
+🕐 Horário: [HORÁRIO]
+📍 Local: [LOCAL/LINK]
+
+Público-alvo: [QUEM DEVE PARTICIPAR]
+
+A participação é obrigatória.
+
+Atenciosamente,
+Departamento de Treinamento`,
+      category: "eventos",
+      isUrgent: false,
+    },
+    {
+      id: "franchise-event",
+      name: "Convenção/Evento",
+      title: "Convenção da Rede",
+      summary: "Evento para franqueados.",
+      content: `Prezados franqueados,
+
+Convidamos para:
 
 🎉 [NOME DO EVENTO]
 📅 Data: [DATA]
@@ -536,207 +485,12 @@ Convidamos você e sua família para:
 Programação:
 • [ATIVIDADE 1]
 • [ATIVIDADE 2]
-• [ATIVIDADE 3]
 
 Inscrições: [COMO SE INSCREVER]
 
-Contamos com sua presença!
-
 Atenciosamente,
-Diretoria Social`,
+Matriz`,
       category: "eventos",
-      isUrgent: false,
-    },
-  ],
-  club: [
-    {
-      id: "club-event",
-      name: "Evento do Clube",
-      title: "Evento Especial para Sócios",
-      summary: "Atividade exclusiva para associados.",
-      content: `Prezados sócios,
-
-Convidamos para:
-
-🎉 [NOME DO EVENTO]
-📅 Data: [DATA]
-🕐 Horário: [HORÁRIO]
-📍 Local: [LOCAL]
-
-Traga sua família!
-
-Atenciosamente,
-Diretoria Social`,
-      category: "eventos",
-      isUrgent: false,
-    },
-    {
-      id: "club-pool",
-      name: "Aviso da Piscina",
-      title: "Informativo sobre a Piscina",
-      summary: "Normas e horários de funcionamento da piscina.",
-      content: `Prezados sócios,
-
-Informamos sobre o funcionamento da piscina:
-
-🏊 Horário: [HORÁRIO DE FUNCIONAMENTO]
-📅 Período: [PERÍODO]
-
-Regras importantes:
-• Uso obrigatório de touca
-• Ducha antes de entrar na piscina
-• Proibido uso de óleos e bronzeadores
-• Crianças menores de [IDADE] devem estar acompanhadas
-
-Boa diversão!
-
-Administração do Clube`,
-      category: "convivencia",
-      isUrgent: false,
-    },
-    {
-      id: "club-sports",
-      name: "Torneio/Competição",
-      title: "Inscrições Abertas para Torneio",
-      summary: "Torneio esportivo do clube.",
-      content: `Prezados sócios,
-
-Estão abertas as inscrições para:
-
-🏆 [NOME DO TORNEIO]
-🎯 Modalidade: [MODALIDADE]
-📅 Data: [DATA]
-🕐 Horário: [HORÁRIO]
-
-Categorias:
-• [CATEGORIA 1]
-• [CATEGORIA 2]
-
-Inscrições: [LOCAL/PRAZO]
-Taxa: [VALOR OU GRATUITO]
-
-Venha participar e torcer!
-
-Diretoria de Esportes`,
-      category: "eventos",
-      isUrgent: false,
-    },
-    {
-      id: "club-restaurant",
-      name: "Restaurante/Bar",
-      title: "Novidades no Restaurante do Clube",
-      summary: "Informações sobre o restaurante e bar.",
-      content: `Prezados sócios,
-
-O restaurante do clube informa:
-
-🍽️ [NOVIDADE/INFORMAÇÃO]
-
-Horário de funcionamento:
-• Almoço: [HORÁRIO]
-• Jantar: [HORÁRIO]
-• Bar: [HORÁRIO]
-
-Cardápio especial: [DESCRIÇÃO]
-
-Reservas: [CONTATO]
-
-Bom apetite!
-
-Administração`,
-      category: "informativo",
-      isUrgent: false,
-    },
-    {
-      id: "club-maintenance",
-      name: "Manutenção de Área",
-      title: "Manutenção Programada",
-      summary: "Área do clube em manutenção.",
-      content: `Prezados sócios,
-
-Informamos que a seguinte área estará em manutenção:
-
-📍 Local: [ÁREA]
-📅 Período: [DATA INÍCIO] a [DATA FIM]
-🔧 Serviço: [TIPO DE MANUTENÇÃO]
-
-Alternativas disponíveis: [ALTERNATIVAS]
-
-Pedimos desculpas pelo transtorno.
-
-Atenciosamente,
-Administração`,
-      category: "manutencao",
-      isUrgent: false,
-    },
-    {
-      id: "club-assembly",
-      name: "Assembleia de Sócios",
-      title: "Convocação para Assembleia Geral",
-      summary: "Assembleia para deliberações importantes.",
-      content: `Prezados sócios,
-
-Convocamos para a Assembleia Geral:
-
-📅 Data: [DATA]
-🕐 Horário: [HORÁRIO]
-📍 Local: [LOCAL]
-
-Pauta:
-1. [PAUTA 1]
-2. [PAUTA 2]
-3. [PAUTA 3]
-
-Direito a voto: sócios proprietários em dia.
-
-Sua presença é fundamental!
-
-Atenciosamente,
-Diretoria`,
-      category: "informativo",
-      isUrgent: false,
-    },
-    {
-      id: "club-classes",
-      name: "Aulas e Atividades",
-      title: "Novas Aulas Disponíveis",
-      summary: "Grade de aulas e atividades do clube.",
-      content: `Prezados sócios,
-
-Confira as atividades disponíveis:
-
-🎾 [MODALIDADE 1]: [DIAS E HORÁRIOS]
-🏊 [MODALIDADE 2]: [DIAS E HORÁRIOS]
-⚽ [MODALIDADE 3]: [DIAS E HORÁRIOS]
-
-Instrutor(es): [NOMES]
-Vagas limitadas!
-
-Inscrições na secretaria ou pelo [CONTATO].
-
-Atenciosamente,
-Diretoria de Esportes`,
-      category: "informativo",
-      isUrgent: false,
-    },
-  ],
-  other: [
-    {
-      id: "other-general",
-      name: "Comunicado Geral",
-      title: "Comunicado Importante",
-      summary: "Informativo para todos os membros.",
-      content: `Prezados membros,
-
-Comunicamos:
-
-[CONTEÚDO DO COMUNICADO]
-
-Dúvidas, entre em contato.
-
-Atenciosamente,
-Administração`,
-      category: "informativo",
       isUrgent: false,
     },
   ],
@@ -793,7 +547,7 @@ export function getAnnouncementTemplates(
   organizationType?: OrganizationType | string | null
 ): AnnouncementTemplate[] {
   const type = (organizationType as OrganizationType) || "condominium";
-  const specificTemplates = templatesByType[type] || templatesByType.other;
+  const specificTemplates = templatesByType[type] || templatesByType.condominium;
   
   return [...specificTemplates, ...universalTemplates];
 }

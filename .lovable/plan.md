@@ -1,147 +1,110 @@
 
-# Plano: Dashboard de Segmentos para Super Admin
+# Plano: Adicionar Card de Segmentos no Dashboard
 
-## Problema Atual
+## Objetivo
 
-Quando o Super Admin faz login, ele cai na página `/dashboard` (DashboardPage) que mostra apenas os condomínios vinculados a ele. Não há uma visão consolidada dos 6 segmentos de organização onde ele pode criar e gerenciar organizações diretamente por categoria.
-
----
-
-## Solução Proposta
-
-Criar uma nova página `/super-admin/segments` que exibe os 6 tipos de organização em cards, com estatísticas de cada segmento e um botão para criar novas organizações diretamente. Esta página será acessada antes da listagem de condomínios.
+Adicionar um card "Segmentos de Organização" no `DashboardPage` (página `/dashboard`) que será visível apenas para Super Admins. O card seguirá o design da imagem de referência com:
+- Fundo laranja claro/accent
+- Ícone de grid (Grid3X3)
+- Badges com estatísticas (6 categorias, X organizações)
+- Botão laranja "Ver Segmentos"
 
 ---
 
-## Nova Estrutura de Navegação
+## Design do Card
 
 ```text
-/super-admin → Dashboard com cards de acesso rápido
-     ↓
-/super-admin/segments → NOVA: Grid dos 6 segmentos com estatísticas
-     ↓
-/super-admin/segments/:type → Filtra lista de organizações por tipo
-     ↓
-/super-admin/condominiums → Lista completa (todos os tipos)
+┌─────────────────────────────────────────────────────────┐
+│  ┌──────────┐                                           │
+│  │   ⊞⊞     │  (ícone grid em fundo accent)            │
+│  │   ⊞⊞     │                                           │
+│  └──────────┘                                           │
+│                                                         │
+│  Segmentos de Organização                               │
+│  Visualize e crie organizações por categoria:           │
+│  Condomínios, Clínicas, Empresas, etc.                 │
+│                                                         │
+│  ┌────────────┐  ┌────────────────┐                    │
+│  │ 6 categorias│  │ X organizações │                    │
+│  └────────────┘  └────────────────┘                    │
+│                                                         │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │        ⊞⊞  Ver Segmentos                        │   │
+│  └─────────────────────────────────────────────────┘   │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Interface da Nova Página (SuperAdminSegments)
+## Arquivo a Modificar
 
-```text
-┌──────────────────────────────────────────────────────────────────┐
-│  ◀ Super Admin                                                   │
-│                                                                  │
-│  Segmentos de Organização                                        │
-│  Gerencie e crie organizações por categoria                      │
-│                                                                  │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐   │
-│  │ 🏢              │  │ 🏥              │  │ 💼              │   │
-│  │                 │  │                 │  │                 │   │
-│  │ Condomínios     │  │ Clínicas        │  │ Empresas        │   │
-│  │                 │  │ e Saúde         │  │                 │   │
-│  │ 15 organizações │  │ 8 organizações  │  │ 12 organizações │   │
-│  │                 │  │                 │  │                 │   │
-│  │ [Ver] [+Criar]  │  │ [Ver] [+Criar]  │  │ [Ver] [+Criar]  │   │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘   │
-│                                                                  │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐   │
-│  │ 👥              │  │ ⛪              │  │ 🏪              │   │
-│  │                 │  │                 │  │                 │   │
-│  │ Comunidades     │  │ Igrejas         │  │ Franquias       │   │
-│  │                 │  │                 │  │                 │   │
-│  │ 5 organizações  │  │ 20 organizações │  │ 3 organizações  │   │
-│  │                 │  │                 │  │                 │   │
-│  │ [Ver] [+Criar]  │  │ [Ver] [+Criar]  │  │ [Ver] [+Criar]  │   │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘   │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
-```
+### src/pages/DashboardPage.tsx
+
+**Alterações:**
+1. Importar `Grid3X3` do lucide-react
+2. Importar `useAllCondominiums` para obter a contagem total de organizações
+3. Adicionar o card de Segmentos antes do grid de condomínios (visível apenas para `isSuperAdmin`)
+4. Estilizar com cores accent/primary para combinar com o design da imagem
 
 ---
 
-## Arquivos a Criar/Modificar
+## Detalhes Técnicos
 
-### 1. CRIAR: src/pages/super-admin/SuperAdminSegments.tsx
-
-Nova página com:
-- Header padrão do Super Admin
-- Grid responsivo com 6 cards (1 por segmento)
-- Cada card mostra:
-  - Ícone do segmento
-  - Nome do segmento
-  - Descrição curta
-  - Quantidade de organizações desse tipo
-  - Botão "Ver" → filtra lista por tipo
-  - Botão "Criar" → abre modal de criação pré-selecionando o tipo
-- Modal de criação integrado (similar ao de SuperAdminCondominiums)
-
-### 2. MODIFICAR: src/pages/super-admin/SuperAdminDashboard.tsx
-
-Adicionar novo card de acesso rápido:
-- "Gerenciar Segmentos" → link para `/super-admin/segments`
-- Mostra resumo das organizações por tipo
-
-### 3. MODIFICAR: src/App.tsx
-
-Adicionar nova rota:
-```typescript
-<Route path="/super-admin/segments" element={<SuperAdminSegments />} />
-```
-
-### 4. MODIFICAR: src/components/mobile/MobileBottomNav.tsx (no contexto do SuperAdmin)
-
-Atualizar navegação inferior para incluir link para Segmentos
-
----
-
-## Funcionalidades do Card de Segmento
-
-| Elemento | Descrição |
-|----------|-----------|
-| Ícone | Building2, Stethoscope, Briefcase, Users, Church, Store |
-| Título | Condomínio, Clínicas e Saúde, Empresas, etc. |
-| Descrição | Texto curto do segmento |
-| Contador | Número de organizações desse tipo |
-| Botão Ver | Navega para lista filtrada por tipo |
-| Botão Criar | Abre modal com tipo pré-selecionado |
-
----
-
-## Modal de Criação
-
-Reutilizar a lógica existente de `SuperAdminCondominiums`, mas:
-1. Pré-selecionar o `organization_type` baseado no card clicado
-2. Manter o select de tipo caso o admin queira mudar
-3. Manter todos os outros campos (Nome, Proprietário, Plano, Descrição)
-
----
-
-## Consulta de Estatísticas
+### Dados Necessários
 
 ```typescript
-// Agrupar organizações por tipo
-const stats = condominiums.reduce((acc, condo) => {
-  const type = condo.organization_type || 'condominium';
-  acc[type] = (acc[type] || 0) + 1;
-  return acc;
-}, {} as Record<string, number>);
+// Já disponível via useSuperAdmin
+const { isSuperAdmin } = useSuperAdmin();
+
+// Novo: para obter contagem total de organizações
+const { condominiums: allCondominiums } = useAllCondominiums();
+const totalOrganizations = allCondominiums.length;
+```
+
+### Estrutura do Card
+
+```tsx
+{isSuperAdmin && (
+  <Card className="mb-8 bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
+    <CardContent className="p-6">
+      <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mb-4">
+        <Grid3X3 className="w-6 h-6 text-primary" />
+      </div>
+      
+      <h3 className="font-display text-xl font-bold mb-1">
+        Segmentos de Organização
+      </h3>
+      <p className="text-muted-foreground mb-4">
+        Visualize e crie organizações por categoria: Condomínios, Clínicas, Empresas, etc.
+      </p>
+      
+      <div className="flex gap-2 mb-4">
+        <Badge variant="secondary" className="bg-muted">6 categorias</Badge>
+        <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+          {totalOrganizations} organizações
+        </Badge>
+      </div>
+      
+      <Button asChild className="w-full">
+        <Link to="/super-admin/segments">
+          <Grid3X3 className="w-4 h-4 mr-2" />
+          Ver Segmentos
+        </Link>
+      </Button>
+    </CardContent>
+  </Card>
+)}
 ```
 
 ---
 
-## Navegação Mobile
+## Posicionamento
 
-Atualizar items da navegação inferior no contexto Super Admin:
-
-| Ícone | Label | Path |
-|-------|-------|------|
-| LayoutDashboard | Dashboard | /super-admin |
-| Grid3x3 | Segmentos | /super-admin/segments |
-| Building2 | Orgs | /super-admin/condominiums |
-| Users | Usuários | /super-admin/users |
-| Bell | Notificações | /super-admin/notifications |
+O card será exibido:
+- **Após** o título de boas-vindas
+- **Antes** do grid de condomínios
+- **Apenas** quando `isSuperAdmin === true`
 
 ---
 
@@ -149,6 +112,13 @@ Atualizar items da navegação inferior no contexto Super Admin:
 
 | Arquivo | Ação |
 |---------|------|
-| `src/pages/super-admin/SuperAdminSegments.tsx` | CRIAR - Página de segmentos |
-| `src/pages/super-admin/SuperAdminDashboard.tsx` | Adicionar card de acesso ao Segmentos |
-| `src/App.tsx` | Adicionar rota /super-admin/segments |
+| `src/pages/DashboardPage.tsx` | Adicionar card de Segmentos para Super Admin |
+
+---
+
+## Imports Adicionais
+
+```typescript
+import { Grid3X3 } from "lucide-react";
+import { useAllCondominiums } from "@/hooks/useAllCondominiums";
+```

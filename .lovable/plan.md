@@ -1,132 +1,138 @@
 
-# Plano: Permitir que Super Admin Gerencie Qualquer Organização
+# Plano: Aumentar Limite de Upload de Vídeo para 300MB
 
-## Problema Identificado
+## Objetivo
 
-O Super Admin está recebendo "Acesso negado" ao tentar acessar páginas de gerenciamento de organizações das quais não é owner/admin/syndic.
+Aumentar o limite de upload de arquivos de vídeo de 20MB para 300MB, mantendo o limite de 20MB para outros tipos de arquivo (PDF, imagens, documentos).
 
-**Causa Raiz:** A função PostgreSQL `can_manage_condominium()` não inclui a verificação de `is_super_admin()`, diferente da função `can_create_announcement()` que já possui essa verificação.
+---
 
-**Função Atual:**
-```sql
-CREATE OR REPLACE FUNCTION public.can_manage_condominium(cond_id uuid)
-BEGIN
-  RETURN 
-    public.is_condominium_owner(cond_id) OR 
-    public.has_condominium_role(cond_id, 'admin') OR
-    public.has_condominium_role(cond_id, 'syndic');
-  -- ❌ Falta: is_super_admin()
-END;
+## Estratégia
+
+Modificar o componente `FileUpload` para ter limites diferentes por tipo de arquivo:
+- **Vídeos** (MP4, WebM, MOV, AVI): até 300MB
+- **Outros arquivos** (PDF, imagens, documentos): até 20MB
+
+---
+
+## Arquivos a Modificar
+
+### 1. src/components/FileUpload.tsx
+
+**Alterações:**
+
+1. Adicionar nova prop `maxVideoSizeMB` com valor padrão de 300MB
+2. Criar função auxiliar para detectar se um arquivo é vídeo
+3. Atualizar validação de tamanho para usar limite apropriado por tipo
+4. Atualizar texto de ajuda para mostrar os dois limites
+
+**Nova Interface:**
+```typescript
+interface FileUploadProps {
+  files: File[];
+  onFilesChange: (files: File[]) => void;
+  maxSizeMB?: number;         // Para arquivos gerais (default: 20)
+  maxVideoSizeMB?: number;    // Para vídeos (default: 300)
+  accept?: string;
+  className?: string;
+}
+```
+
+**Função de detecção de vídeo:**
+```typescript
+function isVideoFile(file: File): boolean {
+  const type = file.type;
+  const name = file.name.toLowerCase();
+  return type.startsWith("video/") || 
+         name.endsWith(".mp4") || 
+         name.endsWith(".webm") || 
+         name.endsWith(".mov") || 
+         name.endsWith(".avi");
+}
+```
+
+**Validação atualizada:**
+```typescript
+Array.from(newFiles).forEach((file) => {
+  const isVideo = isVideoFile(file);
+  const maxSize = isVideo ? maxVideoSizeBytes : maxSizeBytes;
+  const limitLabel = isVideo ? maxVideoSizeMB : maxSizeMB;
+  
+  if (file.size > maxSize) {
+    errors.push(`${file.name} excede o limite de ${limitLabel}MB`);
+  } else {
+    validFiles.push(file);
+  }
+});
+```
+
+**Texto de ajuda atualizado:**
+```typescript
+<p className="text-xs text-muted-foreground mt-2">
+  PDF, imagens, documentos (máx {maxSizeMB}MB) • Vídeos (máx {maxVideoSizeMB}MB)
+</p>
 ```
 
 ---
 
-## Solução
-
-Atualizar a função `can_manage_condominium` para incluir a verificação de Super Admin, permitindo que esses usuários gerenciem qualquer organização da plataforma.
-
-**Função Corrigida:**
-```sql
-CREATE OR REPLACE FUNCTION public.can_manage_condominium(cond_id uuid)
- RETURNS boolean
- LANGUAGE plpgsql
- STABLE SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-BEGIN
-  RETURN 
-    public.is_condominium_owner(cond_id) OR 
-    public.has_condominium_role(cond_id, 'admin') OR
-    public.has_condominium_role(cond_id, 'syndic') OR
-    public.is_super_admin();  -- ✅ Adicionar esta linha
-END;
-$function$
-```
-
----
-
-## Impacto da Alteração
-
-Com essa mudança, o Super Admin poderá:
-
-| Página | Antes | Depois |
-|--------|-------|--------|
-| `/admin/:condoId` (Gerenciar avisos) | ❌ Acesso negado | ✅ Acesso permitido |
-| `/admin/:condoId/members` (Membros) | ❌ Acesso negado | ✅ Acesso permitido |
-| `/admin/:condoId/settings` (Config) | ❌ Acesso negado | ✅ Acesso permitido |
-| `/admin/:condoId/integrations` | ❌ Acesso negado | ✅ Acesso permitido |
-
----
-
-## Diagrama do Fluxo de Permissões
+## Fluxo de Validação
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│                  can_manage_condominium()                   │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│   ┌──────────────────────┐                                  │
-│   │ is_condominium_owner │────► Owner do condomínio         │
-│   └──────────────────────┘                                  │
-│              OR                                             │
-│   ┌──────────────────────┐                                  │
-│   │ has_role('admin')    │────► Admin atribuído             │
-│   └──────────────────────┘                                  │
-│              OR                                             │
-│   ┌──────────────────────┐                                  │
-│   │ has_role('syndic')   │────► Síndico atribuído           │
-│   └──────────────────────┘                                  │
-│              OR                                             │
-│   ┌──────────────────────┐                                  │
-│   │ is_super_admin()     │────► Super Admin (NOVO!)         │
-│   └──────────────────────┘                                  │
-│                                                             │
-│                     ▼                                       │
-│              Retorna TRUE                                   │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+│                   Arquivo Selecionado                       │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+                 ┌─────────────────────┐
+                 │   É arquivo de      │
+                 │      vídeo?         │
+                 └─────────┬───────────┘
+                           │
+            ┌──────────────┴──────────────┐
+            │ SIM                         │ NÃO
+            ▼                             ▼
+   ┌────────────────────┐      ┌────────────────────┐
+   │ Limite: 300MB      │      │ Limite: 20MB       │
+   │ (maxVideoSizeMB)   │      │ (maxSizeMB)        │
+   └─────────┬──────────┘      └─────────┬──────────┘
+             │                           │
+             └─────────────┬─────────────┘
+                           ▼
+                 ┌─────────────────────┐
+                 │ Tamanho ≤ Limite?   │
+                 └─────────┬───────────┘
+            ┌──────────────┴──────────────┐
+            │ SIM                         │ NÃO
+            ▼                             ▼
+   ┌────────────────────┐      ┌────────────────────┐
+   │   ✅ Aceito        │      │   ❌ Rejeitado     │
+   │   Adiciona à lista │      │   Mostra erro      │
+   └────────────────────┘      └────────────────────┘
 ```
 
 ---
 
-## Alteração no Banco de Dados
+## Resumo de Alterações
 
-### Migração SQL
-
-```sql
--- Atualizar função can_manage_condominium para incluir Super Admin
-CREATE OR REPLACE FUNCTION public.can_manage_condominium(cond_id uuid)
- RETURNS boolean
- LANGUAGE plpgsql
- STABLE SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-BEGIN
-  RETURN 
-    public.is_condominium_owner(cond_id) OR 
-    public.has_condominium_role(cond_id, 'admin') OR
-    public.has_condominium_role(cond_id, 'syndic') OR
-    public.is_super_admin();
-END;
-$function$;
-```
-
----
-
-## Resumo
-
-| Item | Detalhe |
-|------|---------|
-| **Tipo de alteração** | Migração de banco de dados (função PostgreSQL) |
-| **Arquivos de código** | Nenhuma alteração necessária |
-| **Risco** | Baixo - apenas adiciona uma condição OR |
-| **Teste** | Acessar `/admin/:condoId/members` como Super Admin |
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/components/FileUpload.tsx` | Adicionar `maxVideoSizeMB`, função `isVideoFile()`, validação diferenciada |
 
 ---
 
 ## Resultado Esperado
 
-Após a migração, o Super Admin poderá:
-1. Acessar qualquer organização via Dashboard
-2. Clicar em "Config", "Membros" ou "Gerenciar avisos"
-3. Realizar operações de gestão sem receber "Acesso negado"
+| Tipo de Arquivo | Limite Anterior | Limite Novo |
+|-----------------|-----------------|-------------|
+| PDF             | 20MB            | 20MB        |
+| Imagens         | 20MB            | 20MB        |
+| Documentos      | 20MB            | 20MB        |
+| **Vídeos**      | 20MB            | **300MB**   |
+
+---
+
+## Considerações
+
+- A alteração é retrocompatível - componentes que não passam `maxVideoSizeMB` usarão o padrão de 300MB
+- O bucket de storage já está configurado para aceitar arquivos grandes
+- Não requer alterações no banco de dados

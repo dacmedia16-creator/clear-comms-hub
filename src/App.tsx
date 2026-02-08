@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import SignupTypePage from "./pages/auth/SignupTypePage";
 import SignupRolePage from "./pages/auth/SignupRolePage";
+import SignupCreateOrgPage from "./pages/auth/SignupCreateOrgPage";
 import SignupMemberPage from "./pages/auth/SignupMemberPage";
 import SignupManagerPage from "./pages/auth/SignupManagerPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -45,6 +46,7 @@ const App = () => (
             <Route path="/auth/signup/:type" element={<SignupRolePage />} />
             <Route path="/auth/signup/:type/member" element={<SignupMemberPage />} />
             <Route path="/auth/signup/:type/manager" element={<SignupManagerPage />} />
+            <Route path="/auth/signup/:type/create" element={<SignupCreateOrgPage />} />
             {/* Legacy redirects for backward compatibility */}
             <Route path="/auth/signup/member" element={<Navigate to="/auth/signup/condominium/member" replace />} />
             <Route path="/auth/signup/manager" element={<Navigate to="/auth/signup/condominium/manager" replace />} />

@@ -1,146 +1,115 @@
-# AVISO PRO - Sistema Multi-Segmento de Comunicação
 
-## Status: Fase 7 Concluída ✅
 
----
+# Plano: Suporte a Videos ate 20MB nos Anexos
 
-## Fases Implementadas
+## Resumo
 
-### ✅ Fase 1-5: Base do Sistema
-- Arquitetura multi-condomínio com Supabase
-- Autenticação e perfis de usuário
-- Sistema de avisos com categorias
-- Notificações via WhatsApp, SMS e Email
-- Timeline pública por organização
-
-### ✅ Fase 6: Dashboard Personalizado por Segmento
-- Templates de avisos específicos por tipo de organização
-- Ações rápidas contextuais no painel admin
-- Categorias dinâmicas baseadas no segmento
-
-### ✅ Fase 7: Integração com Sistemas Externos
-
-**Implementado:**
-
-1. **Tabelas de Banco de Dados**
-   - `webhooks` - Configuração de webhooks por organização
-   - `api_tokens` - Tokens de autenticação para API REST
-   - `webhook_logs` - Histórico de entregas de webhooks
-
-2. **Edge Functions**
-   - `trigger-webhook` - Dispara webhooks quando eventos ocorrem
-   - `public-api` - API REST para integração externa
-     - GET/POST `/announcements` - Listar/criar avisos
-     - GET/POST `/members` - Listar/criar membros
-     - POST `/members/bulk` - Import em lote
-     - GET `/info` - Informações da organização
-
-3. **Interface de Usuário**
-   - `IntegrationsPage.tsx` - Página de gerenciamento de integrações
-   - `WebhookList.tsx` - Lista e gerenciamento de webhooks
-   - `WebhookDialog.tsx` - Criar/editar webhooks
-   - `WebhookLogs.tsx` - Visualizar histórico de entregas
-   - `ApiTokenList.tsx` - Lista e gerenciamento de tokens
-   - `ApiTokenDialog.tsx` - Gerar novos tokens de API
-
-4. **Hooks React**
-   - `useWebhooks.ts` - CRUD de webhooks
-   - `useApiTokens.ts` - Gerenciamento de tokens
-
-5. **Segurança**
-   - Tokens prefixados com `avp_` 
-   - Hash SHA-256 armazenado (nunca texto claro)
-   - Assinatura HMAC-SHA256 para webhooks
-   - RLS policies para controle de acesso
-
-6. **Documentação**
-   - Documentação inline na aba "Documentação" da página de integrações
-   - Exemplos de uso com cURL
-   - Referência completa dos endpoints
+Adicionar suporte para upload e visualizacao de videos nos anexos de avisos, permitindo arquivos de ate 20MB.
 
 ---
 
-## Próximas Fases
+## Mudancas Necessarias
 
-### Fase 8: Melhorias de UX e Mobile
-- PWA com notificações push
-- Modo offline para leitura
-- Melhorias de performance
+### 1. Componente FileUpload
 
-### Fase 9: Analytics e Relatórios
-- Dashboard de métricas
-- Relatórios de engajamento
-- Exportação de dados
+Atualizar `src/components/FileUpload.tsx` para:
 
-### Fase 10: Multi-idioma
-- Internacionalização (i18n)
-- Suporte a português e espanhol
+- Adicionar extensoes de video no accept padrao (`.mp4,.webm,.mov,.avi`)
+- Adicionar icone especifico para arquivos de video (Video do lucide-react)
+- Atualizar a descricao para incluir "videos" na lista de tipos aceitos
+- Aumentar o limite padrao de tamanho para 20MB
 
----
+```typescript
+// Novo accept padrao:
+accept = ".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.mp4,.webm,.mov,.avi"
 
-## Arquitetura Atual
-
-```
-AVISO PRO
-├── Frontend (React + Vite + Tailwind)
-│   ├── Páginas públicas (landing, timeline)
-│   ├── Dashboard de gestão
-│   ├── Super Admin
-│   └── Integrações
-│
-├── Backend (Supabase)
-│   ├── PostgreSQL com RLS
-│   ├── Edge Functions
-│   │   ├── Notificações (WhatsApp, SMS, Email)
-│   │   ├── Webhooks
-│   │   └── API REST pública
-│   └── Storage (avatares, anexos)
-│
-└── Integrações
-    ├── ZionTalk (WhatsApp)
-    ├── SMSFire (SMS)
-    ├── ZeptoMail (Email)
-    └── API REST para sistemas externos
+// Nova funcao getFileIcon para video:
+if (type.startsWith("video/") || name.endsWith(".mp4") || name.endsWith(".webm") || name.endsWith(".mov")) {
+  return <Video className="w-5 h-5 text-purple-500" />;
+}
 ```
 
+### 2. Pagina AdminCondominiumPage
+
+Atualizar `src/pages/AdminCondominiumPage.tsx`:
+
+- Aumentar `maxSizeMB` de 5 para 20 no componente FileUpload
+- Incluir extensoes de video no `accept`
+
+```typescript
+<FileUpload
+  files={selectedFiles}
+  onFilesChange={setSelectedFiles}
+  maxSizeMB={20}
+  accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.mp4,.webm,.mov,.avi"
+/>
+```
+
+### 3. Pagina TimelinePage
+
+Atualizar `src/pages/TimelinePage.tsx` para:
+
+- Adicionar icone de video na funcao `getFileIcon`
+- Adicionar player de video inline para previsualizacao de videos anexados
+- Mostrar controles de video (play, pause, volume) para arquivos de video
+
+```typescript
+// Detectar se e video
+const isVideo = attachment.file_type?.startsWith("video/");
+
+// Se for video, mostrar player inline
+{isVideo && (
+  <video 
+    src={attachment.file_url} 
+    controls 
+    className="w-full rounded-lg mt-2"
+    preload="metadata"
+  />
+)}
+```
+
+### 4. Tabela de Planos (Opcional)
+
+Considerar atualizar os limites por plano:
+
+| Plano | Limite Atual | Novo Limite Sugerido |
+|-------|--------------|---------------------|
+| Gratuito | 2MB | 5MB |
+| Inicial | 5MB | 10MB |
+| Profissional | 10MB | 20MB |
+
+**Nota:** Esta mudanca e opcional e requer decisao de negocio. Por enquanto, vou implementar um limite fixo de 20MB que pode ser ajustado depois.
+
 ---
 
-## Tipos de Organização Suportados
+## Arquivos a Modificar
 
-| Tipo | Terminologia | Categorias Específicas |
-|------|--------------|----------------------|
-| Condomínio | Morador, Síndico | Manutenção, Convivência, Financeiro |
-| Escola | Aluno, Coordenador | Pedagógico, Calendário, Eventos |
-| Empresa | Colaborador, Gestor | RH, Compliance |
-| Clínica | Paciente, Administrador | Atendimento, Horários |
-| Associação | Associado, Presidente | Eventos, Assembleias |
-| Academia | Aluno, Instrutor | Treinos, Horários |
-| Igreja | Membro, Pastor | Cultos, Pastoral |
-| Clube | Sócio, Administrador | Eventos, Esportes |
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/components/FileUpload.tsx` | Adicionar suporte a video no accept e icone |
+| `src/pages/AdminCondominiumPage.tsx` | Aumentar maxSizeMB para 20 e adicionar extensoes de video |
+| `src/pages/TimelinePage.tsx` | Adicionar icone de video e player inline |
 
 ---
 
-## Endpoints da API REST
+## Detalhes Tecnicos
 
-Base URL: `https://jiqbgxtgzpdosbmydfcw.supabase.co/functions/v1/public-api`
+### Tipos de Video Suportados
 
-| Método | Endpoint | Permissão | Descrição |
-|--------|----------|-----------|-----------|
-| GET | /announcements | read:announcements | Lista avisos |
-| POST | /announcements | write:announcements | Cria aviso |
-| GET | /members | read:members | Lista membros |
-| POST | /members | write:members | Adiciona membro |
-| POST | /members/bulk | write:members | Import em lote |
-| GET | /info | - | Info da organização |
+- **MP4** (video/mp4) - Formato mais comum, compativel com todos os navegadores
+- **WebM** (video/webm) - Formato otimizado para web
+- **MOV** (video/quicktime) - Formato Apple, suporte variavel
+- **AVI** (video/x-msvideo) - Formato legacy
 
----
+### Consideracoes de UX
 
-## Eventos de Webhook
+1. **Preview na Timeline**: Videos serao exibidos com player nativo do HTML5
+2. **Icone Diferenciado**: Videos terao icone roxo para diferenciar de outros arquivos
+3. **Feedback de Upload**: Usuario vera nome do arquivo e tamanho durante upload
 
-| Evento | Descrição |
-|--------|-----------|
-| announcement.created | Aviso criado |
-| announcement.updated | Aviso atualizado |
-| announcement.deleted | Aviso excluído |
-| member.created | Membro adicionado |
-| member.updated | Membro atualizado |
+### Limitacoes
+
+- Supabase Storage tem limite de 50MB por arquivo por padrao
+- Videos muito longos podem demorar para carregar na timeline
+- Navegadores mais antigos podem nao suportar todos os formatos
+

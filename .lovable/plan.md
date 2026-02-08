@@ -1,110 +1,140 @@
 
-# Plano: Adicionar Card de Segmentos no Dashboard
+# Plano: Filtrar Organizações por Tipo de Segmento
 
-## Objetivo
+## Problema Identificado
 
-Adicionar um card "Segmentos de Organização" no `DashboardPage` (página `/dashboard`) que será visível apenas para Super Admins. O card seguirá o design da imagem de referência com:
-- Fundo laranja claro/accent
-- Ícone de grid (Grid3X3)
-- Badges com estatísticas (6 categorias, X organizações)
-- Botão laranja "Ver Segmentos"
+O botão "Ver" de cada segmento navega corretamente para `/super-admin/condominiums?type=<tipo>`, porém a página `SuperAdminCondominiums` não está lendo o parâmetro `type` da URL para filtrar as organizações. Resultado: todas as organizações são exibidas independente do segmento clicado.
 
 ---
 
-## Design do Card
+## Solução
+
+Modificar `SuperAdminCondominiums.tsx` para:
+1. Ler o parâmetro `type` da URL usando `useSearchParams`
+2. Filtrar as organizações pelo `organization_type` quando o parâmetro estiver presente
+3. Exibir um indicador visual mostrando qual segmento está filtrado
+4. Adicionar um botão para limpar o filtro e ver todas as organizações
+
+---
+
+## Fluxo Esperado
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│  ┌──────────┐                                           │
-│  │   ⊞⊞     │  (ícone grid em fundo accent)            │
-│  │   ⊞⊞     │                                           │
-│  └──────────┘                                           │
-│                                                         │
-│  Segmentos de Organização                               │
-│  Visualize e crie organizações por categoria:           │
-│  Condomínios, Clínicas, Empresas, etc.                 │
-│                                                         │
-│  ┌────────────┐  ┌────────────────┐                    │
-│  │ 6 categorias│  │ X organizações │                    │
-│  └────────────┘  └────────────────┘                    │
-│                                                         │
-│  ┌─────────────────────────────────────────────────┐   │
-│  │        ⊞⊞  Ver Segmentos                        │   │
-│  └─────────────────────────────────────────────────┘   │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+Página de Segmentos          Página de Condominiums (Filtrada)
+┌──────────────────┐         ┌───────────────────────────────────┐
+│ [Igrejas]        │ ──────► │  ⛪ Igrejas                       │
+│ 0 organizações   │  clique │  Mostrando 0 de 1 organizações   │
+│ [Ver] [+Criar]   │  em Ver │  [✕ Limpar filtro]               │
+└──────────────────┘         │                                   │
+                             │  (lista vazia ou orgs do tipo)   │
+                             └───────────────────────────────────┘
 ```
 
 ---
 
 ## Arquivo a Modificar
 
-### src/pages/DashboardPage.tsx
+### src/pages/super-admin/SuperAdminCondominiums.tsx
 
 **Alterações:**
-1. Importar `Grid3X3` do lucide-react
-2. Importar `useAllCondominiums` para obter a contagem total de organizações
-3. Adicionar o card de Segmentos antes do grid de condomínios (visível apenas para `isSuperAdmin`)
-4. Estilizar com cores accent/primary para combinar com o design da imagem
+
+1. **Importar** `useSearchParams` do `react-router-dom`
+
+2. **Ler parâmetro da URL:**
+```typescript
+const [searchParams, setSearchParams] = useSearchParams();
+const typeFilter = searchParams.get("type") as OrganizationType | null;
+```
+
+3. **Atualizar filtro** para incluir organization_type:
+```typescript
+const filteredCondos = condominiums.filter(condo => {
+  // Filtro por tipo de organização (do parâmetro URL)
+  if (typeFilter && (condo.organization_type || "condominium") !== typeFilter) {
+    return false;
+  }
+  // Filtro por texto de busca
+  return (
+    condo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    condo.owner?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    condo.slug.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+});
+```
+
+4. **Adicionar indicador visual** do filtro ativo:
+```typescript
+{typeFilter && (
+  <div className="flex items-center gap-2 mb-4 p-3 bg-accent rounded-lg">
+    <Icon className="w-5 h-5 text-primary" />
+    <span className="font-medium">{ORGANIZATION_TYPES[typeFilter].label}</span>
+    <Badge variant="secondary">
+      {filteredCondos.length} de {condominiums.length}
+    </Badge>
+    <Button 
+      variant="ghost" 
+      size="sm" 
+      onClick={() => setSearchParams({})}
+    >
+      <X className="w-4 h-4 mr-1" />
+      Limpar filtro
+    </Button>
+  </div>
+)}
+```
+
+5. **Atualizar título do header** para mostrar o tipo filtrado:
+```typescript
+<span className="font-display text-xl font-bold text-foreground">
+  {typeFilter ? ORGANIZATION_TYPES[typeFilter].terms.organizationPlural : "Organizações"}
+</span>
+```
+
+---
+
+## Imports Adicionais
+
+```typescript
+import { useSearchParams } from "react-router-dom";
+import { X } from "lucide-react";
+import { ORGANIZATION_TYPES, ORGANIZATION_TYPE_OPTIONS, getOrganizationIcon, type OrganizationType } from "@/lib/organization-types";
+import { Badge } from "@/components/ui/badge";
+```
 
 ---
 
 ## Detalhes Técnicos
 
-### Dados Necessários
+### Filtro Combinado
 
+A lógica de filtro combina:
+1. **Tipo de organização** (parâmetro `?type=` da URL)
+2. **Busca por texto** (campo de busca existente)
+
+### Fallback para Tipo
+
+Organizações sem `organization_type` definido são tratadas como `"condominium"` (valor padrão):
 ```typescript
-// Já disponível via useSuperAdmin
-const { isSuperAdmin } = useSuperAdmin();
-
-// Novo: para obter contagem total de organizações
-const { condominiums: allCondominiums } = useAllCondominiums();
-const totalOrganizations = allCondominiums.length;
+(condo.organization_type || "condominium") !== typeFilter
 ```
 
-### Estrutura do Card
+### Limpeza do Filtro
 
-```tsx
-{isSuperAdmin && (
-  <Card className="mb-8 bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
-    <CardContent className="p-6">
-      <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mb-4">
-        <Grid3X3 className="w-6 h-6 text-primary" />
-      </div>
-      
-      <h3 className="font-display text-xl font-bold mb-1">
-        Segmentos de Organização
-      </h3>
-      <p className="text-muted-foreground mb-4">
-        Visualize e crie organizações por categoria: Condomínios, Clínicas, Empresas, etc.
-      </p>
-      
-      <div className="flex gap-2 mb-4">
-        <Badge variant="secondary" className="bg-muted">6 categorias</Badge>
-        <Badge variant="secondary" className="bg-orange-100 text-orange-700">
-          {totalOrganizations} organizações
-        </Badge>
-      </div>
-      
-      <Button asChild className="w-full">
-        <Link to="/super-admin/segments">
-          <Grid3X3 className="w-4 h-4 mr-2" />
-          Ver Segmentos
-        </Link>
-      </Button>
-    </CardContent>
-  </Card>
-)}
+O botão "Limpar filtro" remove o parâmetro da URL:
+```typescript
+setSearchParams({}) // Remove todos os parâmetros
 ```
 
 ---
 
-## Posicionamento
+## Resultado Esperado
 
-O card será exibido:
-- **Após** o título de boas-vindas
-- **Antes** do grid de condomínios
-- **Apenas** quando `isSuperAdmin === true`
+| Ação | Resultado |
+|------|-----------|
+| Clicar "Ver" em Igrejas | URL muda para `/super-admin/condominiums?type=church` |
+| Página de Condominiums | Mostra badge "Igrejas" + apenas orgs desse tipo |
+| Clicar "Limpar filtro" | Remove filtro, mostra todas as organizações |
+| Buscar texto | Funciona em conjunto com o filtro de tipo |
 
 ---
 
@@ -112,13 +142,4 @@ O card será exibido:
 
 | Arquivo | Ação |
 |---------|------|
-| `src/pages/DashboardPage.tsx` | Adicionar card de Segmentos para Super Admin |
-
----
-
-## Imports Adicionais
-
-```typescript
-import { Grid3X3 } from "lucide-react";
-import { useAllCondominiums } from "@/hooks/useAllCondominiums";
-```
+| `src/pages/super-admin/SuperAdminCondominiums.tsx` | Ler `?type=` da URL e filtrar lista |

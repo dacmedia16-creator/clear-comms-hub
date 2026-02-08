@@ -15,7 +15,7 @@ export function Footer() {
               <span className="font-display text-xl font-bold">AVISO PRO</span>
             </Link>
             <p className="text-background/70 text-sm">
-              O canal oficial de comunicação do seu condomínio.
+              O canal oficial de avisos importantes.
             </p>
           </div>
 

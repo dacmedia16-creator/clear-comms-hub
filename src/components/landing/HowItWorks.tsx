@@ -1,29 +1,29 @@
-import { Building2, Edit3, Send, Eye } from "lucide-react";
+import { Edit3, Clock, Send, Eye } from "lucide-react";
 
 const steps = [
   {
     number: "01",
-    icon: Building2,
-    title: "Cadastre seu Condomínio",
-    description: "Crie sua conta gratuita e configure as informações do seu condomínio em poucos minutos.",
+    icon: Edit3,
+    title: "Crie o aviso",
+    description: "Escreva o comunicado importante e escolha a categoria.",
   },
   {
     number: "02",
-    icon: Edit3,
-    title: "Crie seus Avisos",
-    description: "Escreva o comunicado, escolha a categoria, adicione anexos se necessário.",
+    icon: Clock,
+    title: "Publique na linha do tempo",
+    description: "O aviso fica registrado oficialmente, com data e hora.",
   },
   {
     number: "03",
     icon: Send,
-    title: "Publique e Notifique",
-    description: "Com um clique, o aviso vai para a timeline e os moradores recebem a notificação.",
+    title: "WhatsApp e e-mail avisam",
+    description: "Todos recebem um lembrete com o link. Só isso.",
   },
   {
     number: "04",
     icon: Eye,
-    title: "Moradores Visualizam",
-    description: "Basta clicar no link para acessar a timeline completa. Sem login, sem complicação.",
+    title: "Consulta sempre disponível",
+    description: "A informação fica acessível a qualquer momento. Sem login.",
   },
 ];
 
@@ -36,7 +36,7 @@ export function HowItWorks() {
             Como funciona?
           </h2>
           <p className="text-lg text-muted-foreground">
-            Em 4 passos simples, sua comunicação com os moradores será transformada.
+            Sem grupo. Sem confusão. Sem perda de informação.
           </p>
         </div>
 

@@ -14,30 +14,30 @@ interface FeatureItem {
 
 const features: FeatureItem[] = [
   {
-    title: "Timeline Cronológica",
+    title: "Tudo fica registrado",
     description:
-      "Todos os avisos do condomínio organizados por data, do mais recente ao mais antigo. Moradores acompanham tudo em um só lugar, sem perder nenhuma informação importante.",
+      "Cada aviso tem data, hora e fica disponível para consulta. Fim do 'eu não vi'.",
     image: timelineImg,
-    imageAlt: "Screenshot da timeline de avisos do sistema",
+    imageAlt: "Screenshot da linha do tempo de avisos",
   },
   {
-    title: "Filtros por Categoria",
+    title: "Encontre rápido o que importa",
     description:
-      "Informativo, Financeiro, Manutenção, Convivência, Segurança ou Urgente. Encontre rapidamente o que procura com filtros visuais e intuitivos.",
+      "Urgente, financeiro, manutenção... Cada tipo de aviso no seu lugar.",
     image: filtersImg,
     imageAlt: "Screenshot dos filtros por categoria",
   },
   {
-    title: "Dashboard do Síndico",
+    title: "Você comprova que comunicou",
     description:
-      "Painel completo para criar, editar e gerenciar todos os comunicados. Visualize estatísticas de leitura e gerencie membros do condomínio.",
+      "Histórico completo de avisos enviados. Documentação que protege o gestor.",
     image: dashboardImg,
-    imageAlt: "Screenshot do dashboard do síndico",
+    imageAlt: "Screenshot do painel de gestão",
   },
   {
-    title: "Notificações Instantâneas",
+    title: "Ninguém pode dizer que não viu",
     description:
-      "WhatsApp e e-mail avisam automaticamente sobre novos comunicados. Moradores ficam informados em tempo real, onde estiverem.",
+      "WhatsApp e e-mail avisam sobre o novo comunicado. A informação oficial está na linha do tempo.",
     image: whatsappImg,
     imageAlt: "Exemplo de notificação via WhatsApp",
   },
@@ -49,10 +49,10 @@ export function FeatureShowcase() {
       <div className="container px-4 mx-auto">
         <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
           <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-            Conheça o sistema por dentro
+            Por que usar um canal oficial?
           </h2>
           <p className="text-lg text-muted-foreground">
-            Veja como o Mural Digital facilita a comunicação do seu condomínio.
+            Clareza, registro e menos ruído na comunicação.
           </p>
         </div>
 
@@ -72,7 +72,7 @@ export function FeatureShowcase() {
                   } order-2`}
                 >
                   <span className="inline-block px-3 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full mb-4">
-                    Funcionalidade {index + 1}
+                    Benefício {index + 1}
                   </span>
                   <h3 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-4">
                     {feature.title}

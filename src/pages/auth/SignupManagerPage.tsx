@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { z } from "zod";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useOrganizationFromCode } from "@/hooks/useOrganizationFromCode";
 import { getSignupFormConfig } from "@/lib/signup-config";
-import { getOrganizationTerms } from "@/lib/organization-types";
+import { getOrganizationTerms, getOrganizationConfig, OrganizationType, ORGANIZATION_TYPES } from "@/lib/organization-types";
 
 const managerSchema = z.object({
   condoCode: z.string().min(1, "Código obrigatório"),
@@ -26,6 +26,7 @@ const managerSchema = z.object({
 });
 
 export default function SignupManagerPage() {
+  const { type } = useParams<{ type: string }>();
   const [condoCode, setCondoCode] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -38,13 +39,19 @@ export default function SignupManagerPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Get URL-based organization type config (fallback to condominium)
+  const urlOrgType = (type && type in ORGANIZATION_TYPES) ? type as OrganizationType : "condominium";
+  const urlConfig = getOrganizationConfig(urlOrgType);
+  const urlTerms = urlConfig.terms;
+  const urlFormConfig = getSignupFormConfig(urlOrgType);
+
   // Use the organization hook for dynamic detection
   const { validating, organization, error: condoError } = useOrganizationFromCode(condoCode);
 
-  // Get dynamic form config based on detected organization type
-  const terms = organization?.terms || getOrganizationTerms("condominium");
-  const formConfig = getSignupFormConfig(organization?.type);
-  const OrgIcon = organization?.icon || Bell;
+  // Use detected organization if available, otherwise use URL-based config
+  const terms = organization?.terms || urlTerms;
+  const formConfig = organization ? getSignupFormConfig(organization.type) : urlFormConfig;
+  const OrgIcon = organization?.icon || urlConfig.icon;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,7 +187,7 @@ export default function SignupManagerPage() {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="p-4">
-        <Link to="/auth/signup" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+        <Link to={type ? `/auth/signup/${type}` : "/auth/signup"} className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" />
           <span>Voltar</span>
         </Link>

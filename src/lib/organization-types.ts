@@ -30,6 +30,8 @@ export interface OrganizationTerms {
 
 export interface OrganizationTypeConfig {
   label: string;
+  description: string;
+  examples: string;
   icon: LucideIcon;
   terms: OrganizationTerms;
 }
@@ -37,6 +39,8 @@ export interface OrganizationTypeConfig {
 export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig> = {
   condominium: {
     label: "Condomínio",
+    description: "Residenciais, comerciais e mistos",
+    examples: "Prédios, vilas, loteamentos",
     icon: Building2,
     terms: {
       organization: "Condomínio",
@@ -51,7 +55,9 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
     },
   },
   healthcare: {
-    label: "Clínicas e instituições de saúde",
+    label: "Clínicas e Saúde",
+    description: "Hospitais, clínicas e consultórios",
+    examples: "Clínicas, laboratórios, hospitais",
     icon: Stethoscope,
     terms: {
       organization: "Instituição",
@@ -66,7 +72,9 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
     },
   },
   company: {
-    label: "Empresas com equipes operacionais",
+    label: "Empresas",
+    description: "Equipes operacionais e corporativas",
+    examples: "Fábricas, escritórios, times remotos",
     icon: Briefcase,
     terms: {
       organization: "Empresa",
@@ -81,7 +89,9 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
     },
   },
   community: {
-    label: "Associações, clubes e comunidades",
+    label: "Comunidades",
+    description: "Associações, clubes e grupos",
+    examples: "ONGs, clubes sociais, cooperativas",
     icon: Users,
     terms: {
       organization: "Comunidade",
@@ -96,7 +106,9 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
     },
   },
   church: {
-    label: "Igrejas e instituições religiosas",
+    label: "Igrejas",
+    description: "Igrejas e instituições religiosas",
+    examples: "Templos, paróquias, ministérios",
     icon: Church,
     terms: {
       organization: "Igreja",
@@ -111,7 +123,9 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
     },
   },
   franchise: {
-    label: "Franquias e redes de lojas",
+    label: "Franquias",
+    description: "Redes de lojas e franquias",
+    examples: "Lojas, quiosques, unidades",
     icon: Store,
     terms: {
       organization: "Rede",
@@ -149,6 +163,8 @@ export function getOrganizationTerms(type?: OrganizationType | string | null): O
 export const ORGANIZATION_TYPE_OPTIONS = Object.entries(ORGANIZATION_TYPES).map(([value, config]) => ({
   value: value as OrganizationType,
   label: config.label,
+  description: config.description,
+  examples: config.examples,
   icon: config.icon,
 }));
 

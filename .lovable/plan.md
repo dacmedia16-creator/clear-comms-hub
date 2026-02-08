@@ -1,151 +1,216 @@
 
 
-# Plano: Aprimorar Tela de Seleção de Tipo de Organização
+# Plano: Criar Organização no Fluxo de Cadastro de Gestor
 
-## Contexto
+## Problema Atual
 
-Atualmente, a página `SignupTypePage.tsx` oferece apenas 2 opções genéricas (Membro/Gestor). Vamos transformá-la para exibir os 6 tipos de organização com ícones e descrições detalhadas, permitindo que o usuário escolha o tipo antes de prosseguir para o cadastro.
+Atualmente, para usar o AVISO PRO, uma organização precisa ser criada previamente pelo Super Admin. Isso impede que novos gestores se cadastrem de forma autônoma.
 
 ---
 
-## Novo Fluxo de Cadastro
+## Solução Proposta
+
+Adicionar uma **terceira opção** na tela de escolha de perfil (`SignupRolePage`):
 
 ```
-/auth/signup → Escolher tipo de organização (6 opções)
-     ↓
-/auth/signup/:type → Escolher perfil (Membro ou Gestor)
-     ↓
-/auth/signup/:type/member ou /auth/signup/:type/manager → Formulário
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  Como você quer usar o AVISO PRO?                          │
+│                                                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │   Membro    │  │   Gestor    │  │   Criar     │         │
+│  │             │  │             │  │   Novo      │         │
+│  │  Já tenho   │  │  Já existe  │  │             │         │
+│  │  um código  │  │  um código  │  │  Criar uma  │         │
+│  │             │  │             │  │  nova org.  │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Interface Proposta
+## Novo Fluxo
 
-### Tela Principal (SignupTypePage)
-
-Uma grade responsiva com 6 cards, cada um contendo:
-- Ícone específico do segmento (colorido)
-- Título do tipo de organização
-- Descrição curta explicando o público-alvo
-- Exemplos de uso
-
-| Tipo | Ícone | Descrição |
-|------|-------|-----------|
-| Condomínio | Building2 | Residenciais, comerciais e mistos. Para síndicos e moradores. |
-| Clínicas e Saúde | Stethoscope | Hospitais, clínicas e consultórios. Para gestores e pacientes. |
-| Empresas | Briefcase | Equipes operacionais e corporativas. Para gestores e colaboradores. |
-| Comunidades | Users | Associações, clubes e grupos. Para presidentes e membros. |
-| Igrejas | Church | Igrejas e instituições religiosas. Para pastores e membros. |
-| Franquias | Store | Redes de lojas e franquias. Para franqueadores e franqueados. |
+```
+/auth/signup/:type → Escolher perfil
+       ↓
+       ├── /auth/signup/:type/member   → Cadastro com código existente
+       ├── /auth/signup/:type/manager  → Solicitar acesso a org existente
+       └── /auth/signup/:type/create   → NOVO: Criar organização + conta
+```
 
 ---
 
-## Arquivos a Modificar/Criar
+## Arquivos a Criar/Modificar
 
-### 1. src/lib/organization-types.ts
+### 1. NOVA PÁGINA: src/pages/auth/SignupCreateOrgPage.tsx
 
-Adicionar campo `description` com textos descritivos para cada tipo:
+Formulário completo para criar uma nova organização:
+
+**Campos da Organização:**
+- Nome da organização (ex: "Clínica São Lucas")
+- Endereço (opcional)
+
+**Campos do Gestor:**
+- Nome completo
+- Email
+- Telefone
+- Senha
+
+**Comportamento:**
+1. Cria a organização na tabela `condominiums` com o tipo já definido pela URL
+2. Gera automaticamente um código numérico único
+3. Cria a conta do gestor
+4. Vincula o gestor como `syndic` com `is_approved = true` (já aprovado, pois é o criador)
+
+### 2. MODIFICAR: src/pages/auth/SignupRolePage.tsx
+
+Adicionar terceira opção: "Criar Nova Organização"
+- Card com ícone de adição (Plus ou PlusCircle)
+- Texto: "Quero criar uma nova [organização]"
+- Link para `/auth/signup/:type/create`
+
+### 3. MODIFICAR: src/App.tsx
+
+Adicionar rota:
+```typescript
+<Route path="/auth/signup/:type/create" element={<SignupCreateOrgPage />} />
+```
+
+---
+
+## Campos do Formulário de Criação
+
+| Campo | Obrigatório | Descrição |
+|-------|-------------|-----------|
+| Nome da Organização | Sim | Nome exibido no sistema |
+| Endereço | Não | Localização física |
+| Nome do Gestor | Sim | Nome completo |
+| Email | Sim | Para login e notificações |
+| Telefone | Sim | Para contato e WhatsApp |
+| Senha | Sim | Mínimo 6 caracteres |
+
+---
+
+## Lógica de Criação
 
 ```typescript
-export interface OrganizationTypeConfig {
-  label: string;
-  description: string;  // NOVO
-  examples: string;     // NOVO - exemplos de uso
-  icon: LucideIcon;
-  terms: OrganizationTerms;
-}
+// 1. Gerar código único
+const code = await generateUniqueCode();
 
-// Exemplo para condominium:
-condominium: {
-  label: "Condomínio",
-  description: "Residenciais, comerciais e mistos",
-  examples: "Prédios, vilas, loteamentos",
-  icon: Building2,
-  terms: { ... }
-}
-```
+// 2. Criar organização
+const { data: org } = await supabase
+  .from("condominiums")
+  .insert({
+    name: orgName,
+    address: address,
+    organization_type: type, // da URL
+    code: code,
+    slug: slugify(orgName),
+  })
+  .select()
+  .single();
 
-### 2. src/pages/auth/SignupTypePage.tsx
+// 3. Criar usuário
+const { data: authData } = await supabase.auth.signUp({
+  email,
+  password,
+  options: { data: { full_name, phone } }
+});
 
-Reescrever completamente para:
-- Exibir os 6 tipos de organização em grid responsivo
-- Usar `ORGANIZATION_TYPE_OPTIONS` do organization-types.ts
-- Linkar para `/auth/signup/:type` ao selecionar
-
-Layout:
-- **Mobile**: 1 coluna (cards empilhados)
-- **Tablet**: 2 colunas
-- **Desktop**: 3 colunas
-
-### 3. NOVO: src/pages/auth/SignupRolePage.tsx
-
-Nova página intermediária para escolher perfil:
-- Recebe o tipo via URL param (`:type`)
-- Exibe 2 cards: Membro e Gestor
-- Usa terminologia dinâmica baseada no tipo selecionado
-- Redireciona para `/auth/signup/:type/member` ou `/auth/signup/:type/manager`
-
-### 4. src/pages/auth/SignupMemberPage.tsx
-
-Atualizar para:
-- Ler o tipo da URL (`/auth/signup/:type/member`)
-- Usar terminologia e configuração específica do tipo
-- Manter funcionalidade atual de código dinâmico
-
-### 5. src/pages/auth/SignupManagerPage.tsx
-
-Atualizar para:
-- Ler o tipo da URL (`/auth/signup/:type/manager`)
-- Usar terminologia e configuração específica do tipo
-- Manter funcionalidade atual de código dinâmico
-
-### 6. src/App.tsx
-
-Atualizar rotas para o novo fluxo:
-```typescript
-<Route path="/auth/signup" element={<SignupTypePage />} />
-<Route path="/auth/signup/:type" element={<SignupRolePage />} />
-<Route path="/auth/signup/:type/member" element={<SignupMemberPage />} />
-<Route path="/auth/signup/:type/manager" element={<SignupManagerPage />} />
+// 4. Vincular como gestor (já aprovado)
+await supabase.from("user_roles").insert({
+  user_id: profile.id,
+  condominium_id: org.id,
+  role: "syndic",
+  is_approved: true, // Criador já aprovado
+});
 ```
 
 ---
 
-## Detalhes Visuais
+## Interface Visual
 
-### Card de Tipo de Organização
+### Card "Criar Nova Organização"
 
 ```
-┌─────────────────────────────────────┐
-│  ┌────────┐                         │
-│  │ 🏢     │  Condomínio             │
-│  │ ícone  │                         │
-│  └────────┘  Residenciais,          │
-│              comerciais e mistos.   │
-│                                     │
-│  Exemplos: Prédios, vilas,          │
-│  loteamentos                        │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│                                         │
+│          ┌───────────────┐              │
+│          │      ➕       │              │
+│          │    (ícone)    │              │
+│          └───────────────┘              │
+│                                         │
+│       Criar Nova Igreja                 │
+│                                         │
+│    Quero criar um canal oficial         │
+│    para minha organização               │
+│                                         │
+└─────────────────────────────────────────┘
 ```
 
-### Hover State
-- Borda muda para cor primária
-- Sombra aumenta
-- Ícone ganha destaque (background muda)
+### Formulário de Criação
+
+```
+┌─────────────────────────────────────────┐
+│  ⬅ Voltar                               │
+│                                         │
+│         ⛪ Igreja                        │
+│                                         │
+│       Criar Nova Igreja                 │
+│    Configure seu canal oficial          │
+│                                         │
+│  ─────────────────────────────────────  │
+│                                         │
+│  Dados da Igreja                        │
+│  ┌─────────────────────────────────┐    │
+│  │ Nome da Igreja *                │    │
+│  │ ex: Igreja Batista Central      │    │
+│  └─────────────────────────────────┘    │
+│  ┌─────────────────────────────────┐    │
+│  │ Endereço                        │    │
+│  │ Rua, número, bairro             │    │
+│  └─────────────────────────────────┘    │
+│                                         │
+│  Seus Dados (Pastor)                    │
+│  ┌─────────────────────────────────┐    │
+│  │ Nome Completo *                 │    │
+│  └─────────────────────────────────┘    │
+│  ┌─────────────────────────────────┐    │
+│  │ Email *                         │    │
+│  └─────────────────────────────────┘    │
+│  ┌─────────────────────────────────┐    │
+│  │ Telefone *                      │    │
+│  └─────────────────────────────────┘    │
+│  ┌─────────────────────────────────┐    │
+│  │ Senha *                         │    │
+│  └─────────────────────────────────┘    │
+│  ┌─────────────────────────────────┐    │
+│  │ Confirmar Senha *               │    │
+│  └─────────────────────────────────┘    │
+│                                         │
+│  ┌─────────────────────────────────┐    │
+│  │        Criar Igreja             │    │
+│  └─────────────────────────────────┘    │
+│                                         │
+└─────────────────────────────────────────┘
+```
 
 ---
 
-## Descrições Propostas
+## Terminologia Dinâmica
 
-| Tipo | Descrição | Exemplos |
-|------|-----------|----------|
-| condominium | Residenciais, comerciais e mistos | Prédios, vilas, loteamentos |
-| healthcare | Hospitais, clínicas e consultórios | Clínicas, laboratórios, hospitais |
-| company | Equipes operacionais e corporativas | Fábricas, escritórios, times remotos |
-| community | Associações, clubes e grupos | ONGs, clubes sociais, cooperativas |
-| church | Igrejas e instituições religiosas | Templos, paróquias, ministérios |
-| franchise | Redes de lojas e franquias | Lojas, quiosques, unidades |
+O formulário usará os termos corretos baseados no tipo:
+
+| Tipo | Título | Label Gestor |
+|------|--------|--------------|
+| condominium | Criar Novo Condomínio | Seus Dados (Síndico) |
+| healthcare | Criar Nova Instituição | Seus Dados (Administrador) |
+| company | Criar Nova Empresa | Seus Dados (Gestor) |
+| community | Criar Nova Comunidade | Seus Dados (Presidente) |
+| church | Criar Nova Igreja | Seus Dados (Pastor) |
+| franchise | Criar Nova Rede | Seus Dados (Franqueador) |
 
 ---
 
@@ -153,10 +218,7 @@ Atualizar rotas para o novo fluxo:
 
 | Arquivo | Ação |
 |---------|------|
-| `src/lib/organization-types.ts` | Adicionar `description` e `examples` |
-| `src/pages/auth/SignupTypePage.tsx` | Reescrever com grid de 6 tipos |
-| `src/pages/auth/SignupRolePage.tsx` | CRIAR - Escolha Membro/Gestor |
-| `src/pages/auth/SignupMemberPage.tsx` | Atualizar para ler tipo da URL |
-| `src/pages/auth/SignupManagerPage.tsx` | Atualizar para ler tipo da URL |
-| `src/App.tsx` | Atualizar rotas |
+| `src/pages/auth/SignupCreateOrgPage.tsx` | CRIAR - Formulário completo |
+| `src/pages/auth/SignupRolePage.tsx` | Adicionar terceira opção |
+| `src/App.tsx` | Adicionar rota `/auth/signup/:type/create` |
 

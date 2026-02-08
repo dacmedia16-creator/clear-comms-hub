@@ -80,6 +80,53 @@ export type Database = {
           },
         ]
       }
+      api_tokens: {
+        Row: {
+          condominium_id: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          last_used_at: string | null
+          name: string
+          permissions: string[] | null
+          token_hash: string
+          token_prefix: string
+        }
+        Insert: {
+          condominium_id: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_used_at?: string | null
+          name: string
+          permissions?: string[] | null
+          token_hash: string
+          token_prefix: string
+        }
+        Update: {
+          condominium_id?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_used_at?: string | null
+          name?: string
+          permissions?: string[] | null
+          token_hash?: string
+          token_prefix?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_tokens_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attachments: {
         Row: {
           announcement_id: string
@@ -560,6 +607,94 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhook_logs: {
+        Row: {
+          event_type: string
+          id: string
+          payload: Json
+          response_body: string | null
+          response_status: number | null
+          sent_at: string | null
+          success: boolean | null
+          webhook_id: string
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          payload: Json
+          response_body?: string | null
+          response_status?: number | null
+          sent_at?: string | null
+          success?: boolean | null
+          webhook_id: string
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          payload?: Json
+          response_body?: string | null
+          response_status?: number | null
+          sent_at?: string | null
+          success?: boolean | null
+          webhook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_logs_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "webhooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhooks: {
+        Row: {
+          condominium_id: string
+          created_at: string | null
+          events: string[]
+          id: string
+          is_active: boolean | null
+          last_triggered_at: string | null
+          name: string
+          secret: string | null
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          condominium_id: string
+          created_at?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          name: string
+          secret?: string | null
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          condominium_id?: string
+          created_at?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          name?: string
+          secret?: string | null
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhooks_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "condominiums"
             referencedColumns: ["id"]
           },
         ]

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Loader2, Save, Clock, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Clock, AlertTriangle, Webhook, Key, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getTrialStatus } from "@/lib/utils";
@@ -298,6 +298,40 @@ export default function CondominiumSettingsPage() {
                   checked={notificationSms}
                   onCheckedChange={setNotificationSms}
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Integrations Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display flex items-center gap-2">
+                <Webhook className="w-5 h-5" />
+                Integrações
+              </CardTitle>
+              <CardDescription>
+                Conecte com sistemas externos via webhooks e API
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Key className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">API REST & Webhooks</p>
+                    <p className="text-sm text-muted-foreground">
+                      Configure integrações com ERPs, sistemas escolares e mais
+                    </p>
+                  </div>
+                </div>
+                <Button asChild variant="outline">
+                  <Link to={`/admin/${condoId}/integrations`}>
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Configurar
+                  </Link>
+                </Button>
               </div>
             </CardContent>
           </Card>

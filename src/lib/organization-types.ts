@@ -202,3 +202,27 @@ export const ORGANIZATION_TYPE_OPTIONS = Object.entries(ORGANIZATION_TYPES).map(
   label: config.label,
   icon: config.icon,
 }));
+
+// Helper to get role label dynamically based on organization terms
+export function getRoleLabel(
+  role: "admin" | "syndic" | "resident" | "collaborator",
+  terms: OrganizationTerms
+): string {
+  const labels: Record<string, string> = {
+    admin: "Administrador",
+    syndic: terms.manager,        // Síndico → Diretor (for schools)
+    resident: terms.member,       // Morador → Aluno (for schools)
+    collaborator: "Colaborador",
+  };
+  return labels[role] || role;
+}
+
+// Helper to get all role labels for a given organization
+export function getRoleLabels(terms: OrganizationTerms): Record<string, string> {
+  return {
+    admin: "Administrador",
+    syndic: terms.manager,
+    resident: terms.member,
+    collaborator: "Colaborador",
+  };
+}

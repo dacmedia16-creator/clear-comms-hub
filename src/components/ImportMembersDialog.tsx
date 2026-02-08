@@ -21,6 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { cn, isValidBlock, isValidUnit, formatBlock } from "@/lib/utils";
+import { OrganizationTerms, getOrganizationTerms } from "@/lib/organization-types";
 
 export interface ParsedMember {
   fullName: string;
@@ -37,6 +38,7 @@ interface ImportMembersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImport: (members: ParsedMember[]) => Promise<{ success: number; failed: number }>;
+  terms?: OrganizationTerms;
 }
 
 type Step = "upload" | "preview" | "importing" | "done";
@@ -107,6 +109,7 @@ export function ImportMembersDialog({
   open,
   onOpenChange,
   onImport,
+  terms = getOrganizationTerms("condominium"),
 }: ImportMembersDialogProps) {
   const [step, setStep] = useState<Step>("upload");
   const [parsedMembers, setParsedMembers] = useState<ParsedMember[]>([]);
@@ -177,14 +180,15 @@ export function ImportMembersDialog({
 
   const downloadTemplate = useCallback(() => {
     const ws = XLSX.utils.aoa_to_sheet([
-      ["Nome Completo", "Telefone", "Email", "Bloco/Torre", "Unidade/Apt", "Função"],
-      ["João da Silva", "11999999999", "joao@email.com", "A", "101", "morador"],
-      ["Maria Santos", "11988888888", "maria@email.com", "B", "202", "morador"],
+      ["Nome Completo", "Telefone", "Email", `${terms.block}`, `${terms.unit}`, "Função"],
+      ["João da Silva", "11999999999", "joao@email.com", "A", "101", terms.member.toLowerCase()],
+      ["Maria Santos", "11988888888", "maria@email.com", "B", "202", terms.member.toLowerCase()],
     ]);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Moradores");
-    XLSX.writeFile(wb, "modelo_moradores.xlsx");
-  }, []);
+    XLSX.utils.book_append_sheet(wb, ws, terms.memberPlural);
+    const filename = `modelo_${terms.memberPlural.toLowerCase()}.xlsx`;
+    XLSX.writeFile(wb, filename);
+  }, [terms]);
 
   const handleImport = useCallback(async () => {
     const validMembers = parsedMembers.filter((m) => m.isValid);
@@ -218,12 +222,12 @@ export function ImportMembersDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5" />
-            Importar Moradores
+            Importar {terms.memberPlural}
           </DialogTitle>
           <DialogDescription>
             {step === "upload" && "Faça upload de uma planilha Excel (.xlsx) ou CSV"}
             {step === "preview" && "Revise os dados antes de importar"}
-            {step === "importing" && "Importando moradores..."}
+            {step === "importing" && `Importando ${terms.memberPlural.toLowerCase()}...`}
             {step === "done" && "Importação concluída"}
           </DialogDescription>
         </DialogHeader>
@@ -297,8 +301,8 @@ export function ImportMembersDialog({
                       <TableHead>Nome</TableHead>
                       <TableHead>Telefone</TableHead>
                       <TableHead>Email</TableHead>
-                      <TableHead>Bloco</TableHead>
-                      <TableHead>Unidade</TableHead>
+                      <TableHead>{terms.block}</TableHead>
+                      <TableHead>{terms.unit}</TableHead>
                       <TableHead>Função</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -353,7 +357,7 @@ export function ImportMembersDialog({
               </div>
               <Progress value={progress} className="w-full" />
               <p className="text-center text-sm text-muted-foreground">
-                Importando {validCount} moradores...
+                Importando {validCount} {terms.memberPlural.toLowerCase()}...
               </p>
             </div>
           )}
@@ -365,7 +369,7 @@ export function ImportMembersDialog({
               <div>
                 <p className="text-lg font-medium">Importação concluída!</p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {importResult.success} morador(es) importado(s) com sucesso
+                  {importResult.success} {terms.member.toLowerCase()}(s) importado(s) com sucesso
                   {importResult.failed > 0 && `, ${importResult.failed} falha(s)`}
                 </p>
               </div>
@@ -386,7 +390,7 @@ export function ImportMembersDialog({
                 Voltar
               </Button>
               <Button onClick={handleImport} disabled={validCount === 0}>
-                Importar {validCount} morador(es)
+                Importar {validCount} {terms.member.toLowerCase()}(s)
               </Button>
             </>
           )}

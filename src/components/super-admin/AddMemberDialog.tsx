@@ -13,12 +13,14 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { isValidBlock, isValidUnit, formatBlock } from "@/lib/utils";
+import { OrganizationTerms, getOrganizationTerms, getRoleLabel } from "@/lib/organization-types";
 
 interface User {
   id: string;
@@ -41,6 +43,7 @@ interface AddMemberDialogProps {
     unit: string;
     role: Role;
   }) => Promise<{ success: boolean; error?: string }>;
+  terms?: OrganizationTerms;
 }
 
 export function AddMemberDialog({
@@ -49,6 +52,7 @@ export function AddMemberDialog({
   availableUsers,
   onAddExisting,
   onCreateNew,
+  terms = getOrganizationTerms("condominium"),
 }: AddMemberDialogProps) {
   const [activeTab, setActiveTab] = useState("new");
   const [saving, setSaving] = useState(false);
@@ -118,11 +122,11 @@ export function AddMemberDialog({
       return;
     }
     if (!isValidBlock(block)) {
-      setError("Bloco deve ser um número (sem zero inicial) ou uma letra");
+      setError(`${terms.block} deve ser um número (sem zero inicial) ou uma letra`);
       return;
     }
     if (!isValidUnit(unit)) {
-      setError("Unidade deve conter apenas números");
+      setError(`${terms.unit} deve conter apenas números`);
       return;
     }
 
@@ -153,11 +157,11 @@ export function AddMemberDialog({
       return;
     }
     if (!isValidBlock(existingBlock)) {
-      setError("Bloco deve ser um número (sem zero inicial) ou uma letra");
+      setError(`${terms.block} deve ser um número (sem zero inicial) ou uma letra`);
       return;
     }
     if (!isValidUnit(existingUnit)) {
-      setError("Unidade deve conter apenas números");
+      setError(`${terms.unit} deve conter apenas números`);
       return;
     }
 
@@ -176,15 +180,15 @@ export function AddMemberDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="bg-card sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Adicionar Membro</DialogTitle>
+          <DialogTitle>Adicionar {terms.member}</DialogTitle>
           <DialogDescription>
-            Cadastre um novo morador ou selecione um usuário existente
+            Cadastre um novo {terms.member.toLowerCase()} ou selecione um usuário existente
           </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="new">Novo Morador</TabsTrigger>
+            <TabsTrigger value="new">Novo {terms.member}</TabsTrigger>
             <TabsTrigger value="existing">Usuário Existente</TabsTrigger>
           </TabsList>
 
@@ -225,7 +229,7 @@ export function AddMemberDialog({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="block">Bloco/Torre *</Label>
+                  <Label htmlFor="block">{terms.block} *</Label>
                   <Input
                     id="block"
                     value={block}
@@ -236,7 +240,7 @@ export function AddMemberDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="unit">Unidade/Apt *</Label>
+                  <Label htmlFor="unit">{terms.unit} *</Label>
                   <Input
                     id="unit"
                     value={unit}
@@ -254,10 +258,10 @@ export function AddMemberDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="resident">Morador</SelectItem>
-                    <SelectItem value="syndic">Síndico</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="collaborator">Colaborador</SelectItem>
+                    <SelectItem value="resident">{getRoleLabel("resident", terms)}</SelectItem>
+                    <SelectItem value="syndic">{getRoleLabel("syndic", terms)}</SelectItem>
+                    <SelectItem value="admin">{getRoleLabel("admin", terms)}</SelectItem>
+                    <SelectItem value="collaborator">{getRoleLabel("collaborator", terms)}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -304,7 +308,7 @@ export function AddMemberDialog({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="existingBlock">Bloco/Torre *</Label>
+                  <Label htmlFor="existingBlock">{terms.block} *</Label>
                   <Input
                     id="existingBlock"
                     value={existingBlock}
@@ -315,7 +319,7 @@ export function AddMemberDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="existingUnit">Unidade/Apt *</Label>
+                  <Label htmlFor="existingUnit">{terms.unit} *</Label>
                   <Input
                     id="existingUnit"
                     value={existingUnit}
@@ -333,10 +337,10 @@ export function AddMemberDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="resident">Morador</SelectItem>
-                    <SelectItem value="syndic">Síndico</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="collaborator">Colaborador</SelectItem>
+                    <SelectItem value="resident">{getRoleLabel("resident", terms)}</SelectItem>
+                    <SelectItem value="syndic">{getRoleLabel("syndic", terms)}</SelectItem>
+                    <SelectItem value="admin">{getRoleLabel("admin", terms)}</SelectItem>
+                    <SelectItem value="collaborator">{getRoleLabel("collaborator", terms)}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -7,7 +7,8 @@ import {
   FileText, 
   Image, 
   FileSpreadsheet, 
-  File 
+  File,
+  Video
 } from "lucide-react";
 
 interface FileUploadProps {
@@ -30,6 +31,9 @@ function getFileIcon(file: File) {
 
   if (type === "application/pdf" || name.endsWith(".pdf")) {
     return <FileText className="w-5 h-5 text-red-500" />;
+  }
+  if (type.startsWith("video/") || name.endsWith(".mp4") || name.endsWith(".webm") || name.endsWith(".mov") || name.endsWith(".avi")) {
+    return <Video className="w-5 h-5 text-purple-500" />;
   }
   if (type.startsWith("image/")) {
     return <Image className="w-5 h-5 text-blue-500" />;
@@ -56,8 +60,8 @@ function getFileIcon(file: File) {
 export function FileUpload({
   files,
   onFilesChange,
-  maxSizeMB = 5,
-  accept = ".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx",
+  maxSizeMB = 20,
+  accept = ".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.mp4,.webm,.mov,.avi",
   className,
 }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -144,7 +148,7 @@ export function FileUpload({
           ou arraste e solte aqui
         </p>
         <p className="text-xs text-muted-foreground mt-2">
-          PDF, imagens, documentos (máx {maxSizeMB}MB)
+          PDF, imagens, vídeos, documentos (máx {maxSizeMB}MB)
         </p>
       </div>
 

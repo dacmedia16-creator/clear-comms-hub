@@ -1,6 +1,6 @@
 import { Link, useParams, Navigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Users, Briefcase } from "lucide-react";
+import { ArrowLeft, Users, Briefcase, PlusCircle } from "lucide-react";
 import { getOrganizationConfig, OrganizationType, ORGANIZATION_TYPES } from "@/lib/organization-types";
 
 export default function SignupRolePage() {
@@ -28,7 +28,7 @@ export default function SignupRolePage() {
 
       {/* Content */}
       <main className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-2xl">
+        <div className="w-full max-w-3xl">
           {/* Logo with organization icon */}
           <div className="flex justify-center mb-6">
             <div className="flex items-center gap-2">
@@ -47,8 +47,8 @@ export default function SignupRolePage() {
             Escolha o seu perfil para continuar
           </p>
 
-          {/* Options */}
-          <div className="grid sm:grid-cols-2 gap-4 md:gap-6">
+          {/* Options - 3 columns on larger screens */}
+          <div className="grid sm:grid-cols-3 gap-4 md:gap-6">
             {/* Member */}
             <Link to={`/auth/signup/${orgType}/member`}>
               <Card className="p-6 md:p-8 hover:border-primary hover:shadow-lg transition-all cursor-pointer group h-full">
@@ -61,7 +61,7 @@ export default function SignupRolePage() {
                       Sou {terms.member}
                     </h2>
                     <p className="text-muted-foreground text-sm">
-                      Quero receber os avisos da minha {terms.organization.toLowerCase()}
+                      Já tenho um código de acesso
                     </p>
                   </div>
                 </div>
@@ -80,7 +80,26 @@ export default function SignupRolePage() {
                       Sou {terms.manager}
                     </h2>
                     <p className="text-muted-foreground text-sm">
-                      Quero criar e gerenciar avisos
+                      Já existe um código de acesso
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+
+            {/* Create New Organization */}
+            <Link to={`/auth/signup/${orgType}/create`}>
+              <Card className="p-6 md:p-8 hover:border-primary hover:shadow-lg transition-all cursor-pointer group h-full border-dashed">
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                    <PlusCircle className="w-8 h-8 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-display font-semibold text-foreground mb-2">
+                      Criar {terms.organization}
+                    </h2>
+                    <p className="text-muted-foreground text-sm">
+                      Quero criar um canal oficial
                     </p>
                   </div>
                 </div>

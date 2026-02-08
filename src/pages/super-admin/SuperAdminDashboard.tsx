@@ -6,17 +6,17 @@ import { useAllCondominiums } from "@/hooks/useAllCondominiums";
 import { useAllUsers } from "@/hooks/useAllUsers";
 import { useAllAnnouncements } from "@/hooks/useAllAnnouncements";
 import { useSyndicReferrals } from "@/hooks/useSyndicReferrals";
-import { Bell, Building2, Users, FileText, ArrowLeft, Loader2, LayoutDashboard, UserPlus, CreditCard } from "lucide-react";
+import { Bell, Building2, Users, FileText, ArrowLeft, Loader2, LayoutDashboard, UserPlus, CreditCard, Grid3X3 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshButton } from "@/components/RefreshButton";
 import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
 
 const superAdminNavItems: MobileNavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/super-admin" },
-  { icon: Building2, label: "Condos", path: "/super-admin/condominiums" },
+  { icon: Grid3X3, label: "Segmentos", path: "/super-admin/segments" },
+  { icon: Building2, label: "Orgs", path: "/super-admin/condominiums" },
   { icon: Users, label: "Usuários", path: "/super-admin/users" },
-  { icon: FileText, label: "Timelines", path: "/super-admin/timelines" },
-  { icon: Bell, label: "Notificações", path: "/super-admin/notifications" },
+  { icon: Bell, label: "Notif.", path: "/super-admin/notifications" },
 ];
 
 export default function SuperAdminDashboard() {
@@ -113,6 +113,34 @@ export default function SuperAdminDashboard() {
 
               {/* Quick Links */}
               <div className="grid md:grid-cols-2 gap-6">
+                <Card className="hover:shadow-lg transition-shadow border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                  <CardHeader>
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
+                      <Grid3X3 className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="font-display">Segmentos de Organização</CardTitle>
+                    <CardDescription>
+                      Visualize e crie organizações por categoria: Condomínios, Clínicas, Empresas, etc.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                        6 categorias
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                        {stats.totalCondos} organizações
+                      </span>
+                    </div>
+                    <Button asChild className="w-full">
+                      <Link to="/super-admin/segments">
+                        <Grid3X3 className="w-4 h-4 mr-2" />
+                        Ver Segmentos
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+
                 <Card className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center mb-2">

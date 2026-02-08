@@ -24,6 +24,8 @@ import { AddMemberDialog } from "@/components/super-admin/AddMemberDialog";
 import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
 import { MobileCardItem } from "@/components/mobile/MobileCardItem";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useOrganizationTerms } from "@/hooks/useOrganizationTerms";
+import { getRoleLabel } from "@/lib/organization-types";
 
 const superAdminNavItems: MobileNavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/super-admin" },
@@ -32,13 +34,6 @@ const superAdminNavItems: MobileNavItem[] = [
   { icon: FileText, label: "Timelines", path: "/super-admin/timelines" },
   { icon: Bell, label: "Notificações", path: "/super-admin/notifications" },
 ];
-
-const roleLabels: Record<string, string> = {
-  admin: "Administrador",
-  syndic: "Síndico",
-  resident: "Morador",
-  collaborator: "Colaborador",
-};
 
 const roleColors: Record<string, string> = {
   admin: "bg-primary/10 text-primary",
@@ -53,6 +48,7 @@ export default function SuperAdminCondoMembers() {
   const { users } = useAllUsers();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { terms } = useOrganizationTerms(condoId);
 
   const [condoName, setCondoName] = useState<string>("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -101,10 +97,10 @@ export default function SuperAdminCondoMembers() {
   }) => {
     const result = await createMember(data);
     if (result.success) {
-      toast({ title: "Morador cadastrado com sucesso!" });
+      toast({ title: `${terms.member} cadastrado com sucesso!` });
     } else {
       toast({
-        title: "Erro ao cadastrar morador",
+        title: `Erro ao cadastrar ${terms.member.toLowerCase()}`,
         description: result.error,
         variant: "destructive",
       });
@@ -136,10 +132,10 @@ export default function SuperAdminCondoMembers() {
   const handleSaveMember = async (roleId: string, data: UpdateMemberData) => {
     const result = await updateMember(roleId, data);
     if (result.success) {
-      toast({ title: "Morador atualizado com sucesso!" });
+      toast({ title: `${terms.member} atualizado com sucesso!` });
     } else {
       toast({
-        title: "Erro ao atualizar morador",
+        title: `Erro ao atualizar ${terms.member.toLowerCase()}`,
         description: result.error,
         variant: "destructive",
       });
@@ -166,7 +162,7 @@ export default function SuperAdminCondoMembers() {
                     <Users className="w-5 h-5 text-primary-foreground" />
                   </div>
                   <div>
-                    <span className="font-display text-xl font-bold text-foreground">Membros</span>
+                    <span className="font-display text-xl font-bold text-foreground">{terms.memberPlural}</span>
                     {condoName && (
                       <p className="text-sm text-muted-foreground">{condoName}</p>
                     )}
@@ -192,6 +188,7 @@ export default function SuperAdminCondoMembers() {
           availableUsers={availableUsers}
           onAddExisting={handleAddExisting}
           onCreateNew={handleCreateNew}
+          terms={terms}
         />
 
         {/* Edit Member Dialog */}
@@ -200,6 +197,7 @@ export default function SuperAdminCondoMembers() {
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
           onSave={handleSaveMember}
+          terms={terms}
         />
 
         {/* Main Content */}
@@ -215,8 +213,8 @@ export default function SuperAdminCondoMembers() {
                 <Card className="p-8 text-center text-muted-foreground">
                   <div className="flex flex-col items-center gap-2">
                     <UserCircle className="w-12 h-12 opacity-30" />
-                    <p>Nenhum membro cadastrado neste condomínio</p>
-                    <p className="text-sm">Clique em "Adicionar" para incluir síndicos ou moradores</p>
+                    <p>Nenhum {terms.member.toLowerCase()} cadastrado neste {terms.organization.toLowerCase()}</p>
+                    <p className="text-sm">Clique em "Adicionar" para incluir {terms.memberPlural.toLowerCase()}</p>
                   </div>
                 </Card>
               ) : (
@@ -239,7 +237,7 @@ export default function SuperAdminCondoMembers() {
                       badges={
                         <>
                           <span className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}>
-                            {roleLabels[member.role]}
+                            {getRoleLabel(member.role, terms)}
                           </span>
                           {location !== "—" && (
                             <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
@@ -285,7 +283,7 @@ export default function SuperAdminCondoMembers() {
                   <TableRow>
                     <TableHead>Usuário</TableHead>
                     <TableHead>Telefone</TableHead>
-                    <TableHead>Unidade</TableHead>
+                    <TableHead>{terms.block}/{terms.unit}</TableHead>
                     <TableHead>Função</TableHead>
                     <TableHead>Adicionado em</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -297,8 +295,8 @@ export default function SuperAdminCondoMembers() {
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
                           <UserCircle className="w-12 h-12 opacity-30" />
-                          <p>Nenhum membro cadastrado neste condomínio</p>
-                          <p className="text-sm">Clique em "Adicionar" para incluir síndicos ou moradores</p>
+                          <p>Nenhum {terms.member.toLowerCase()} cadastrado neste {terms.organization.toLowerCase()}</p>
+                          <p className="text-sm">Clique em "Adicionar" para incluir {terms.memberPlural.toLowerCase()}</p>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -329,7 +327,7 @@ export default function SuperAdminCondoMembers() {
                             <span
                               className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}
                             >
-                              {roleLabels[member.role]}
+                              {getRoleLabel(member.role, terms)}
                             </span>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">

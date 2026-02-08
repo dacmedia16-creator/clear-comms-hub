@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/tooltip";
 import { CondoMember, getMemberDisplayName, getMemberEmail, getMemberPhone } from "@/hooks/useCondoMembers";
 import { isValidBlock, isValidUnit, formatBlock } from "@/lib/utils";
+import { OrganizationTerms, getOrganizationTerms } from "@/lib/organization-types";
 
 export interface UpdateMemberData {
   fullName?: string;
@@ -32,6 +33,7 @@ interface EditMemberDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (roleId: string, data: UpdateMemberData) => Promise<{ success: boolean; error?: string }>;
+  terms?: OrganizationTerms;
 }
 
 export function EditMemberDialog({
@@ -39,6 +41,7 @@ export function EditMemberDialog({
   open,
   onOpenChange,
   onSave,
+  terms = getOrganizationTerms("condominium"),
 }: EditMemberDialogProps) {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -118,7 +121,7 @@ export function EditMemberDialog({
       <Tooltip>
         <TooltipTrigger asChild>{children}</TooltipTrigger>
         <TooltipContent>
-          <p>Este usuário gerencia seus próprios dados</p>
+          <p>Este {terms.member.toLowerCase()} gerencia seus próprios dados</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -128,7 +131,7 @@ export function EditMemberDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Editar Morador</DialogTitle>
+          <DialogTitle>Editar {terms.member}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -196,7 +199,7 @@ export function EditMemberDialog({
           {/* Location Section */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="block">Bloco/Torre *</Label>
+              <Label htmlFor="block">{terms.block} *</Label>
               <Input
                 id="block"
                 value={block}
@@ -207,7 +210,7 @@ export function EditMemberDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="unit">Unidade/Apt *</Label>
+              <Label htmlFor="unit">{terms.unit} *</Label>
               <Input
                 id="unit"
                 value={unit}
@@ -222,7 +225,7 @@ export function EditMemberDialog({
           {isProfile && (
             <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
               Dados pessoais de usuários autenticados só podem ser alterados pelo próprio usuário.
-              Você pode editar apenas o Bloco/Torre e Unidade/Apt.
+              Você pode editar apenas {terms.block} e {terms.unit}.
             </p>
           )}
 

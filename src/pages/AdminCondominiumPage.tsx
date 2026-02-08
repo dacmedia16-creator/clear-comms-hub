@@ -54,6 +54,7 @@ import { FileUpload } from "@/components/FileUpload";
 import { useCondoBlocks } from "@/hooks/useCondoBlocks";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
+import { useOrganizationTerms } from "@/hooks/useOrganizationTerms";
 
 interface Announcement {
   id: string;
@@ -83,6 +84,7 @@ export default function AdminCondominiumPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { terms } = useOrganizationTerms(condoId);
 
   const [condominium, setCondominium] = useState<Condominium | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -94,7 +96,7 @@ export default function AdminCondominiumPage() {
   // Generate nav items dynamically based on condoId
   const syndicNavItems: MobileNavItem[] = condoId ? [
     { icon: Bell, label: "Avisos", path: `/admin/${condoId}` },
-    { icon: Users, label: "Moradores", path: `/admin/${condoId}/members` },
+    { icon: Users, label: terms.memberPlural, path: `/admin/${condoId}/members` },
     { icon: Settings, label: "Config", path: `/admin/${condoId}/settings` },
     { icon: FileText, label: "Timeline", path: condominium?.slug ? `/c/${condominium.slug}` : `/admin/${condoId}` },
   ] : [];
@@ -413,7 +415,7 @@ export default function AdminCondominiumPage() {
               <Button asChild variant="outline" size="sm">
                 <Link to={`/admin/${condoId}/members`}>
                   <Users className="w-4 h-4 mr-1" />
-                  Moradores
+                  {terms.memberPlural}
                 </Link>
               </Button>
               <Button asChild variant="outline" size="sm">

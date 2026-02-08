@@ -25,13 +25,8 @@ import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottom
 import { MobileCardItem } from "@/components/mobile/MobileCardItem";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ImportMembersDialog, ParsedMember } from "@/components/ImportMembersDialog";
-
-const roleLabels: Record<string, string> = {
-  admin: "Administrador",
-  syndic: "Síndico",
-  resident: "Morador",
-  collaborator: "Colaborador",
-};
+import { useOrganizationTerms } from "@/hooks/useOrganizationTerms";
+import { getRoleLabel } from "@/lib/organization-types";
 
 const roleColors: Record<string, string> = {
   admin: "bg-primary/10 text-primary",
@@ -47,6 +42,7 @@ export default function CondoMembersPage() {
   const { members, loading, createMember, removeMember, approveMember, importMembers, updateMember } = useCondoMembers(condoId || "");
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { terms } = useOrganizationTerms(condoId);
 
   const [condoName, setCondoName] = useState<string>("");
   const [condoSlug, setCondoSlug] = useState<string>("");
@@ -59,7 +55,7 @@ export default function CondoMembersPage() {
   // Nav items for syndic
   const syndicNavItems: MobileNavItem[] = condoId ? [
     { icon: Bell, label: "Avisos", path: `/admin/${condoId}` },
-    { icon: Users, label: "Moradores", path: `/admin/${condoId}/members` },
+    { icon: Users, label: terms.memberPlural, path: `/admin/${condoId}/members` },
     { icon: Settings, label: "Config", path: `/admin/${condoId}/settings` },
     { icon: FileText, label: "Timeline", path: condoSlug ? `/c/${condoSlug}` : `/admin/${condoId}` },
   ] : [];
@@ -128,10 +124,10 @@ export default function CondoMembersPage() {
   }) => {
     const result = await createMember(data);
     if (result.success) {
-      toast({ title: "Morador cadastrado com sucesso!" });
+      toast({ title: `${terms.member} cadastrado com sucesso!` });
     } else {
       toast({
-        title: "Erro ao cadastrar morador",
+        title: `Erro ao cadastrar ${terms.member.toLowerCase()}`,
         description: result.error,
         variant: "destructive",
       });
@@ -173,12 +169,12 @@ export default function CondoMembersPage() {
     if (result.success > 0) {
       toast({
         title: "Importação concluída!",
-        description: `${result.success} morador(es) importado(s) com sucesso${result.failed > 0 ? `, ${result.failed} falha(s)` : ""}`,
+        description: `${result.success} ${terms.member.toLowerCase()}(s) importado(s) com sucesso${result.failed > 0 ? `, ${result.failed} falha(s)` : ""}`,
       });
     } else if (result.failed > 0) {
       toast({
         title: "Erro na importação",
-        description: `Nenhum morador foi importado. ${result.failed} falha(s).`,
+        description: `Nenhum ${terms.member.toLowerCase()} foi importado. ${result.failed} falha(s).`,
         variant: "destructive",
       });
     }
@@ -193,10 +189,10 @@ export default function CondoMembersPage() {
   const handleSaveMember = async (roleId: string, data: UpdateMemberData) => {
     const result = await updateMember(roleId, data);
     if (result.success) {
-      toast({ title: "Morador atualizado com sucesso!" });
+      toast({ title: `${terms.member} atualizado com sucesso!` });
     } else {
       toast({
-        title: "Erro ao atualizar morador",
+        title: `Erro ao atualizar ${terms.member.toLowerCase()}`,
         description: result.error,
         variant: "destructive",
       });
@@ -234,7 +230,7 @@ export default function CondoMembersPage() {
                   <Users className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <span className="font-display text-xl font-bold text-foreground">Moradores</span>
+                  <span className="font-display text-xl font-bold text-foreground">{terms.memberPlural}</span>
                   {condoName && (
                     <p className="text-sm text-muted-foreground">{condoName}</p>
                   )}
@@ -263,6 +259,7 @@ export default function CondoMembersPage() {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         onSave={handleSaveMember}
+        terms={terms}
       />
 
       {/* Import Members Dialog */}
@@ -270,6 +267,7 @@ export default function CondoMembersPage() {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         onImport={handleImportMembers}
+        terms={terms}
       />
 
       {/* Add Member Dialog - only create new, no existing users list */}
@@ -279,6 +277,7 @@ export default function CondoMembersPage() {
         availableUsers={[]}
         onAddExisting={async () => ({ success: false, error: "Não disponível" })}
         onCreateNew={handleCreateNew}
+        terms={terms}
       />
 
       {/* Main Content */}
@@ -294,8 +293,8 @@ export default function CondoMembersPage() {
               <Card className="p-8 text-center text-muted-foreground">
                 <div className="flex flex-col items-center gap-2">
                   <UserCircle className="w-12 h-12 opacity-30" />
-                  <p>Nenhum morador cadastrado neste condomínio</p>
-                  <p className="text-sm">Clique em "Adicionar" para cadastrar moradores</p>
+                  <p>Nenhum {terms.member.toLowerCase()} cadastrado neste {terms.organization.toLowerCase()}</p>
+                  <p className="text-sm">Clique em "Adicionar" para cadastrar {terms.memberPlural.toLowerCase()}</p>
                 </div>
               </Card>
             ) : (
@@ -319,7 +318,7 @@ export default function CondoMembersPage() {
                     badges={
                       <>
                         <span className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}>
-                          {roleLabels[member.role]}
+                          {getRoleLabel(member.role, terms)}
                         </span>
                         {location && (
                           <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
@@ -381,7 +380,7 @@ export default function CondoMembersPage() {
                 <TableRow>
                   <TableHead>Usuário</TableHead>
                   <TableHead>Telefone</TableHead>
-                  <TableHead>Unidade</TableHead>
+                  <TableHead>{terms.block}/{terms.unit}</TableHead>
                   <TableHead>Função</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Adicionado em</TableHead>
@@ -394,8 +393,8 @@ export default function CondoMembersPage() {
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       <div className="flex flex-col items-center gap-2">
                         <UserCircle className="w-12 h-12 opacity-30" />
-                        <p>Nenhum morador cadastrado neste condomínio</p>
-                        <p className="text-sm">Clique em "Adicionar" para cadastrar moradores</p>
+                        <p>Nenhum {terms.member.toLowerCase()} cadastrado neste {terms.organization.toLowerCase()}</p>
+                        <p className="text-sm">Clique em "Adicionar" para cadastrar {terms.memberPlural.toLowerCase()}</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -426,7 +425,7 @@ export default function CondoMembersPage() {
                           <span
                             className={`text-xs px-2 py-1 rounded-full ${roleColors[member.role]}`}
                           >
-                            {roleLabels[member.role]}
+                            {getRoleLabel(member.role, terms)}
                           </span>
                         </TableCell>
                         <TableCell>

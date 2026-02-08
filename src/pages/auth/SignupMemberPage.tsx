@@ -5,19 +5,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bell, ArrowLeft, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useOrganizationFromCode } from "@/hooks/useOrganizationFromCode";
 import { getSignupFormConfig } from "@/lib/signup-config";
-import { getOrganizationTerms, getOrganizationConfig, OrganizationType, ORGANIZATION_TYPES } from "@/lib/organization-types";
+import { 
+  getOrganizationTerms, 
+  getOrganizationConfig, 
+  getOrganizationBehavior,
+  getLocationPlaceholders,
+  OrganizationType, 
+  ORGANIZATION_TYPES 
+} from "@/lib/organization-types";
 
-const memberSchema = z.object({
+// Schema base - unit validation will be conditional
+const createMemberSchema = (requiresLocation: boolean) => z.object({
   condoCode: z.string().min(1, "Código obrigatório"),
   fullName: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
   phone: z.string().min(10, "Telefone inválido"),
   email: z.string().trim().email("Email inválido"),
-  unit: z.string().min(1, "Campo obrigatório"),
+  unit: requiresLocation 
+    ? z.string().min(1, "Campo obrigatório")
+    : z.string().optional(),
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -44,13 +54,17 @@ export default function SignupMemberPage() {
   const urlOrgType = (type && type in ORGANIZATION_TYPES) ? type as OrganizationType : "condominium";
   const urlConfig = getOrganizationConfig(urlOrgType);
   const urlTerms = urlConfig.terms;
+  const urlBehavior = getOrganizationBehavior(urlOrgType);
   const urlFormConfig = getSignupFormConfig(urlOrgType);
+  const urlPlaceholders = getLocationPlaceholders(urlOrgType);
 
   // Use the organization hook for dynamic detection
   const { validating, organization, error: condoError } = useOrganizationFromCode(condoCode);
 
   // Use detected organization if available, otherwise use URL-based config
   const terms = organization?.terms || urlTerms;
+  const behavior = organization ? getOrganizationBehavior(organization.type) : urlBehavior;
+  const placeholders = organization ? getLocationPlaceholders(organization.type) : urlPlaceholders;
   const formConfig = organization ? getSignupFormConfig(organization.type) : urlFormConfig;
   const OrgIcon = organization?.icon || urlConfig.icon;
 
@@ -58,7 +72,8 @@ export default function SignupMemberPage() {
     e.preventDefault();
     setErrors({});
 
-    // Validate form
+    // Validate form with dynamic schema based on organization behavior
+    const memberSchema = createMemberSchema(behavior.requiresLocation);
     const result = memberSchema.safeParse({
       condoCode,
       fullName,
@@ -306,21 +321,26 @@ export default function SignupMemberPage() {
                 )}
               </div>
 
-              {/* Unit - Dynamic label */}
+              {/* Unit - Dynamic label and optionality */}
               <div className="space-y-2">
                 <Label htmlFor="unit" className="transition-all duration-300">
-                  {organization ? `${terms.block} e ${terms.unit}` : formConfig.unitLabel} *
+                  {organization ? `${terms.block} e ${terms.unit}` : formConfig.unitLabel} {behavior.requiresLocation && "*"}
                 </Label>
                 <Input
                   id="unit"
                   type="text"
-                  placeholder={organization ? `ex: ${terms.block} A, ${terms.unit} 101` : formConfig.unitPlaceholder}
+                  placeholder={organization ? `ex: ${placeholders.block}, ${placeholders.unit}` : formConfig.unitPlaceholder}
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
                   className={errors.unit ? "border-destructive" : ""}
                 />
                 {errors.unit && (
                   <p className="text-sm text-destructive">{errors.unit}</p>
+                )}
+                {!behavior.requiresLocation && (
+                  <p className="text-xs text-muted-foreground">
+                    Campo opcional para {terms.organizationPlural.toLowerCase()}
+                  </p>
                 )}
               </div>
 

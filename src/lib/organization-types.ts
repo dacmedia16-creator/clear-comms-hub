@@ -28,12 +28,21 @@ export interface OrganizationTerms {
   unitPlural: string;
 }
 
+export interface OrganizationBehavior {
+  requiresLocation: boolean;
+  blockValidation: "strict" | "flexible";
+  unitValidation: "strict" | "flexible";
+  showLocationInTimeline: boolean;
+  showLocationTargeting: boolean;
+}
+
 export interface OrganizationTypeConfig {
   label: string;
   description: string;
   examples: string;
   icon: LucideIcon;
   terms: OrganizationTerms;
+  behavior: OrganizationBehavior;
 }
 
 export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig> = {
@@ -53,6 +62,13 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
       unit: "Unidade",
       unitPlural: "Unidades",
     },
+    behavior: {
+      requiresLocation: true,
+      blockValidation: "strict",
+      unitValidation: "strict",
+      showLocationInTimeline: true,
+      showLocationTargeting: true,
+    },
   },
   healthcare: {
     label: "Clínicas e Saúde",
@@ -69,6 +85,13 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
       blockPlural: "Setores",
       unit: "Área",
       unitPlural: "Áreas",
+    },
+    behavior: {
+      requiresLocation: false,
+      blockValidation: "flexible",
+      unitValidation: "flexible",
+      showLocationInTimeline: false,
+      showLocationTargeting: false,
     },
   },
   company: {
@@ -87,6 +110,13 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
       unit: "Cargo",
       unitPlural: "Cargos",
     },
+    behavior: {
+      requiresLocation: false,
+      blockValidation: "flexible",
+      unitValidation: "flexible",
+      showLocationInTimeline: false,
+      showLocationTargeting: false,
+    },
   },
   community: {
     label: "Comunidades",
@@ -103,6 +133,13 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
       blockPlural: "Grupos",
       unit: "Categoria",
       unitPlural: "Categorias",
+    },
+    behavior: {
+      requiresLocation: false,
+      blockValidation: "flexible",
+      unitValidation: "flexible",
+      showLocationInTimeline: false,
+      showLocationTargeting: false,
     },
   },
   church: {
@@ -121,6 +158,13 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
       unit: "Grupo",
       unitPlural: "Grupos",
     },
+    behavior: {
+      requiresLocation: false,
+      blockValidation: "flexible",
+      unitValidation: "flexible",
+      showLocationInTimeline: false,
+      showLocationTargeting: false,
+    },
   },
   franchise: {
     label: "Franquias",
@@ -137,6 +181,13 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
       blockPlural: "Regiões",
       unit: "Unidade",
       unitPlural: "Unidades",
+    },
+    behavior: {
+      requiresLocation: true,
+      blockValidation: "flexible",
+      unitValidation: "flexible",
+      showLocationInTimeline: true,
+      showLocationTargeting: true,
     },
   },
 };
@@ -157,6 +208,11 @@ export function getOrganizationIcon(type?: OrganizationType | string | null): Lu
 // Helper to get terms for a type
 export function getOrganizationTerms(type?: OrganizationType | string | null): OrganizationTerms {
   return getOrganizationConfig(type).terms;
+}
+
+// Helper to get behavior for a type
+export function getOrganizationBehavior(type?: OrganizationType | string | null): OrganizationBehavior {
+  return getOrganizationConfig(type).behavior;
 }
 
 // List of all organization types for dropdowns
@@ -190,4 +246,22 @@ export function getRoleLabels(terms: OrganizationTerms): Record<string, string> 
     resident: terms.member,
     collaborator: "Colaborador",
   };
+}
+
+// Helper to get placeholder examples for location fields
+export function getLocationPlaceholders(type?: OrganizationType | string | null): {
+  block: string;
+  unit: string;
+} {
+  const placeholders: Record<OrganizationType, { block: string; unit: string }> = {
+    condominium: { block: "A, B, 1, 2", unit: "101, 202" },
+    company: { block: "Comercial, TI", unit: "Analista, Gerente" },
+    healthcare: { block: "Cardiologia, UTI", unit: "Consultório 1" },
+    church: { block: "Louvor, Jovens", unit: "Coral, Células" },
+    community: { block: "Diretoria, Esportes", unit: "Presidente, Sócio" },
+    franchise: { block: "Sul, Norte", unit: "Loja 01, Loja 02" },
+  };
+  
+  const orgType = type && type in ORGANIZATION_TYPES ? type as OrganizationType : "condominium";
+  return placeholders[orgType];
 }

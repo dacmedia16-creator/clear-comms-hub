@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getTrialStatus } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useOrganizationBehavior } from "@/hooks/useOrganizationBehavior";
 
 interface Condominium {
   id: string;
@@ -36,6 +37,7 @@ export default function CondominiumSettingsPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { terms, behavior } = useOrganizationBehavior(condoId);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -187,14 +189,14 @@ export default function CondominiumSettingsPage() {
           {/* Basic Info */}
           <Card>
             <CardHeader>
-              <CardTitle className="font-display">Informações Básicas</CardTitle>
+              <CardTitle className="font-display">Informações da {terms.organization}</CardTitle>
               <CardDescription>
-                Dados gerais do condomínio
+                Dados gerais da {terms.organization.toLowerCase()}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome do condomínio *</Label>
+                <Label htmlFor="name">Nome da {terms.organization.toLowerCase()} *</Label>
                 <Input
                   id="name"
                   value={name}
@@ -254,7 +256,7 @@ export default function CondominiumSettingsPage() {
             <CardHeader>
               <CardTitle className="font-display">Notificações</CardTitle>
               <CardDescription>
-                Configure como os moradores receberão os avisos
+                Configure como os {terms.memberPlural.toLowerCase()} receberão os avisos
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -262,7 +264,7 @@ export default function CondominiumSettingsPage() {
                 <div className="space-y-0.5">
                   <Label htmlFor="email-notification">Notificação por Email</Label>
                   <p className="text-sm text-muted-foreground">
-                    Enviar avisos por email para os moradores
+                    Enviar avisos por email para os {terms.memberPlural.toLowerCase()}
                   </p>
                 </div>
                 <Switch
@@ -276,7 +278,7 @@ export default function CondominiumSettingsPage() {
                 <div className="space-y-0.5">
                   <Label htmlFor="whatsapp-notification">Notificação por WhatsApp</Label>
                   <p className="text-sm text-muted-foreground">
-                    Enviar avisos por WhatsApp para os moradores
+                    Enviar avisos por WhatsApp para os {terms.memberPlural.toLowerCase()}
                   </p>
                 </div>
                 <Switch
@@ -290,7 +292,7 @@ export default function CondominiumSettingsPage() {
                 <div className="space-y-0.5">
                   <Label htmlFor="sms-notification">Notificação por SMS</Label>
                   <p className="text-sm text-muted-foreground">
-                    Enviar avisos por SMS para os moradores
+                    Enviar avisos por SMS para os {terms.memberPlural.toLowerCase()}
                   </p>
                 </div>
                 <Switch
@@ -346,7 +348,7 @@ export default function CondominiumSettingsPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between items-center py-2 border-b border-border">
-                <span className="text-sm text-muted-foreground">Código do condomínio</span>
+                <span className="text-sm text-muted-foreground">Código da {terms.organization.toLowerCase()}</span>
                 <code className="text-sm bg-primary/10 text-primary font-bold px-3 py-1 rounded">
                   {condominium.code}
                 </code>

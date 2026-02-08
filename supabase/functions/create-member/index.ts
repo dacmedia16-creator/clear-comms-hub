@@ -16,6 +16,9 @@ interface CreateMemberRequest {
   role: "admin" | "syndic" | "resident" | "collaborator";
 }
 
+// Organization types that require location fields
+const REQUIRES_LOCATION = ["condominium", "franchise"];
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -63,10 +66,10 @@ Deno.serve(async (req) => {
 
     console.log("Create member request:", { condominiumId, fullName, email, block, unit, role });
 
-    // Validate required fields
-    if (!condominiumId || !fullName || !role || !block || !unit) {
+    // Validate required fields (base validation)
+    if (!condominiumId || !fullName || !role) {
       return new Response(
-        JSON.stringify({ error: "Campos obrigatórios: condominiumId, fullName, role, block, unit" }),
+        JSON.stringify({ error: "Campos obrigatórios: condominiumId, fullName, role" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -88,7 +91,7 @@ Deno.serve(async (req) => {
     if (!canManage) {
       console.error("User does not have permission to manage this condominium");
       return new Response(
-        JSON.stringify({ error: "Você não tem permissão para gerenciar este condomínio" }),
+        JSON.stringify({ error: "Você não tem permissão para gerenciar esta organização" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -98,7 +101,35 @@ Deno.serve(async (req) => {
     // 6. Create service role client to bypass RLS
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 7. Create condo_member (for residents without auth account)
+    // 7. Get organization type to determine if location is required
+    const { data: condoData, error: condoError } = await serviceClient
+      .from("condominiums")
+      .select("organization_type")
+      .eq("id", condominiumId)
+      .single();
+
+    if (condoError) {
+      console.error("Error fetching organization type:", condoError);
+      return new Response(
+        JSON.stringify({ error: "Erro ao verificar tipo de organização" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const orgType = condoData?.organization_type || "condominium";
+    const requiresLocation = REQUIRES_LOCATION.includes(orgType);
+
+    // Validate location fields based on organization type
+    if (requiresLocation) {
+      if (!block || !unit) {
+        return new Response(
+          JSON.stringify({ error: "Campos block e unit são obrigatórios para este tipo de organização" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // 8. Create condo_member (for residents without auth account)
     const { data: memberData, error: memberError } = await serviceClient
       .from("condo_members")
       .insert({
@@ -119,7 +150,7 @@ Deno.serve(async (req) => {
 
     console.log("Condo member created:", memberData.id);
 
-    // 8. Create user_role linking condo_member to condominium (using member_id instead of user_id)
+    // 9. Create user_role linking condo_member to condominium (using member_id instead of user_id)
     const { error: roleError } = await serviceClient
       .from("user_roles")
       .insert({
@@ -127,8 +158,8 @@ Deno.serve(async (req) => {
         member_id: memberData.id,
         user_id: null, // No profile linked - this is a manual member
         role: role,
-        block: block,
-        unit: unit,
+        block: block?.trim() || null,
+        unit: unit?.trim() || null,
         is_approved: true,
       });
 
@@ -138,7 +169,7 @@ Deno.serve(async (req) => {
       await serviceClient.from("condo_members").delete().eq("id", memberData.id);
       
       return new Response(
-        JSON.stringify({ error: `Erro ao vincular morador: ${roleError.message}` }),
+        JSON.stringify({ error: `Erro ao vincular membro: ${roleError.message}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -149,7 +180,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         memberId: memberData.id,
-        message: "Morador cadastrado com sucesso" 
+        message: "Membro cadastrado com sucesso" 
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

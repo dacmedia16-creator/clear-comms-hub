@@ -20,8 +20,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Upload, Download, FileSpreadsheet, CheckCircle2, XCircle, Loader2 } from "lucide-react";
-import { cn, isValidBlock, isValidUnit, formatBlock } from "@/lib/utils";
-import { OrganizationTerms, getOrganizationTerms } from "@/lib/organization-types";
+import { cn, validateLocationOptional, formatBlock } from "@/lib/utils";
+import { 
+  OrganizationTerms, 
+  OrganizationBehavior,
+  getOrganizationTerms,
+  getOrganizationBehavior,
+  getRoleLabel
+} from "@/lib/organization-types";
 
 export interface ParsedMember {
   fullName: string;
@@ -39,6 +45,7 @@ interface ImportMembersDialogProps {
   onOpenChange: (open: boolean) => void;
   onImport: (members: ParsedMember[]) => Promise<{ success: number; failed: number }>;
   terms?: OrganizationTerms;
+  behavior?: OrganizationBehavior;
 }
 
 type Step = "upload" | "preview" | "importing" | "done";
@@ -54,6 +61,14 @@ const roleMap: Record<string, "admin" | "syndic" | "resident" | "collaborator"> 
   administrador: "admin",
   colaborador: "collaborator",
   collaborator: "collaborator",
+  // Additional mappings for other org types
+  paciente: "resident",
+  membro: "resident",
+  franqueado: "resident",
+  gestor: "syndic",
+  pastor: "syndic",
+  presidente: "syndic",
+  franqueador: "syndic",
 };
 
 function parseRole(value: string | undefined): "admin" | "syndic" | "resident" | "collaborator" {
@@ -62,54 +77,12 @@ function parseRole(value: string | undefined): "admin" | "syndic" | "resident" |
   return roleMap[normalized] || "resident";
 }
 
-function validateMember(row: any[]): ParsedMember {
-  const errors: string[] = [];
-  
-  const fullName = (row[0] || "").toString().trim();
-  const phone = (row[1] || "").toString().trim();
-  const email = (row[2] || "").toString().trim();
-  const rawBlock = (row[3] || "").toString().trim();
-  const unit = (row[4] || "").toString().trim();
-  const roleStr = (row[5] || "").toString().trim();
-  
-  if (fullName.length < 2) errors.push("Nome inválido");
-  if (!phone) errors.push("Telefone obrigatório");
-  if (!email.includes("@")) errors.push("Email inválido");
-  
-  // Validar formato do bloco
-  if (!rawBlock) {
-    errors.push("Bloco obrigatório");
-  } else if (!isValidBlock(rawBlock)) {
-    errors.push("Bloco inválido (use número ou letra única)");
-  }
-  
-  // Validar formato da unidade
-  if (!unit) {
-    errors.push("Unidade obrigatória");
-  } else if (!isValidUnit(unit)) {
-    errors.push("Unidade inválida (use apenas números)");
-  }
-  
-  // Formatar bloco para maiúscula
-  const block = formatBlock(rawBlock);
-  
-  return {
-    fullName,
-    phone,
-    email,
-    block,
-    unit,
-    role: parseRole(roleStr),
-    isValid: errors.length === 0,
-    errors,
-  };
-}
-
 export function ImportMembersDialog({
   open,
   onOpenChange,
   onImport,
   terms = getOrganizationTerms("condominium"),
+  behavior = getOrganizationBehavior("condominium"),
 }: ImportMembersDialogProps) {
   const [step, setStep] = useState<Step>("upload");
   const [parsedMembers, setParsedMembers] = useState<ParsedMember[]>([]);
@@ -133,6 +106,65 @@ export function ImportMembersDialog({
     }
     onOpenChange(isOpen);
   }, [onOpenChange, resetDialog]);
+
+  const validateMember = useCallback((row: any[]): ParsedMember => {
+    const errors: string[] = [];
+    
+    const fullName = (row[0] || "").toString().trim();
+    const phone = (row[1] || "").toString().trim();
+    const email = (row[2] || "").toString().trim();
+    const rawBlock = (row[3] || "").toString().trim();
+    const rawUnit = (row[4] || "").toString().trim();
+    const roleStr = (row[5] || "").toString().trim();
+    
+    if (fullName.length < 2) errors.push("Nome inválido");
+    if (!phone) errors.push("Telefone obrigatório");
+    if (!email.includes("@")) errors.push("Email inválido");
+    
+    // Validar campos de localização usando a função unificada
+    const blockValid = validateLocationOptional(
+      rawBlock,
+      "block",
+      behavior.blockValidation,
+      behavior.requiresLocation
+    );
+    const unitValid = validateLocationOptional(
+      rawUnit,
+      "unit",
+      behavior.unitValidation,
+      behavior.requiresLocation
+    );
+
+    if (!blockValid) {
+      if (behavior.requiresLocation) {
+        errors.push(`${terms.block} obrigatório`);
+      } else if (rawBlock && behavior.blockValidation === "strict") {
+        errors.push(`${terms.block} inválido (use número ou letra única)`);
+      }
+    }
+    
+    if (!unitValid) {
+      if (behavior.requiresLocation) {
+        errors.push(`${terms.unit} obrigatório`);
+      } else if (rawUnit && behavior.unitValidation === "strict") {
+        errors.push(`${terms.unit} inválido (use apenas números)`);
+      }
+    }
+    
+    // Formatar bloco se for validação estrita
+    const block = behavior.blockValidation === "strict" ? formatBlock(rawBlock) : rawBlock;
+    
+    return {
+      fullName,
+      phone,
+      email,
+      block,
+      unit: rawUnit,
+      role: parseRole(roleStr),
+      isValid: errors.length === 0,
+      errors,
+    };
+  }, [behavior, terms]);
 
   const parseFile = useCallback((file: File) => {
     const reader = new FileReader();
@@ -158,7 +190,7 @@ export function ImportMembersDialog({
       }
     };
     reader.readAsArrayBuffer(file);
-  }, []);
+  }, [validateMember]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -179,16 +211,24 @@ export function ImportMembersDialog({
   );
 
   const downloadTemplate = useCallback(() => {
+    // Dynamic headers based on organization type
+    const blockHeader = behavior.requiresLocation 
+      ? terms.block 
+      : `${terms.block} (opcional)`;
+    const unitHeader = behavior.requiresLocation 
+      ? terms.unit 
+      : `${terms.unit} (opcional)`;
+
     const ws = XLSX.utils.aoa_to_sheet([
-      ["Nome Completo", "Telefone", "Email", `${terms.block}`, `${terms.unit}`, "Função"],
-      ["João da Silva", "11999999999", "joao@email.com", "A", "101", terms.member.toLowerCase()],
-      ["Maria Santos", "11988888888", "maria@email.com", "B", "202", terms.member.toLowerCase()],
+      ["Nome Completo", "Telefone", "Email", blockHeader, unitHeader, "Função"],
+      ["João da Silva", "11999999999", "joao@email.com", "A", "101", getRoleLabel("resident", terms).toLowerCase()],
+      ["Maria Santos", "11988888888", "maria@email.com", "B", "202", getRoleLabel("resident", terms).toLowerCase()],
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, terms.memberPlural);
     const filename = `modelo_${terms.memberPlural.toLowerCase()}.xlsx`;
     XLSX.writeFile(wb, filename);
-  }, [terms]);
+  }, [terms, behavior]);
 
   const handleImport = useCallback(async () => {
     const validMembers = parsedMembers.filter((m) => m.isValid);
@@ -274,6 +314,12 @@ export function ImportMembersDialog({
                   Baixar modelo de planilha
                 </Button>
               </div>
+
+              {!behavior.requiresLocation && (
+                <p className="text-xs text-center text-muted-foreground">
+                  Para {terms.organizationPlural.toLowerCase()}, os campos {terms.block} e {terms.unit} são opcionais.
+                </p>
+              )}
             </div>
           )}
 
@@ -329,12 +375,12 @@ export function ImportMembersDialog({
                           {member.email || <span className="text-destructive">—</span>}
                         </TableCell>
                         <TableCell>
-                          {member.block || <span className="text-destructive">—</span>}
+                          {member.block || <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell>
-                          {member.unit || <span className="text-destructive">—</span>}
+                          {member.unit || <span className="text-muted-foreground">—</span>}
                         </TableCell>
-                        <TableCell className="capitalize">{member.role}</TableCell>
+                        <TableCell className="capitalize">{getRoleLabel(member.role, terms)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

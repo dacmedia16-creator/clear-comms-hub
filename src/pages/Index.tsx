@@ -1,5 +1,7 @@
 import { Header } from "@/components/landing/Header";
 import { Hero } from "@/components/landing/Hero";
+import { SegmentGrid } from "@/components/landing/SegmentGrid";
+import { UseCaseTabs } from "@/components/landing/UseCaseTabs";
 import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { TrustSection } from "@/components/landing/TrustSection";
@@ -16,6 +18,12 @@ const Index = () => {
       
       <main className="flex-1">
         <Hero />
+        
+        {/* Segment Grid - Shows all supported organization types */}
+        <SegmentGrid />
+        
+        {/* Use Case Tabs - Interactive segment-specific content */}
+        <UseCaseTabs />
         
         <section id="features">
           <FeatureShowcase />

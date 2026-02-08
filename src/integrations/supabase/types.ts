@@ -159,6 +159,9 @@ export type Database = {
           notification_email: boolean
           notification_sms: boolean | null
           notification_whatsapp: boolean
+          organization_type:
+            | Database["public"]["Enums"]["organization_type"]
+            | null
           owner_id: string
           plan: string
           slug: string
@@ -179,6 +182,9 @@ export type Database = {
           notification_email?: boolean
           notification_sms?: boolean | null
           notification_whatsapp?: boolean
+          organization_type?:
+            | Database["public"]["Enums"]["organization_type"]
+            | null
           owner_id: string
           plan?: string
           slug: string
@@ -199,6 +205,9 @@ export type Database = {
           notification_email?: boolean
           notification_sms?: boolean | null
           notification_whatsapp?: boolean
+          organization_type?:
+            | Database["public"]["Enums"]["organization_type"]
+            | null
           owner_id?: string
           plan?: string
           slug?: string
@@ -673,6 +682,16 @@ export type Database = {
         | "seguranca"
         | "urgente"
       app_role: "admin" | "syndic" | "resident" | "collaborator"
+      organization_type:
+        | "condominium"
+        | "school"
+        | "company"
+        | "clinic"
+        | "association"
+        | "gym"
+        | "church"
+        | "club"
+        | "other"
       plan_type: "free" | "starter" | "pro"
     }
     CompositeTypes: {
@@ -810,6 +829,17 @@ export const Constants = {
         "urgente",
       ],
       app_role: ["admin", "syndic", "resident", "collaborator"],
+      organization_type: [
+        "condominium",
+        "school",
+        "company",
+        "clinic",
+        "association",
+        "gym",
+        "church",
+        "club",
+        "other",
+      ],
       plan_type: ["free", "starter", "pro"],
     },
   },

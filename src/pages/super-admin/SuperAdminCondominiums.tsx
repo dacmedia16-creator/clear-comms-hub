@@ -41,6 +41,7 @@ import { RefreshButton } from "@/components/RefreshButton";
 import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
 import { MobileCardItem } from "@/components/mobile/MobileCardItem";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ORGANIZATION_TYPE_OPTIONS, getOrganizationIcon, type OrganizationType } from "@/lib/organization-types";
 
 const superAdminNavItems: MobileNavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/super-admin" },
@@ -67,6 +68,7 @@ export default function SuperAdminCondominiums() {
     owner_id: "",
     plan: "free" as "free" | "starter" | "pro",
     trial_ends_at: "",
+    organization_type: "condominium" as OrganizationType,
   });
   const [saving, setSaving] = useState(false);
 
@@ -77,7 +79,7 @@ export default function SuperAdminCondominiums() {
   );
 
   const resetForm = () => {
-    setFormData({ name: "", description: "", owner_id: "", plan: "free", trial_ends_at: "" });
+    setFormData({ name: "", description: "", owner_id: "", plan: "free", trial_ends_at: "", organization_type: "condominium" });
     setSelectedCondo(null);
   };
 
@@ -100,6 +102,7 @@ export default function SuperAdminCondominiums() {
           description: formData.description.trim() || null,
           owner_id: formData.owner_id,
           plan: formData.plan,
+          organization_type: formData.organization_type,
         });
 
       if (error) throw error;
@@ -130,6 +133,7 @@ export default function SuperAdminCondominiums() {
           owner_id: formData.owner_id,
           plan: formData.plan,
           trial_ends_at: formData.trial_ends_at ? new Date(formData.trial_ends_at).toISOString() : null,
+          organization_type: formData.organization_type,
         })
         .eq("id", selectedCondo.id);
 
@@ -174,6 +178,7 @@ export default function SuperAdminCondominiums() {
       owner_id: condo.owner_id,
       plan: condo.plan,
       trial_ends_at: condo.trial_ends_at ? format(new Date(condo.trial_ends_at), "yyyy-MM-dd") : "",
+      organization_type: condo.organization_type || "condominium",
     });
     setEditDialogOpen(true);
   };
@@ -227,16 +232,40 @@ export default function SuperAdminCondominiums() {
                   </DialogTrigger>
                   <DialogContent className="bg-card">
                     <DialogHeader>
-                      <DialogTitle>Criar Condomínio</DialogTitle>
-                      <DialogDescription>Crie um novo condomínio para qualquer usuário</DialogDescription>
+                      <DialogTitle>Criar Organização</DialogTitle>
+                      <DialogDescription>Crie uma nova organização para qualquer usuário</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleCreate} className="space-y-4 mt-4">
+                      <div className="space-y-2">
+                        <Label>Tipo de Organização *</Label>
+                        <Select 
+                          value={formData.organization_type} 
+                          onValueChange={(v: OrganizationType) => setFormData({ ...formData, organization_type: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ORGANIZATION_TYPE_OPTIONS.map((option) => {
+                              const Icon = option.icon;
+                              return (
+                                <SelectItem key={option.value} value={option.value}>
+                                  <div className="flex items-center gap-2">
+                                    <Icon className="w-4 h-4" />
+                                    <span>{option.label}</span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <div className="space-y-2">
                         <Label>Nome *</Label>
                         <Input
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          placeholder="Nome do condomínio"
+                          placeholder="Nome da organização"
                           required
                         />
                       </div>
@@ -463,10 +492,34 @@ export default function SuperAdminCondominiums() {
         <Dialog open={editDialogOpen} onOpenChange={(open) => { setEditDialogOpen(open); if (!open) resetForm(); }}>
           <DialogContent className="bg-card">
             <DialogHeader>
-              <DialogTitle>Editar Condomínio</DialogTitle>
-              <DialogDescription>Atualize as informações do condomínio</DialogDescription>
+              <DialogTitle>Editar Organização</DialogTitle>
+              <DialogDescription>Atualize as informações da organização</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleEdit} className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Tipo de Organização *</Label>
+                <Select 
+                  value={formData.organization_type} 
+                  onValueChange={(v: OrganizationType) => setFormData({ ...formData, organization_type: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ORGANIZATION_TYPE_OPTIONS.map((option) => {
+                      const Icon = option.icon;
+                      return (
+                        <SelectItem key={option.value} value={option.value}>
+                          <div className="flex items-center gap-2">
+                            <Icon className="w-4 h-4" />
+                            <span>{option.label}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label>Nome *</Label>
                 <Input

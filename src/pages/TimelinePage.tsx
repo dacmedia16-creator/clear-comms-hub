@@ -95,7 +95,7 @@ interface Condominium {
   slug: string;
   description: string | null;
   logo_url: string | null;
-  organization_type: OrganizationType | null;
+  organization_type: string | null;
 }
 
 export default function TimelinePage() {

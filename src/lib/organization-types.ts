@@ -1,26 +1,20 @@
 import {
   Building2,
-  GraduationCap,
-  Briefcase,
   Stethoscope,
-  Dumbbell,
-  Church,
+  Briefcase,
   Users,
-  Landmark,
-  HelpCircle,
+  Church,
+  Store,
   LucideIcon,
 } from "lucide-react";
 
 export type OrganizationType =
   | "condominium"
-  | "school"
+  | "healthcare"
   | "company"
-  | "clinic"
-  | "association"
-  | "gym"
+  | "community"
   | "church"
-  | "club"
-  | "other";
+  | "franchise";
 
 export interface OrganizationTerms {
   organization: string;
@@ -56,23 +50,23 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
       unitPlural: "Unidades",
     },
   },
-  school: {
-    label: "Escola",
-    icon: GraduationCap,
+  healthcare: {
+    label: "Clínicas e instituições de saúde",
+    icon: Stethoscope,
     terms: {
-      organization: "Escola",
-      organizationPlural: "Escolas",
-      manager: "Diretor",
-      member: "Aluno",
-      memberPlural: "Alunos",
-      block: "Série",
-      blockPlural: "Séries",
-      unit: "Turma",
-      unitPlural: "Turmas",
+      organization: "Instituição",
+      organizationPlural: "Instituições",
+      manager: "Administrador",
+      member: "Paciente",
+      memberPlural: "Pacientes",
+      block: "Setor",
+      blockPlural: "Setores",
+      unit: "Área",
+      unitPlural: "Áreas",
     },
   },
   company: {
-    label: "Empresa",
+    label: "Empresas com equipes operacionais",
     icon: Briefcase,
     terms: {
       organization: "Empresa",
@@ -86,53 +80,23 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
       unitPlural: "Cargos",
     },
   },
-  clinic: {
-    label: "Clínica",
-    icon: Stethoscope,
-    terms: {
-      organization: "Clínica",
-      organizationPlural: "Clínicas",
-      manager: "Administrador",
-      member: "Paciente",
-      memberPlural: "Pacientes",
-      block: "Setor",
-      blockPlural: "Setores",
-      unit: "Área",
-      unitPlural: "Áreas",
-    },
-  },
-  association: {
-    label: "Associação",
+  community: {
+    label: "Associações, clubes e comunidades",
     icon: Users,
     terms: {
-      organization: "Associação",
-      organizationPlural: "Associações",
+      organization: "Comunidade",
+      organizationPlural: "Comunidades",
       manager: "Presidente",
-      member: "Associado",
-      memberPlural: "Associados",
-      block: "Núcleo",
-      blockPlural: "Núcleos",
+      member: "Membro",
+      memberPlural: "Membros",
+      block: "Grupo",
+      blockPlural: "Grupos",
       unit: "Categoria",
       unitPlural: "Categorias",
     },
   },
-  gym: {
-    label: "Academia",
-    icon: Dumbbell,
-    terms: {
-      organization: "Academia",
-      organizationPlural: "Academias",
-      manager: "Proprietário",
-      member: "Aluno",
-      memberPlural: "Alunos",
-      block: "Turma",
-      blockPlural: "Turmas",
-      unit: "Modalidade",
-      unitPlural: "Modalidades",
-    },
-  },
   church: {
-    label: "Igreja",
+    label: "Igrejas e instituições religiosas",
     icon: Church,
     terms: {
       organization: "Igreja",
@@ -146,34 +110,19 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
       unitPlural: "Grupos",
     },
   },
-  club: {
-    label: "Clube",
-    icon: Landmark,
+  franchise: {
+    label: "Franquias e redes de lojas",
+    icon: Store,
     terms: {
-      organization: "Clube",
-      organizationPlural: "Clubes",
-      manager: "Presidente",
-      member: "Sócio",
-      memberPlural: "Sócios",
-      block: "Categoria",
-      blockPlural: "Categorias",
-      unit: "Título",
-      unitPlural: "Títulos",
-    },
-  },
-  other: {
-    label: "Outros",
-    icon: HelpCircle,
-    terms: {
-      organization: "Organização",
-      organizationPlural: "Organizações",
-      manager: "Gestor",
-      member: "Membro",
-      memberPlural: "Membros",
-      block: "Grupo",
-      blockPlural: "Grupos",
-      unit: "Subgrupo",
-      unitPlural: "Subgrupos",
+      organization: "Rede",
+      organizationPlural: "Redes",
+      manager: "Franqueador",
+      member: "Franqueado",
+      memberPlural: "Franqueados",
+      block: "Região",
+      blockPlural: "Regiões",
+      unit: "Unidade",
+      unitPlural: "Unidades",
     },
   },
 };
@@ -210,8 +159,8 @@ export function getRoleLabel(
 ): string {
   const labels: Record<string, string> = {
     admin: "Administrador",
-    syndic: terms.manager,        // Síndico → Diretor (for schools)
-    resident: terms.member,       // Morador → Aluno (for schools)
+    syndic: terms.manager,
+    resident: terms.member,
     collaborator: "Colaborador",
   };
   return labels[role] || role;

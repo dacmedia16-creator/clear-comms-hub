@@ -1,12 +1,10 @@
 import { 
   Building2, 
-  GraduationCap, 
-  Briefcase, 
   Stethoscope, 
-  Dumbbell, 
-  Church, 
+  Briefcase, 
   Users, 
-  Landmark 
+  Church, 
+  Store 
 } from "lucide-react";
 
 interface Segment {
@@ -22,24 +20,19 @@ const segments: Segment[] = [
     description: "Síndicos e moradores",
   },
   {
-    icon: GraduationCap,
-    label: "Escolas",
-    description: "Diretores e pais",
+    icon: Stethoscope,
+    label: "Clínicas e Saúde",
+    description: "Gestores e pacientes",
   },
   {
     icon: Briefcase,
     label: "Empresas",
-    description: "RH e colaboradores",
+    description: "Gestores e colaboradores",
   },
   {
-    icon: Stethoscope,
-    label: "Clínicas",
-    description: "Gestores e pacientes",
-  },
-  {
-    icon: Dumbbell,
-    label: "Academias",
-    description: "Proprietários e alunos",
+    icon: Users,
+    label: "Associações e Clubes",
+    description: "Presidentes e membros",
   },
   {
     icon: Church,
@@ -47,14 +40,9 @@ const segments: Segment[] = [
     description: "Pastores e membros",
   },
   {
-    icon: Landmark,
-    label: "Clubes",
-    description: "Diretoria e sócios",
-  },
-  {
-    icon: Users,
-    label: "Associações",
-    description: "Presidentes e associados",
+    icon: Store,
+    label: "Franquias",
+    description: "Franqueadores e franqueados",
   },
 ];
 
@@ -73,7 +61,7 @@ export function SegmentGrid() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
           {segments.map((segment) => (
             <div
               key={segment.label}

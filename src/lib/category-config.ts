@@ -5,15 +5,14 @@ import {
   Users, 
   Shield, 
   AlertTriangle,
-  BookOpen, 
-  Calendar, 
-  Briefcase, 
-  FileCheck,
   Heart, 
   Clock, 
-  Dumbbell, 
   Music, 
   HandHeart,
+  Briefcase,
+  FileCheck,
+  Calendar,
+  Store,
   LucideIcon
 } from "lucide-react";
 import { OrganizationType } from "./organization-types";
@@ -87,27 +86,27 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
 
   // === CATEGORIAS POR SEGMENTO ===
   
-  // Escola
-  pedagogico: {
-    slug: "pedagogico",
-    label: "Pedagógico",
-    icon: BookOpen,
-    bgClass: "bg-indigo-100 text-indigo-700",
-    badgeClass: "bg-indigo-100 text-indigo-700 border-indigo-200",
+  // Healthcare (Clínicas e instituições de saúde)
+  atendimento: {
+    slug: "atendimento",
+    label: "Atendimento",
+    icon: Heart,
+    bgClass: "bg-pink-100 text-pink-700",
+    badgeClass: "bg-pink-100 text-pink-700 border-pink-200",
     isUniversal: false,
-    organizationTypes: ["school"],
+    organizationTypes: ["healthcare"],
   },
-  calendario: {
-    slug: "calendario",
-    label: "Calendário",
-    icon: Calendar,
-    bgClass: "bg-cyan-100 text-cyan-700",
-    badgeClass: "bg-cyan-100 text-cyan-700 border-cyan-200",
+  horarios: {
+    slug: "horarios",
+    label: "Horários",
+    icon: Clock,
+    bgClass: "bg-teal-100 text-teal-700",
+    badgeClass: "bg-teal-100 text-teal-700 border-teal-200",
     isUniversal: false,
-    organizationTypes: ["school"],
+    organizationTypes: ["healthcare"],
   },
 
-  // Empresa
+  // Company (Empresas)
   rh: {
     slug: "rh",
     label: "RH",
@@ -127,38 +126,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     organizationTypes: ["company"],
   },
 
-  // Clínica
-  atendimento: {
-    slug: "atendimento",
-    label: "Atendimento",
-    icon: Heart,
-    bgClass: "bg-pink-100 text-pink-700",
-    badgeClass: "bg-pink-100 text-pink-700 border-pink-200",
-    isUniversal: false,
-    organizationTypes: ["clinic"],
-  },
-  horarios: {
-    slug: "horarios",
-    label: "Horários",
-    icon: Clock,
-    bgClass: "bg-teal-100 text-teal-700",
-    badgeClass: "bg-teal-100 text-teal-700 border-teal-200",
-    isUniversal: false,
-    organizationTypes: ["clinic", "gym"],
-  },
-
-  // Academia
-  treinos: {
-    slug: "treinos",
-    label: "Treinos",
-    icon: Dumbbell,
-    bgClass: "bg-lime-100 text-lime-700",
-    badgeClass: "bg-lime-100 text-lime-700 border-lime-200",
-    isUniversal: false,
-    organizationTypes: ["gym"],
-  },
-
-  // Igreja
+  // Church (Igrejas)
   cultos: {
     slug: "cultos",
     label: "Cultos",
@@ -178,6 +146,17 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     organizationTypes: ["church"],
   },
 
+  // Franchise (Franquias)
+  operacoes: {
+    slug: "operacoes",
+    label: "Operações",
+    icon: Store,
+    bgClass: "bg-cyan-100 text-cyan-700",
+    badgeClass: "bg-cyan-100 text-cyan-700 border-cyan-200",
+    isUniversal: false,
+    organizationTypes: ["franchise"],
+  },
+
   // Eventos (compartilhado por vários tipos)
   eventos: {
     slug: "eventos",
@@ -186,7 +165,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     bgClass: "bg-fuchsia-100 text-fuchsia-700",
     badgeClass: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200",
     isUniversal: false,
-    organizationTypes: ["school", "company", "church", "club", "association"],
+    organizationTypes: ["company", "church", "community", "franchise"],
   },
 };
 

@@ -24,7 +24,8 @@ import {
   FileSpreadsheet,
   File,
   Download,
-  Eye
+  Eye,
+  Video
 } from "lucide-react";
 import { getCategoriesForOrganization, getCategoryConfig } from "@/lib/category-config";
 import type { OrganizationType } from "@/lib/organization-types";
@@ -42,6 +43,9 @@ function getFileIcon(fileType: string | null, fileName: string) {
   
   if (fileType === "application/pdf" || name.endsWith(".pdf")) {
     return <FileText className="w-4 h-4 text-red-500" />;
+  }
+  if (fileType?.startsWith("video/") || name.endsWith(".mp4") || name.endsWith(".webm") || name.endsWith(".mov") || name.endsWith(".avi")) {
+    return <Video className="w-4 h-4 text-purple-500" />;
   }
   if (fileType?.startsWith("image/")) {
     return <Image className="w-4 h-4 text-blue-500" />;
@@ -396,46 +400,54 @@ export default function TimelinePage() {
                             <div className="space-y-2">
                               {announcement.attachments.map((attachment) => {
                                 const isImage = attachment.file_type?.startsWith("image/");
+                                const isVideo = attachment.file_type?.startsWith("video/");
                                 return (
-                                  <div
-                                    key={attachment.id}
-                                    className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
-                                  >
-                                    {getFileIcon(attachment.file_type, attachment.file_name)}
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium truncate">{attachment.file_name}</p>
-                                      {attachment.file_size && (
-                                        <p className="text-xs text-muted-foreground">
-                                          {formatFileSize(attachment.file_size)}
-                                        </p>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      {isImage && (
+                                  <div key={attachment.id} className="space-y-2">
+                                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                                      {getFileIcon(attachment.file_type, attachment.file_name)}
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{attachment.file_name}</p>
+                                        {attachment.file_size && (
+                                          <p className="text-xs text-muted-foreground">
+                                            {formatFileSize(attachment.file_size)}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        {isImage && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            asChild
+                                            className="h-8"
+                                          >
+                                            <a href={attachment.file_url} target="_blank" rel="noopener noreferrer">
+                                              <Eye className="w-4 h-4 mr-1" />
+                                              Ver
+                                            </a>
+                                          </Button>
+                                        )}
                                         <Button
                                           variant="ghost"
                                           size="sm"
                                           asChild
                                           className="h-8"
                                         >
-                                          <a href={attachment.file_url} target="_blank" rel="noopener noreferrer">
-                                            <Eye className="w-4 h-4 mr-1" />
-                                            Ver
+                                          <a href={attachment.file_url} download={attachment.file_name}>
+                                            <Download className="w-4 h-4 mr-1" />
+                                            Baixar
                                           </a>
                                         </Button>
-                                      )}
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        asChild
-                                        className="h-8"
-                                      >
-                                        <a href={attachment.file_url} download={attachment.file_name}>
-                                          <Download className="w-4 h-4 mr-1" />
-                                          Baixar
-                                        </a>
-                                      </Button>
+                                      </div>
                                     </div>
+                                    {isVideo && (
+                                      <video
+                                        src={attachment.file_url}
+                                        controls
+                                        preload="metadata"
+                                        className="w-full rounded-lg"
+                                      />
+                                    )}
                                   </div>
                                 );
                               })}

@@ -1,8 +1,67 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Gift, CheckCircle, Bell, UserPlus, MessageSquareOff } from "lucide-react";
 import { Link } from "react-router-dom";
 
+interface SegmentMockup {
+  name: string;
+  role: string;
+  announcements: {
+    type: "urgent" | "financial" | "info";
+    title: string;
+    subtitle: string;
+  }[];
+}
+
+const segmentMockups: SegmentMockup[] = [
+  {
+    name: "Condomínio Jardins",
+    role: "Canal Oficial",
+    announcements: [
+      { type: "urgent", title: "Manutenção Elevadores", subtitle: "Hoje às 14:00 - 18:00" },
+      { type: "financial", title: "Boleto Disponível", subtitle: "Vencimento: 10/02/2026" },
+      { type: "info", title: "Assembleia Geral", subtitle: "Sábado, 15 de Fevereiro" },
+    ],
+  },
+  {
+    name: "Clínica Saúde Total",
+    role: "Canal Oficial",
+    announcements: [
+      { type: "urgent", title: "Plantão Alterado", subtitle: "Sábados: 8h às 14h" },
+      { type: "info", title: "Campanha de Vacinação", subtitle: "Gripe - a partir de 01/03" },
+      { type: "financial", title: "Novos Convênios", subtitle: "Unimed e Bradesco Saúde" },
+    ],
+  },
+  {
+    name: "Tech Solutions",
+    role: "Canal Oficial",
+    announcements: [
+      { type: "urgent", title: "Deploy em Produção", subtitle: "Hoje às 22:00 - 23:00" },
+      { type: "info", title: "Treinamento Obrigatório", subtitle: "Segurança de Dados" },
+      { type: "financial", title: "PLR Aprovada", subtitle: "Pagamento em 15/03" },
+    ],
+  },
+  {
+    name: "Igreja Esperança",
+    role: "Canal Oficial",
+    announcements: [
+      { type: "info", title: "Culto Especial", subtitle: "Domingo às 19:00" },
+      { type: "urgent", title: "Retiro de Jovens", subtitle: "Inscrições até 20/02" },
+      { type: "info", title: "Ação Social", subtitle: "Arrecadação de alimentos" },
+    ],
+  },
+];
+
 export function Hero() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const currentSegment = segmentMockups[currentIndex];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % segmentMockups.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
   return (
     <section className="relative overflow-hidden py-16 md:py-24 lg:py-32">
       {/* Background decoration */}
@@ -84,60 +143,83 @@ export function Hero() {
               {/* Phone mockup */}
               <div className="bg-card rounded-3xl shadow-2xl border border-border p-4 mx-auto max-w-sm">
                 <div className="bg-muted rounded-2xl p-4 space-y-4">
-                  {/* Header */}
-                  <div className="text-center pb-3 border-b border-border">
-                    <h3 className="font-display font-bold text-lg">Condomínio Jardins</h3>
-                    <p className="text-sm text-muted-foreground">Canal Oficial</p>
+                  {/* Header - Dynamic */}
+                  <div className="text-center pb-3 border-b border-border transition-all duration-500">
+                    <h3 className="font-display font-bold text-lg" key={currentSegment.name}>
+                      {currentSegment.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">{currentSegment.role}</p>
                   </div>
 
-                  {/* Sample announcements */}
+                  {/* Sample announcements - Dynamic */}
                   <div className="space-y-3">
-                    <div className="bg-card rounded-xl p-4 shadow-sm border border-border animate-fade-in">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                          <Bell className="w-5 h-5 text-red-600" />
-                        </div>
-                        <div>
-                          <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-red-500 text-white mb-2">
-                            Urgente
-                          </span>
-                          <h4 className="font-semibold text-sm">Manutenção Elevadores</h4>
-                          <p className="text-xs text-muted-foreground mt-1">Hoje às 14:00 - 18:00</p>
-                        </div>
-                      </div>
-                    </div>
+                    {currentSegment.announcements.map((announcement, index) => {
+                      const typeStyles = {
+                        urgent: {
+                          bg: "bg-red-100",
+                          iconColor: "text-red-600",
+                          badgeBg: "bg-red-500",
+                          badgeText: "text-white",
+                          label: "Urgente",
+                        },
+                        financial: {
+                          bg: "bg-emerald-100",
+                          iconColor: "text-emerald-600",
+                          badgeBg: "bg-emerald-100",
+                          badgeText: "text-emerald-700",
+                          label: "Financeiro",
+                        },
+                        info: {
+                          bg: "bg-blue-100",
+                          iconColor: "text-blue-600",
+                          badgeBg: "bg-blue-100",
+                          badgeText: "text-blue-700",
+                          label: "Informativo",
+                        },
+                      };
+                      const style = typeStyles[announcement.type];
 
-                    <div className="bg-card rounded-xl p-4 shadow-sm border border-border animate-fade-in" style={{ animationDelay: "0.1s" }}>
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                          <CheckCircle className="w-5 h-5 text-emerald-600" />
+                      return (
+                        <div
+                          key={`${currentSegment.name}-${index}`}
+                          className="bg-card rounded-xl p-4 shadow-sm border border-border animate-fade-in"
+                          style={{ animationDelay: `${index * 0.1}s` }}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-10 h-10 rounded-full ${style.bg} flex items-center justify-center flex-shrink-0`}>
+                              {announcement.type === "financial" ? (
+                                <CheckCircle className={`w-5 h-5 ${style.iconColor}`} />
+                              ) : (
+                                <Bell className={`w-5 h-5 ${style.iconColor}`} />
+                              )}
+                            </div>
+                            <div>
+                              <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${style.badgeBg} ${style.badgeText} mb-2`}>
+                                {style.label}
+                              </span>
+                              <h4 className="font-semibold text-sm">{announcement.title}</h4>
+                              <p className="text-xs text-muted-foreground mt-1">{announcement.subtitle}</p>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700 mb-2">
-                            Financeiro
-                          </span>
-                          <h4 className="font-semibold text-sm">Boleto Disponível</h4>
-                          <p className="text-xs text-muted-foreground mt-1">Vencimento: 10/02/2026</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-card rounded-xl p-4 shadow-sm border border-border animate-fade-in" style={{ animationDelay: "0.2s" }}>
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                          <Bell className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 mb-2">
-                            Informativo
-                          </span>
-                          <h4 className="font-semibold text-sm">Assembleia Geral</h4>
-                          <p className="text-xs text-muted-foreground mt-1">Sábado, 15 de Fevereiro</p>
-                        </div>
-                      </div>
-                    </div>
+                      );
+                    })}
                   </div>
                 </div>
+              </div>
+
+              {/* Segment indicators */}
+              <div className="flex justify-center gap-2 mt-4">
+                {segmentMockups.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentIndex(index)}
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                      index === currentIndex ? "bg-primary w-6" : "bg-muted-foreground/30"
+                    }`}
+                    aria-label={`Ver segmento ${index + 1}`}
+                  />
+                ))}
               </div>
 
               {/* Floating notification */}
@@ -148,7 +230,11 @@ export function Hero() {
                   </div>
                   <div>
                     <p className="text-xs font-medium">WhatsApp enviado!</p>
-                    <p className="text-xs text-muted-foreground">32 moradores</p>
+                    <p className="text-xs text-muted-foreground">
+                      {currentIndex === 0 ? "32 moradores" : 
+                       currentIndex === 1 ? "48 pacientes" : 
+                       currentIndex === 2 ? "65 colaboradores" : "120 membros"}
+                    </p>
                   </div>
                 </div>
               </div>

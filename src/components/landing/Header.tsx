@@ -19,6 +19,9 @@ export function Header() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-8">
+            <a href="#segmentos" className="text-muted-foreground hover:text-foreground transition-colors">
+              Segmentos
+            </a>
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
               Funcionalidades
             </a>
@@ -55,6 +58,13 @@ export function Header() {
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-border">
             <nav className="flex flex-col gap-4">
+              <a 
+                href="#segmentos" 
+                className="text-muted-foreground hover:text-foreground transition-colors py-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Segmentos
+              </a>
               <a 
                 href="#features" 
                 className="text-muted-foreground hover:text-foreground transition-colors py-2"

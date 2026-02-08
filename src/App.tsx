@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import SignupTypePage from "./pages/auth/SignupTypePage";
+import SignupRolePage from "./pages/auth/SignupRolePage";
 import SignupMemberPage from "./pages/auth/SignupMemberPage";
 import SignupManagerPage from "./pages/auth/SignupManagerPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -41,12 +42,14 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/auth/signup" element={<SignupTypePage />} />
-            {/* New dynamic signup routes */}
-            <Route path="/auth/signup/member" element={<SignupMemberPage />} />
-            <Route path="/auth/signup/manager" element={<SignupManagerPage />} />
+            <Route path="/auth/signup/:type" element={<SignupRolePage />} />
+            <Route path="/auth/signup/:type/member" element={<SignupMemberPage />} />
+            <Route path="/auth/signup/:type/manager" element={<SignupManagerPage />} />
             {/* Legacy redirects for backward compatibility */}
-            <Route path="/auth/signup/resident" element={<Navigate to="/auth/signup/member" replace />} />
-            <Route path="/auth/signup/syndic" element={<Navigate to="/auth/signup/manager" replace />} />
+            <Route path="/auth/signup/member" element={<Navigate to="/auth/signup/condominium/member" replace />} />
+            <Route path="/auth/signup/manager" element={<Navigate to="/auth/signup/condominium/manager" replace />} />
+            <Route path="/auth/signup/resident" element={<Navigate to="/auth/signup/condominium/member" replace />} />
+            <Route path="/auth/signup/syndic" element={<Navigate to="/auth/signup/condominium/manager" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/demo" element={<DemoPage />} />
             <Route path="/indicar-sindico" element={<ReferSyndicPage />} />

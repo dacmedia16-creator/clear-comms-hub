@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
-import { Bell, ArrowLeft, Users, Briefcase } from "lucide-react";
+import { Bell, ArrowLeft } from "lucide-react";
+import { ORGANIZATION_TYPE_OPTIONS } from "@/lib/organization-types";
 
 export default function SignupTypePage() {
   return (
@@ -15,9 +16,9 @@ export default function SignupTypePage() {
 
       {/* Content */}
       <main className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-2xl">
+        <div className="w-full max-w-4xl">
           {/* Logo */}
-          <div className="flex justify-center mb-8">
+          <div className="flex justify-center mb-6">
             <div className="flex items-center gap-2">
               <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
                 <Bell className="w-6 h-6 text-primary-foreground" />
@@ -27,49 +28,37 @@ export default function SignupTypePage() {
           </div>
 
           {/* Title */}
-          <h1 className="text-2xl md:text-3xl font-display font-bold text-center text-foreground mb-8">
-            Como você quer usar o AVISO PRO?
+          <h1 className="text-2xl md:text-3xl font-display font-bold text-center text-foreground mb-2">
+            Qual é o seu segmento?
           </h1>
+          <p className="text-center text-muted-foreground mb-8">
+            Selecione o tipo de organização para continuar
+          </p>
 
-          {/* Options */}
-          <div className="grid sm:grid-cols-2 gap-4 md:gap-6">
-            {/* Membro */}
-            <Link to="/auth/signup/member">
-              <Card className="p-6 md:p-8 hover:border-primary hover:shadow-lg transition-all cursor-pointer group h-full">
-                <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                    <Users className="w-8 h-8 text-primary" />
+          {/* Grid of organization types */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {ORGANIZATION_TYPE_OPTIONS.map(({ value, label, icon: Icon, description, examples }) => (
+              <Link key={value} to={`/auth/signup/${value}`}>
+                <Card className="p-5 hover:border-primary hover:shadow-lg transition-all cursor-pointer group h-full">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
+                      <Icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-lg font-display font-semibold text-foreground mb-1">
+                        {label}
+                      </h2>
+                      <p className="text-muted-foreground text-sm mb-2">
+                        {description}
+                      </p>
+                      <p className="text-xs text-muted-foreground/70">
+                        Ex: {examples}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-display font-semibold text-foreground mb-2">
-                      Sou Membro
-                    </h2>
-                    <p className="text-muted-foreground text-sm">
-                      Quero receber os avisos da minha organização
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </Link>
-
-            {/* Gestor */}
-            <Link to="/auth/signup/manager">
-              <Card className="p-6 md:p-8 hover:border-primary hover:shadow-lg transition-all cursor-pointer group h-full">
-                <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                    <Briefcase className="w-8 h-8 text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-display font-semibold text-foreground mb-2">
-                      Sou Gestor
-                    </h2>
-                    <p className="text-muted-foreground text-sm">
-                      Quero criar e gerenciar avisos
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </Link>
+                </Card>
+              </Link>
+            ))}
           </div>
 
           {/* Login link */}

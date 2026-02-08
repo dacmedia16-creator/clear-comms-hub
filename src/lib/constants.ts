@@ -1,5 +1,9 @@
 import { Info, DollarSign, Wrench, Users, Shield, AlertTriangle } from "lucide-react";
 
+/**
+ * @deprecated Use getCategoriesForOrganization() e CATEGORY_CONFIG de @/lib/category-config.ts
+ * Mantido para compatibilidade retroativa com código legado e DemoPage.
+ */
 export const ANNOUNCEMENT_CATEGORIES = {
   informativo: {
     label: "Informativo",
@@ -45,7 +49,14 @@ export const ANNOUNCEMENT_CATEGORIES = {
   },
 } as const;
 
+/**
+ * @deprecated Use CategorySlug de @/lib/category-config.ts para novos códigos.
+ * Este tipo inclui apenas as categorias universais originais.
+ */
 export type AnnouncementCategory = keyof typeof ANNOUNCEMENT_CATEGORIES;
+
+// Re-exportar CategorySlug para uso com todas as categorias (universais + segmentadas)
+export type { CategorySlug } from "./category-config";
 
 export const PLANS = {
   free: {

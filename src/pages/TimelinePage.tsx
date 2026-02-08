@@ -26,7 +26,8 @@ import {
   Download,
   Eye
 } from "lucide-react";
-import { ANNOUNCEMENT_CATEGORIES, AnnouncementCategory } from "@/lib/constants";
+import { getCategoriesForOrganization, getCategoryConfig } from "@/lib/category-config";
+import type { OrganizationType } from "@/lib/organization-types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -77,7 +78,7 @@ interface Announcement {
   title: string;
   summary: string | null;
   content: string;
-  category: AnnouncementCategory;
+  category: string;
   is_pinned: boolean;
   is_urgent: boolean;
   published_at: string;
@@ -90,6 +91,7 @@ interface Condominium {
   slug: string;
   description: string | null;
   logo_url: string | null;
+  organization_type: OrganizationType | null;
 }
 
 export default function TimelinePage() {
@@ -100,8 +102,11 @@ export default function TimelinePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<AnnouncementCategory | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Obter categorias disponíveis para este tipo de organização
+  const availableCategories = getCategoriesForOrganization(condominium?.organization_type);
 
   useEffect(() => {
     async function loadData() {
@@ -270,12 +275,12 @@ export default function TimelinePage() {
               <Filter className="w-4 h-4 mr-1" />
               Todos
             </Button>
-            {Object.entries(ANNOUNCEMENT_CATEGORIES).map(([key, cat]) => (
+            {availableCategories.map((cat) => (
               <Button
-                key={key}
-                variant={selectedCategory === key ? "default" : "outline"}
+                key={cat.slug}
+                variant={selectedCategory === cat.slug ? "default" : "outline"}
                 size="sm"
-                onClick={() => setSelectedCategory(key as AnnouncementCategory)}
+                onClick={() => setSelectedCategory(cat.slug)}
                 className="flex-shrink-0"
               >
                 <cat.icon className="w-4 h-4 mr-1" />
@@ -307,7 +312,7 @@ export default function TimelinePage() {
         ) : (
           <div className="space-y-4">
             {filteredAnnouncements.map((announcement) => {
-              const categoryInfo = ANNOUNCEMENT_CATEGORIES[announcement.category];
+              const categoryInfo = getCategoryConfig(announcement.category);
               const Icon = categoryInfo.icon;
               const isExpanded = expandedId === announcement.id;
 

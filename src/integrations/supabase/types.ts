@@ -681,6 +681,16 @@ export type Database = {
         | "convivencia"
         | "seguranca"
         | "urgente"
+        | "pedagogico"
+        | "calendario"
+        | "rh"
+        | "compliance"
+        | "atendimento"
+        | "horarios"
+        | "treinos"
+        | "cultos"
+        | "pastoral"
+        | "eventos"
       app_role: "admin" | "syndic" | "resident" | "collaborator"
       organization_type:
         | "condominium"
@@ -827,6 +837,16 @@ export const Constants = {
         "convivencia",
         "seguranca",
         "urgente",
+        "pedagogico",
+        "calendario",
+        "rh",
+        "compliance",
+        "atendimento",
+        "horarios",
+        "treinos",
+        "cultos",
+        "pastoral",
+        "eventos",
       ],
       app_role: ["admin", "syndic", "resident", "collaborator"],
       organization_type: [

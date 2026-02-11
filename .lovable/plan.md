@@ -1,18 +1,16 @@
 
 
-# Trocar a ZIONTALK_API_KEY no Backend
+# Desativar número do banco e testar com a nova API Key
 
 ## O que sera feito
 
-Atualizar o secret `ZIONTALK_API_KEY` armazenado no Lovable Cloud. Essa chave e usada como fallback pelas Edge Functions de WhatsApp quando nenhum numero cadastrado na tabela `whatsapp_senders` esta ativo.
+1. **Desativar o "Numero 2"** na tabela `whatsapp_senders` (setar `is_active = false`), para que as Edge Functions ignorem esse registro e usem exclusivamente a `ZIONTALK_API_KEY` recem-atualizada como fallback.
 
-## Passo unico
+2. **Enviar mensagem de teste** para o numero `15981788214` usando a Edge Function `test-whatsapp`, que agora usara a fonte `ENV_FALLBACK`.
 
-- Usar a ferramenta de secrets para solicitar a nova API Key do Zion Talk
-- Voce vai colar a nova chave em um campo seguro
-- O sistema substitui automaticamente o valor antigo
+## Detalhes tecnicos
 
-## Observacao
-
-Se voce tambem precisa trocar a API Key de um numero especifico cadastrado na Central de Notificacoes (tabela `whatsapp_senders`), isso e feito pela interface do Super Admin, editando o numero desejado. Essa alteracao e independente do secret do backend.
+- Migration SQL: `UPDATE whatsapp_senders SET is_active = false, is_default = false WHERE id = 'de9c5171-42a5-4cd9-8fbf-793a8c0be747';`
+- Apos a migracao, chamar `POST /test-whatsapp` com `{ "phone": "15981788214" }` para validar.
+- Nenhum codigo frontend ou edge function precisa ser alterado -- a logica de fallback ja existe.
 

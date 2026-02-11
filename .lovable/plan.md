@@ -1,50 +1,21 @@
 
 
-# Corrigir Formato de Telefone no Envio em Massa de WhatsApp
+# Salvar Telefone Normalizado nos Logs de WhatsApp
 
-## Problema
+## Problema Atual
 
-O numero `15981788214` nao recebeu a mensagem porque a Edge Function `send-whatsapp` envia o telefone exatamente como esta no banco de dados, sem normalizar para o formato internacional `+55XXXXXXXXXXX` exigido pela API da Zion Talk.
-
-Os telefones estao armazenados em formatos variados:
-- `15981788214` (sem prefixo +55)
-- `+5515981788214` (ja correto)
-- `15 98100-8180` (com espacos e traco)
-- `83 8837-9904` (DDD sem o 9 inicial)
-
-Enquanto isso, o `test-whatsapp` ja faz a normalizacao corretamente e por isso o teste manual funciona.
+A Edge Function `send-whatsapp` normaliza o telefone para o formato `+55XXXXXXXXXXX` antes de enviar pela API, mas o log registra o numero no formato original do banco (ex: `15 98100-8180`). Isso dificulta buscas e comparacoes nos logs.
 
 ## Solucao
 
-Adicionar uma funcao de normalizacao de telefone na Edge Function `send-whatsapp` que:
-
-1. Remove todos os caracteres nao-numericos (espacos, tracos, parenteses, +)
-2. Adiciona o prefixo `55` caso o numero nao comece com `55`
-3. Adiciona o `+` no inicio
-
-### Logica de normalizacao
-
-```text
-Entrada             -> Limpo        -> Com prefixo    -> Final
-15981788214         -> 15981788214  -> 5515981788214  -> +5515981788214
-+5515981788214      -> 5515981788214-> 5515981788214  -> +5515981788214
-15 98100-8180       -> 15981008180  -> 5515981008180  -> +5515981008180
-83 8837-9904        -> 8388379904   -> 55838837990    -> +5583988379904
-```
+Alterar o registro de logs na funcao `sendMessagesInBackground` para usar o telefone ja normalizado (campo `phone` do objeto `UnifiedMember`), que ja esta no formato `+55XXXXXXXXXXX` desde a correcao anterior.
 
 ## Arquivo alterado
 
 ### `supabase/functions/send-whatsapp/index.ts`
 
-- Adicionar funcao `normalizePhone(phone: string): string` que limpa e formata o telefone
-- Aplicar a normalizacao no mapeamento de membros, antes de incluir na lista de envio
-- Isso garante que todos os telefones cheguem a API no formato `+55XXXXXXXXXXX`
+O telefone ja esta normalizado no objeto `member.phone` (aplicado no mapeamento). O log ja usa `member.phone` para o campo `recipient_phone`. Porem, preciso verificar se o log realmente esta gravando o valor normalizado ou o original.
 
-## O que NAO muda
+Apos verificacao: como `member.phone` ja recebe `normalizePhone(source.phone)` no mapeamento, os logs ja devem estar salvando o formato normalizado. Se nao estiver, a correcao sera garantir que `recipient_phone` use `member.phone` (normalizado) em todos os pontos de insert na tabela `whatsapp_logs`.
 
-- Logica de background processing, delays, logs
-- Template `aviso_informativo` e bodyParams
-- Priorizacao de senders (DB/ENV)
-- Filtragem por blocos/unidades
-- Edge Function `test-whatsapp` (ja normaliza corretamente)
-
+Nenhuma alteracao de schema e necessaria -- apenas confirmacao e eventual ajuste no codigo da Edge Function.

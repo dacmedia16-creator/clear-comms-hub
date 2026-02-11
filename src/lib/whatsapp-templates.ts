@@ -2,155 +2,148 @@ import { getCategoryConfig } from "./category-config";
 
 // Templates padrão para categorias universais e específicas
 export const WHATSAPP_TEMPLATES: Record<string, string> = {
-  // Categorias universais
-  informativo: `ℹ️ *AVISO - {nome_condo}*
+  informativo: `Atualização confirmada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-🔗 Acesse o aviso completo:
+Deseja acessar os detalhes completos?
 {link}`,
 
-  financeiro: `💰 *AVISO FINANCEIRO - {nome_condo}*
+  financeiro: `Informação financeira atualizada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-💵 Confira os detalhes:
+Deseja receber mais detalhes?
 {link}`,
 
-  manutencao: `🔧 *AVISO DE MANUTENÇÃO - {nome_condo}*
+  manutencao: `Registro de manutenção confirmado - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-📍 Mais informações:
+Precisa de mais informações?
 {link}`,
 
-  convivencia: `🤝 *AVISO DE CONVIVÊNCIA - {nome_condo}*
+  convivencia: `Comunicado registrado - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-🏠 Leia mais:
+Deseja acessar o comunicado completo?
 {link}`,
 
-  seguranca: `🔒 *AVISO DE SEGURANÇA - {nome_condo}*
+  seguranca: `Atualização de segurança confirmada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-⚡ Veja o comunicado:
+Deseja ver os detalhes?
 {link}`,
 
-  urgente: `⚠️ *AVISO URGENTE - {nome_condo}*
+  urgente: `Atualização urgente confirmada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-🚨 LEIA AGORA:
+Acesse agora para mais informações:
 {link}`,
 
-  // Categorias de Escola
-  pedagogico: `📚 *AVISO PEDAGÓGICO - {nome_condo}*
+  pedagogico: `Informação pedagógica atualizada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-📖 Veja mais detalhes:
+Deseja receber os detalhes?
 {link}`,
 
-  calendario: `📅 *CALENDÁRIO - {nome_condo}*
+  calendario: `Agenda confirmada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-🗓️ Confira o calendário:
+Deseja acessar o calendário completo?
 {link}`,
 
-  // Categorias de Empresa
-  rh: `💼 *AVISO DE RH - {nome_condo}*
+  rh: `Comunicado de RH confirmado - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-👔 Mais informações:
+Precisa de mais informações?
 {link}`,
 
-  compliance: `📋 *COMPLIANCE - {nome_condo}*
+  compliance: `Atualização de compliance registrada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-✅ Leia o comunicado:
+Deseja acessar o documento completo?
 {link}`,
 
-  // Categorias de Clínica
-  atendimento: `❤️ *AVISO DE ATENDIMENTO - {nome_condo}*
+  atendimento: `Informação de atendimento confirmada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-🏥 Mais informações:
+Deseja receber mais detalhes?
 {link}`,
 
-  horarios: `⏰ *AVISO DE HORÁRIOS - {nome_condo}*
+  horarios: `Horário atualizado - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-🕐 Confira os horários:
+Deseja confirmar os horários?
 {link}`,
 
-  // Categorias de Academia
-  treinos: `💪 *AVISO DE TREINOS - {nome_condo}*
+  treinos: `Informação de treino atualizada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-🏋️ Mais detalhes:
+Deseja acessar os detalhes?
 {link}`,
 
-  // Categorias de Igreja
-  cultos: `🙏 *AVISO DE CULTOS - {nome_condo}*
+  cultos: `Programação confirmada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-⛪ Veja o comunicado:
+Deseja ver a programação completa?
 {link}`,
 
-  pastoral: `❤️ *PASTORAL - {nome_condo}*
+  pastoral: `Comunicado pastoral registrado - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-🤲 Mais informações:
+Precisa de mais informações?
 {link}`,
 
-  // Eventos (compartilhado)
-  eventos: `🎉 *EVENTO - {nome_condo}*
+  eventos: `Evento confirmado - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-📌 Confira os detalhes:
+Deseja receber mais informações?
 {link}`,
 };
 

@@ -55,75 +55,34 @@ interface UnifiedMember {
   unit: string | null;
 }
 
-const WHATSAPP_TEMPLATES: Record<string, string> = {
-  informativo: `Atualização confirmada - {nome_condo}
+// Template único aprovado pela Meta (categoria Utilidade)
+const WHATSAPP_UNIVERSAL_TEMPLATE = `Olá {nome}, este é um aviso informativo importante.
 
-{titulo}
+{aviso}
 
-{resumo}
+Para mais informações, utilize o acesso indicado.
+{lembrete}
 
-Deseja acessar os detalhes completos?
-{link}`,
-
-  financeiro: `Informação financeira atualizada - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja receber mais detalhes?
-{link}`,
-
-  manutencao: `Registro de manutenção confirmado - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Precisa de mais informações?
-{link}`,
-
-  convivencia: `Comunicado registrado - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja acessar o comunicado completo?
-{link}`,
-
-  seguranca: `Atualização de segurança confirmada - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja ver os detalhes?
-{link}`,
-
-  urgente: `Atualização urgente confirmada - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Acesse agora para mais informações:
-{link}`,
-};
+Este é um comunicado padrão.`;
 
 function generateMessage(
   announcement: Announcement,
   condominium: Condominium,
-  baseUrl: string
+  baseUrl: string,
+  recipientName?: string
 ): string {
-  const template = WHATSAPP_TEMPLATES[announcement.category] || WHATSAPP_TEMPLATES.informativo;
   const timelineUrl = `${baseUrl}/c/${condominium.slug}`;
+  const lembrete = announcement.summary || "Acesse o link para mais detalhes.";
 
-  return template
-    .replace("{nome_condo}", condominium.name)
-    .replace("{titulo}", announcement.title)
-    .replace("{resumo}", announcement.summary || "Acesse o link para mais detalhes.")
-    .replace("{link}", timelineUrl);
+  let message = WHATSAPP_UNIVERSAL_TEMPLATE
+    .replace("{nome}", recipientName || "morador(a)")
+    .replace("{aviso}", announcement.title)
+    .replace("{lembrete}", lembrete);
+
+  // Fallback: adiciona link no final enquanto usa Zion Talk (futuro: botão CTA da Meta)
+  message += `\n\n${timelineUrl}`;
+
+  return message;
 }
 
 // Random delay between min and max seconds
@@ -135,10 +94,10 @@ function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
 // Background task to send messages with delays
 async function sendMessagesInBackground(
   members: UnifiedMember[],
-  message: string,
   authHeader: string,
   announcement: Announcement,
   condominium: Condominium,
+  baseUrl: string,
   supabase: SupabaseClient
 ) {
   console.log(`[Background] Iniciando envio para ${members.length} membros com delays...`);
@@ -156,8 +115,10 @@ async function sendMessagesInBackground(
     console.log(`[Background] Enviando para membro ${i + 1} de ${members.length}: ${member.phone} (${member.full_name || 'Unknown'})`);
 
     try {
+      // Personaliza mensagem com o nome do membro
+      const personalizedMessage = generateMessage(announcement, condominium, baseUrl, member.full_name || undefined);
       const formData = new FormData();
-      formData.append('msg', message);
+      formData.append('msg', personalizedMessage);
       formData.append('mobile_phone', member.phone);
 
       const response = await fetch(
@@ -315,13 +276,13 @@ serve(async (req) => {
 
     console.log(`Found ${members.length} members with phone numbers after filtering`);
 
-    // Generate message based on template
-    const message = generateMessage(announcement, condominium, baseUrl);
-    console.log("Generated message:", message.substring(0, 100) + "...");
+    // Preview da mensagem genérica no log
+    const previewMessage = generateMessage(announcement, condominium, baseUrl);
+    console.log("Preview message:", previewMessage.substring(0, 100) + "...");
 
-    // Start background processing with delays
+    // Start background processing with delays (cada mensagem personalizada com nome)
     EdgeRuntime.waitUntil(
-      sendMessagesInBackground(members, message, authHeader, announcement, condominium, supabase)
+      sendMessagesInBackground(members, authHeader, announcement, condominium, baseUrl, supabase)
     );
 
     // Return immediate response

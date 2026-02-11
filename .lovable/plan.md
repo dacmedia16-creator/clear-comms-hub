@@ -1,201 +1,283 @@
 
 
-# Plano: Dar Mais Enfase às Funcionalidades Multi-Segmento
+# Plano: Reformular Templates WhatsApp para API Oficial Meta (Categoria Utilidade)
 
-## Objetivo
+## Problema Atual
 
-Atualizar a landing page para destacar melhor que o AVISO PRO funciona para múltiplos tipos de organizações (não apenas condomínios), enfatizando a adaptação automática de terminologia e campos para cada segmento.
+Os templates atuais usam linguagem de "AVISO" com emojis excessivos e tom promocional, o que os classifica como **Marketing** na API oficial da Meta (US$ 0,0625/msg). Reformulando para **Utilidade** (US$ 0,008/msg), o custo cai **7,8x**.
 
----
+## Framework PACTO Aplicado
 
-## Problemas Identificados
+Cada template seguira:
+- **P** - Palavra de Status: "confirmada", "atualizada", "registrada"
+- **A** - Apresentacao contextual: identificar a organizacao de forma neutra
+- **C** - Clareza e tom informativo: direto, sem hype
+- **T** - Acao com tom de servico: "Deseja receber os detalhes?"
+- **O** - Omissao de apelos promocionais: zero gatilhos de venda
 
-1. **Hero ainda focado em condomínios**: O mockup do celular mostra apenas "Condomínio Jardins" e "moradores"
-2. **Benefícios genéricos**: As features não destacam a adaptação por segmento
-3. **SegmentGrid muito simples**: Não mostra o diferencial de terminologia adaptada
-4. **Falta de seção "Novidades"**: Não há destaque para funcionalidades recentemente adicionadas
-5. **Header sem link para segmentos**: Navegação não leva diretamente aos segmentos
+## Templates Antes vs Depois
 
----
+### Informativo (template padrao/fallback)
 
-## Alterações Propostas
-
-### 1. Hero - Mockup Rotativo por Segmento
-
-Trocar o mockup estático por uma animação que alterna entre diferentes segmentos:
-
-- **Condomínio Jardins** → "Síndico" / "Moradores"
-- **Clínica Saúde Total** → "Administrador" / "Pacientes"  
-- **Empresa XYZ** → "Gestor" / "Colaboradores"
-- **Igreja Esperança** → "Pastor" / "Membros"
-
-Cada 4 segundos, o mockup muda suavemente para mostrar um segmento diferente.
-
-### 2. Nova Seção: "Destaques" (após Hero)
-
-Adicionar uma faixa de destaque com as novidades:
-
+**ANTES:**
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  ✨ NOVIDADES                                                           │
-│                                                                         │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐      │
-│  │ 🏢 6 Segmentos   │  │ 📝 Terminologia  │  │ 🎥 Upload de     │      │
-│  │                  │  │    Adaptada      │  │    Vídeos        │      │
-│  │ Condomínios,     │  │                  │  │                  │      │
-│  │ Empresas,        │  │ Cada organização │  │ Até 300MB por    │      │
-│  │ Clínicas...      │  │ usa sua própria  │  │ vídeo na linha   │      │
-│  │                  │  │ linguagem        │  │ do tempo         │      │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘      │
-└─────────────────────────────────────────────────────────────────────────┘
+ℹ️ *AVISO - {nome_condo}*
+📋 *{titulo}*
+{resumo}
+🔗 Acesse o aviso completo:
+{link}
 ```
 
-### 3. SegmentGrid Expandido
-
-Adicionar mais informações em cada card de segmento:
-
-- Mostrar exemplos de terminologia: "Síndico → Morador" / "Gestor → Colaborador"
-- Badge "Novo" nos segmentos recém-adicionados (Franquias, Igrejas)
-- Ao passar o mouse, revelar os termos adaptados
-
-### 4. Seção "Terminologia Inteligente"
-
-Nova seção visual mostrando a adaptação de termos:
-
+**DEPOIS:**
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  🎯 TERMINOLOGIA QUE SE ADAPTA                                          │
-│                                                                         │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │                                                                    │  │
-│  │   Condomínio          Empresa           Igreja                    │  │
-│  │   ──────────          ───────           ──────                    │  │
-│  │   Síndico      →      Gestor     →      Pastor                    │  │
-│  │   Morador      →      Colaborador →     Membro                    │  │
-│  │   Bloco        →      Departamento →    Ministério                │  │
-│  │   Unidade      →      Cargo       →     Grupo                     │  │
-│  │                                                                    │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-│                                                                         │
-│  Campos opcionais para segmentos que não precisam de localização       │
-└─────────────────────────────────────────────────────────────────────────┘
+Atualização confirmada - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Deseja acessar os detalhes completos?
+{link}
 ```
 
-### 5. UseCaseTabs - Adicionar Badge Visual
+### Financeiro
 
-Destacar visualmente o segmento ativo com animação e mostrar quantos casos de uso cada um tem.
-
-### 6. Header - Adicionar Link "Segmentos"
-
-Adicionar navegação para a seção de segmentos:
-
+**DEPOIS:**
 ```
-[ Logo AVISO PRO ]  [ Segmentos ]  [ Funcionalidades ]  [ Como funciona ]  [ Entrar ] [ Criar canal ]
+Informação financeira atualizada - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Deseja receber mais detalhes?
+{link}
 ```
 
-### 7. Features Atualizadas
+### Manutencao
 
-Adicionar nova feature destacando a adaptação multi-segmento:
+**DEPOIS:**
+```
+Registro de manutenção confirmado - {nome_condo}
 
-- **"Sua linguagem, seu sistema"**: O AVISO PRO se adapta automaticamente ao vocabulário da sua organização
+{titulo}
 
----
+{resumo}
 
-## Arquivos a Modificar/Criar
+Precisa de mais informações?
+{link}
+```
 
-| Arquivo | Alteração |
+### Convivencia
+
+**DEPOIS:**
+```
+Comunicado registrado - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Deseja acessar o comunicado completo?
+{link}
+```
+
+### Seguranca
+
+**DEPOIS:**
+```
+Atualização de segurança confirmada - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Deseja ver os detalhes?
+{link}
+```
+
+### Urgente
+
+**DEPOIS:**
+```
+Atualização urgente confirmada - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Acesse agora para mais informações:
+{link}
+```
+
+### Pedagogico
+
+**DEPOIS:**
+```
+Informação pedagógica atualizada - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Deseja receber os detalhes?
+{link}
+```
+
+### Calendario
+
+**DEPOIS:**
+```
+Agenda confirmada - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Deseja acessar o calendário completo?
+{link}
+```
+
+### RH
+
+**DEPOIS:**
+```
+Comunicado de RH confirmado - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Precisa de mais informações?
+{link}
+```
+
+### Compliance
+
+**DEPOIS:**
+```
+Atualização de compliance registrada - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Deseja acessar o documento completo?
+{link}
+```
+
+### Atendimento
+
+**DEPOIS:**
+```
+Informação de atendimento confirmada - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Deseja receber mais detalhes?
+{link}
+```
+
+### Horarios
+
+**DEPOIS:**
+```
+Horário atualizado - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Deseja confirmar os horários?
+{link}
+```
+
+### Treinos
+
+**DEPOIS:**
+```
+Informação de treino atualizada - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Deseja acessar os detalhes?
+{link}
+```
+
+### Cultos
+
+**DEPOIS:**
+```
+Programação confirmada - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Deseja ver a programação completa?
+{link}
+```
+
+### Pastoral
+
+**DEPOIS:**
+```
+Comunicado pastoral registrado - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Precisa de mais informações?
+{link}
+```
+
+### Eventos
+
+**DEPOIS:**
+```
+Evento confirmado - {nome_condo}
+
+{titulo}
+
+{resumo}
+
+Deseja receber mais informações?
+{link}
+```
+
+## Principios Aplicados em Todos os Templates
+
+| Regra | Como foi aplicado |
+|-------|-------------------|
+| Palavra de status | Cada template usa "confirmada", "atualizada" ou "registrada" |
+| Sem emojis excessivos | Removidos todos os emojis (a Meta interpreta emojis como marketing) |
+| Tom de servico | Perguntas como "Deseja receber...?", "Precisa de...?" |
+| Sem linguagem promocional | Removidos "Confira", "Leia agora", "Veja o comunicado" |
+| Apresentacao neutra | Nome da organizacao sem "AVISO" em caixa alta |
+| Variaveis coerentes | {titulo}, {resumo}, {link} sao dados objetivos |
+
+## Arquivos a Modificar
+
+| Arquivo | Alteracao |
 |---------|-----------|
-| `src/components/landing/Hero.tsx` | Mockup rotativo por segmento |
-| `src/components/landing/HighlightsBar.tsx` | **CRIAR** - Faixa de novidades |
-| `src/components/landing/SegmentGrid.tsx` | Expandir cards com terminologia |
-| `src/components/landing/TerminologyShowcase.tsx` | **CRIAR** - Seção visual de termos |
-| `src/components/landing/Header.tsx` | Adicionar link "Segmentos" |
-| `src/components/landing/FeatureShowcase.tsx` | Adicionar feature de adaptação |
-| `src/pages/Index.tsx` | Adicionar novas seções |
+| `src/lib/whatsapp-templates.ts` | Reescrever todos os 16 templates + remover emojis |
+| `supabase/functions/send-whatsapp/index.ts` | Reescrever os 6 templates duplicados na edge function |
 
----
+## Secao Tecnica
 
-## Nova Estrutura da Landing Page
+### Duplicacao de Templates
 
-```
-1. Header (com link Segmentos)
-2. Hero (mockup rotativo)
-3. HighlightsBar (novidades) ← NOVO
-4. SegmentGrid (expandido)
-5. UseCaseTabs
-6. TerminologyShowcase ← NOVO
-7. FeatureShowcase (atualizado)
-8. TrustSection
-9. HowItWorks
-10. CTA Final
-11. Footer
-```
+Os templates existem em **dois lugares**: no frontend (`whatsapp-templates.ts`) e na edge function (`send-whatsapp/index.ts`). A edge function tem apenas 6 templates (universais), enquanto o frontend tem 16 (universais + segmentos). Ambos serao atualizados.
 
----
+### Compatibilidade
 
-## Detalhes de Implementação
-
-### Hero - Mockup Rotativo
-
-```typescript
-// Estado para controlar segmento atual
-const [currentSegment, setCurrentSegment] = useState(0);
-const segments = [
-  { name: "Condomínio Jardins", role: "Canal Oficial", recipient: "moradores" },
-  { name: "Clínica Saúde Total", role: "Canal Oficial", recipient: "pacientes" },
-  { name: "Tech Solutions", role: "Canal Oficial", recipient: "colaboradores" },
-  { name: "Igreja Esperança", role: "Canal Oficial", recipient: "membros" },
-];
-
-// Rotação automática a cada 4 segundos
-useEffect(() => {
-  const interval = setInterval(() => {
-    setCurrentSegment((prev) => (prev + 1) % segments.length);
-  }, 4000);
-  return () => clearInterval(interval);
-}, []);
-```
-
-### HighlightsBar - Novidades
-
-Cards horizontais com:
-- Ícone + Título + Descrição curta
-- Cores de destaque (gradiente ou primary)
-- Animação sutil de entrada
-
-### TerminologyShowcase - Comparativo Visual
-
-Tabela/grid mostrando a transformação de termos:
-- 3 colunas para 3 segmentos diferentes
-- Setas indicando a adaptação
-- Destaque visual para os termos
-
----
-
-## Resultado Esperado
-
-Após as alterações, o visitante entenderá imediatamente que:
-
-1. O AVISO PRO funciona para **6 tipos diferentes de organizações**
-2. O sistema **se adapta automaticamente** à linguagem de cada segmento
-3. **Campos são opcionais** para segmentos que não precisam de localização
-4. **Upload de vídeos** está disponível (até 300MB)
-5. Cada segmento tem **casos de uso específicos**
-
----
-
-## Seção Técnica
-
-### Animações Suaves
-
-Usar Tailwind + CSS para transições:
-- `transition-all duration-500`
-- `animate-fade-in` para entrada de elementos
-- Opacity e transform para mudanças de conteúdo
-
-### Performance
-
-- Lazy load para imagens de segmentos
-- Preload do próximo segmento no mockup rotativo
-- Usar `will-change` para otimizar animações
+- As variaveis `{nome_condo}`, `{titulo}`, `{resumo}` e `{link}` permanecem identicas
+- A funcao `generateWhatsAppMessage()` nao muda sua assinatura
+- Nenhuma alteracao no banco de dados necessaria
+- O componente `SendWhatsAppButton` e o hook `useSendWhatsApp` continuam funcionando sem alteracao
 

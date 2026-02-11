@@ -56,58 +56,58 @@ interface UnifiedMember {
 }
 
 const WHATSAPP_TEMPLATES: Record<string, string> = {
-  informativo: `ℹ️ *AVISO - {nome_condo}*
+  informativo: `Atualização confirmada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-🔗 Acesse o aviso completo:
+Deseja acessar os detalhes completos?
 {link}`,
 
-  financeiro: `💰 *AVISO FINANCEIRO - {nome_condo}*
+  financeiro: `Informação financeira atualizada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-💵 Confira os detalhes:
+Deseja receber mais detalhes?
 {link}`,
 
-  manutencao: `🔧 *AVISO DE MANUTENÇÃO - {nome_condo}*
+  manutencao: `Registro de manutenção confirmado - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-📍 Mais informações:
+Precisa de mais informações?
 {link}`,
 
-  convivencia: `🤝 *AVISO DE CONVIVÊNCIA - {nome_condo}*
+  convivencia: `Comunicado registrado - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-🏠 Leia mais:
+Deseja acessar o comunicado completo?
 {link}`,
 
-  seguranca: `🔒 *AVISO DE SEGURANÇA - {nome_condo}*
+  seguranca: `Atualização de segurança confirmada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-⚡ Veja o comunicado:
+Deseja ver os detalhes?
 {link}`,
 
-  urgente: `⚠️ *AVISO URGENTE - {nome_condo}*
+  urgente: `Atualização urgente confirmada - {nome_condo}
 
-📋 *{titulo}*
+{titulo}
 
 {resumo}
 
-🚨 LEIA AGORA:
+Acesse agora para mais informações:
 {link}`,
 };
 

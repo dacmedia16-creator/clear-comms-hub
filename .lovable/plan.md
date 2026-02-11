@@ -1,283 +1,69 @@
 
 
-# Plano: Reformular Templates WhatsApp para API Oficial Meta (Categoria Utilidade)
+# Adaptar Templates WhatsApp para o Modelo Aprovado pela Meta
 
-## Problema Atual
+## Contexto
 
-Os templates atuais usam linguagem de "AVISO" com emojis excessivos e tom promocional, o que os classifica como **Marketing** na API oficial da Meta (US$ 0,0625/msg). Reformulando para **Utilidade** (US$ 0,008/msg), o custo cai **7,8x**.
+O template "Aviso informativo" foi aprovado pela Meta com a categoria **Utilidade**. O formato aprovado usa 3 variaveis e um texto fixo padrao:
 
-## Framework PACTO Aplicado
-
-Cada template seguira:
-- **P** - Palavra de Status: "confirmada", "atualizada", "registrada"
-- **A** - Apresentacao contextual: identificar a organizacao de forma neutra
-- **C** - Clareza e tom informativo: direto, sem hype
-- **T** - Acao com tom de servico: "Deseja receber os detalhes?"
-- **O** - Omissao de apelos promocionais: zero gatilhos de venda
-
-## Templates Antes vs Depois
-
-### Informativo (template padrao/fallback)
-
-**ANTES:**
 ```
-ℹ️ *AVISO - {nome_condo}*
-📋 *{titulo}*
-{resumo}
-🔗 Acesse o aviso completo:
-{link}
+Ola {{nome}}, este e um aviso informativo importante.
+
+{{aviso}}
+
+Para mais informacoes, utilize o acesso indicado.
+{{lembrete}}
+
+Este e um comunicado padrao.
 ```
 
-**DEPOIS:**
+Com botao CTA dinamico: `Ver detalhes` -> `https://avisopro.com.br/c/{{1}}`
+
+## O que muda
+
+Atualmente existem **16 templates diferentes** (um por categoria), cada um com texto e variaveis diferentes. A ideia e **unificar todos em um unico template aprovado**, ja que a Meta aprovou esse modelo generico que funciona para qualquer categoria.
+
+## Mapeamento de variaveis
+
+| Variavel Meta | Conteudo no sistema |
+|---|---|
+| `{{nome}}` | Nome do morador/membro (full_name) |
+| `{{aviso}}` | Titulo do comunicado (announcement.title) |
+| `{{lembrete}}` | Resumo do comunicado (announcement.summary) |
+| `{{1}}` (botao) | Slug do condominio (condominium.slug) |
+
+## Arquivos a alterar
+
+### 1. `src/lib/whatsapp-templates.ts` (Frontend)
+- Substituir os 16 templates individuais por um unico template universal
+- Atualizar a funcao `generateWhatsAppMessage` para aceitar o nome do destinatario como parametro
+- Remover o `{link}` do corpo da mensagem (agora fica no botao CTA)
+- O template fica:
 ```
-Atualização confirmada - {nome_condo}
+Ola {nome}, este e um aviso informativo importante.
 
-{titulo}
+{aviso}
 
-{resumo}
+Para mais informacoes, utilize o acesso indicado.
+{lembrete}
 
-Deseja acessar os detalhes completos?
-{link}
-```
-
-### Financeiro
-
-**DEPOIS:**
-```
-Informação financeira atualizada - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja receber mais detalhes?
-{link}
-```
-
-### Manutencao
-
-**DEPOIS:**
-```
-Registro de manutenção confirmado - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Precisa de mais informações?
-{link}
+Este e um comunicado padrao.
 ```
 
-### Convivencia
-
-**DEPOIS:**
-```
-Comunicado registrado - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja acessar o comunicado completo?
-{link}
-```
-
-### Seguranca
-
-**DEPOIS:**
-```
-Atualização de segurança confirmada - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja ver os detalhes?
-{link}
-```
-
-### Urgente
-
-**DEPOIS:**
-```
-Atualização urgente confirmada - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Acesse agora para mais informações:
-{link}
-```
-
-### Pedagogico
-
-**DEPOIS:**
-```
-Informação pedagógica atualizada - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja receber os detalhes?
-{link}
-```
-
-### Calendario
-
-**DEPOIS:**
-```
-Agenda confirmada - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja acessar o calendário completo?
-{link}
-```
-
-### RH
-
-**DEPOIS:**
-```
-Comunicado de RH confirmado - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Precisa de mais informações?
-{link}
-```
-
-### Compliance
-
-**DEPOIS:**
-```
-Atualização de compliance registrada - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja acessar o documento completo?
-{link}
-```
-
-### Atendimento
-
-**DEPOIS:**
-```
-Informação de atendimento confirmada - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja receber mais detalhes?
-{link}
-```
-
-### Horarios
-
-**DEPOIS:**
-```
-Horário atualizado - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja confirmar os horários?
-{link}
-```
-
-### Treinos
-
-**DEPOIS:**
-```
-Informação de treino atualizada - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja acessar os detalhes?
-{link}
-```
-
-### Cultos
-
-**DEPOIS:**
-```
-Programação confirmada - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja ver a programação completa?
-{link}
-```
-
-### Pastoral
-
-**DEPOIS:**
-```
-Comunicado pastoral registrado - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Precisa de mais informações?
-{link}
-```
-
-### Eventos
-
-**DEPOIS:**
-```
-Evento confirmado - {nome_condo}
-
-{titulo}
-
-{resumo}
-
-Deseja receber mais informações?
-{link}
-```
-
-## Principios Aplicados em Todos os Templates
-
-| Regra | Como foi aplicado |
-|-------|-------------------|
-| Palavra de status | Cada template usa "confirmada", "atualizada" ou "registrada" |
-| Sem emojis excessivos | Removidos todos os emojis (a Meta interpreta emojis como marketing) |
-| Tom de servico | Perguntas como "Deseja receber...?", "Precisa de...?" |
-| Sem linguagem promocional | Removidos "Confira", "Leia agora", "Veja o comunicado" |
-| Apresentacao neutra | Nome da organizacao sem "AVISO" em caixa alta |
-| Variaveis coerentes | {titulo}, {resumo}, {link} sao dados objetivos |
-
-## Arquivos a Modificar
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/lib/whatsapp-templates.ts` | Reescrever todos os 16 templates + remover emojis |
-| `supabase/functions/send-whatsapp/index.ts` | Reescrever os 6 templates duplicados na edge function |
-
-## Secao Tecnica
-
-### Duplicacao de Templates
-
-Os templates existem em **dois lugares**: no frontend (`whatsapp-templates.ts`) e na edge function (`send-whatsapp/index.ts`). A edge function tem apenas 6 templates (universais), enquanto o frontend tem 16 (universais + segmentos). Ambos serao atualizados.
-
-### Compatibilidade
-
-- As variaveis `{nome_condo}`, `{titulo}`, `{resumo}` e `{link}` permanecem identicas
-- A funcao `generateWhatsAppMessage()` nao muda sua assinatura
-- Nenhuma alteracao no banco de dados necessaria
-- O componente `SendWhatsAppButton` e o hook `useSendWhatsApp` continuam funcionando sem alteracao
+### 2. `supabase/functions/send-whatsapp/index.ts` (Edge Function)
+- Substituir os 6 templates duplicados pelo template unico
+- Atualizar a funcao `generateMessage` para incluir o nome do destinatario
+- Personalizar cada mensagem com o nome do membro (`member.full_name`)
+- Remover o link do corpo (vai no botao CTA da API Meta)
+
+### 3. `src/components/SendWhatsAppButton.tsx`
+- Verificar se precisa passar o nome do destinatario na preview da mensagem
+
+## Detalhes tecnicos
+
+- O template unico elimina a necessidade de manter templates sincronizados entre frontend e edge function
+- A personalizacao com `{{nome}}` melhora a taxa de abertura
+- O link sai do corpo da mensagem e vai para o botao CTA dinamico (quando migrar para API Meta)
+- Por enquanto, enquanto ainda usa Zion Talk, o link continua no corpo como fallback
+- A estrutura fica preparada para a futura migracao para a API oficial da Meta
 

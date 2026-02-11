@@ -7,35 +7,27 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const TEMPLATE_IDENTIFIER = 'aviso_informativo';
+const TEMPLATE_LANGUAGE = 'pt_BR';
+
 interface RequestBody {
   phone: string;
   condominiumId?: string;
   condominiumName?: string;
 }
 
-const TEST_MESSAGE = `✅ *TESTE DE INTEGRAÇÃO*
-
-Esta é uma mensagem de teste do sistema de notificações WhatsApp.
-
-🔔 Se você recebeu esta mensagem, a integração está funcionando corretamente!
-
----
-_Enviado via Zion Talk_`;
-
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Create Supabase client with service role
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Fetch the sender to use (default first, then first active, then fallback to env)
+    // Fetch sender (DB first, ENV fallback)
     let apiKey = Deno.env.get('ZIONTALK_API_KEY');
     let apiSource = 'ENV_FALLBACK';
 
@@ -57,7 +49,7 @@ serve(async (req) => {
       console.log("No active senders found, using ENV fallback");
     }
 
-    // Check if API key is configured (GET request)
+    // GET: check config status
     if (req.method === 'GET') {
       return new Response(
         JSON.stringify({ 
@@ -79,10 +71,8 @@ serve(async (req) => {
 
     console.log(`API Key source: ${apiSource}`);
 
-    // Basic Auth: API Key as username, empty password
     const authHeader = 'Basic ' + encode(`${apiKey}:`);
-
-    const { phone, condominiumId, condominiumName }: RequestBody = await req.json();
+    const { phone, condominiumId }: RequestBody = await req.json();
 
     if (!phone) {
       return new Response(
@@ -91,10 +81,8 @@ serve(async (req) => {
       );
     }
 
-    // Clean the phone number - remove formatting, keep only digits
     const cleanPhone = phone.replace(/\D/g, '');
     
-    // Validate phone format (Brazilian format)
     if (cleanPhone.length < 10 || cleanPhone.length > 11) {
       return new Response(
         JSON.stringify({ success: false, error: "Formato de telefone inválido. Use formato brasileiro com DDD." }),
@@ -102,18 +90,21 @@ serve(async (req) => {
       );
     }
 
-    // Format to E.164 (add +55 for Brazil if not present)
     const formattedPhone = cleanPhone.startsWith('55') ? `+${cleanPhone}` : `+55${cleanPhone}`;
 
-    console.log(`Sending test WhatsApp to ${formattedPhone}`);
+    console.log(`Sending test WhatsApp (template) to ${formattedPhone}`);
 
-    // Create form data for ZionTalk API
+    // Use send_template_message with aviso_informativo template
     const formData = new FormData();
-    formData.append('msg', TEST_MESSAGE);
     formData.append('mobile_phone', formattedPhone);
+    formData.append('template_identifier', TEMPLATE_IDENTIFIER);
+    formData.append('language', TEMPLATE_LANGUAGE);
+    formData.append('bodyParams[nome]', 'Teste');
+    formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
+    formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
 
     const response = await fetch(
-      'https://app.ziontalk.com/api/send_message/',
+      'https://app.ziontalk.com/api/send_template_message/',
       {
         method: 'POST',
         headers: { 'Authorization': authHeader },
@@ -131,7 +122,6 @@ serve(async (req) => {
       console.log(`Successfully sent test message to ${formattedPhone}`);
     }
 
-    // Log the test send attempt
     await supabase.from('whatsapp_logs').insert({
       announcement_id: null,
       condominium_id: condominiumId || null,

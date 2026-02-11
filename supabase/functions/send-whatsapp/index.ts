@@ -11,6 +11,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const TEMPLATE_IDENTIFIER = 'aviso_informativo';
+const TEMPLATE_LANGUAGE = 'pt_BR';
+
 interface Announcement {
   id: string;
   title: string;
@@ -55,59 +58,29 @@ interface UnifiedMember {
   unit: string | null;
 }
 
-// Template único aprovado pela Meta (categoria Utilidade)
-const WHATSAPP_UNIVERSAL_TEMPLATE = `Olá {nome}, este é um aviso informativo importante.
-
-{aviso}
-
-Para mais informações, utilize o acesso indicado.
-{lembrete}
-
-Este é um comunicado padrão.`;
-
-function generateMessage(
-  announcement: Announcement,
-  condominium: Condominium,
-  baseUrl: string,
-  recipientName?: string
-): string {
-  const timelineUrl = `${baseUrl}/c/${condominium.slug}`;
-  const lembrete = announcement.summary || "Acesse o link para mais detalhes.";
-
-  let message = WHATSAPP_UNIVERSAL_TEMPLATE
-    .replace("{nome}", recipientName || "morador(a)")
-    .replace("{aviso}", announcement.title)
-    .replace("{lembrete}", lembrete);
-
-  // Fallback: adiciona link no final enquanto usa Zion Talk (futuro: botão CTA da Meta)
-  message += `\n\n${timelineUrl}`;
-
-  return message;
-}
-
 // Random delay between min and max seconds
 function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
   const ms = Math.floor(Math.random() * (maxSeconds - minSeconds + 1) + minSeconds) * 1000;
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Background task to send messages with delays
+// Background task to send template messages with delays
 async function sendMessagesInBackground(
   members: UnifiedMember[],
   authHeader: string,
   announcement: Announcement,
   condominium: Condominium,
-  baseUrl: string,
   supabase: SupabaseClient
 ) {
   console.log(`[Background] Iniciando envio para ${members.length} membros com delays...`);
 
+  const lembrete = announcement.summary || "Acesse o link para mais detalhes.";
+
   for (let i = 0; i < members.length; i++) {
     const member = members[i];
 
-    // Wait before sending (except for first member)
     if (i > 0) {
-      const delaySeconds = Math.floor(Math.random() * 16) + 15; // 15-30 seconds
+      const delaySeconds = Math.floor(Math.random() * 16) + 15;
       console.log(`[Background] Aguardando ${delaySeconds}s antes do próximo envio...`);
       await randomDelay(15, 30);
     }
@@ -115,14 +88,16 @@ async function sendMessagesInBackground(
     console.log(`[Background] Enviando para membro ${i + 1} de ${members.length}: ${member.phone} (${member.full_name || 'Unknown'})`);
 
     try {
-      // Personaliza mensagem com o nome do membro
-      const personalizedMessage = generateMessage(announcement, condominium, baseUrl, member.full_name || undefined);
       const formData = new FormData();
-      formData.append('msg', personalizedMessage);
       formData.append('mobile_phone', member.phone);
+      formData.append('template_identifier', TEMPLATE_IDENTIFIER);
+      formData.append('language', TEMPLATE_LANGUAGE);
+      formData.append('bodyParams[nome]', member.full_name || 'morador(a)');
+      formData.append('bodyParams[aviso]', announcement.title);
+      formData.append('bodyParams[lembrete]', lembrete);
 
       const response = await fetch(
-        'https://app.ziontalk.com/api/send_message/',
+        'https://app.ziontalk.com/api/send_template_message/',
         {
           method: 'POST',
           headers: { 'Authorization': authHeader },
@@ -140,7 +115,6 @@ async function sendMessagesInBackground(
         console.log(`[Background] ✓ Enviado com sucesso para ${member.phone}`);
       }
 
-      // Log the send attempt
       await supabase.from('whatsapp_logs').insert({
         announcement_id: announcement.id,
         condominium_id: condominium.id,
@@ -168,23 +142,21 @@ async function sendMessagesInBackground(
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { announcement, condominium, baseUrl }: RequestBody = await req.json();
+    const { announcement, condominium }: RequestBody = await req.json();
 
     console.log(`Processing WhatsApp send for announcement ${announcement.id} in condominium ${condominium.id}`);
 
-    // Create Supabase client with service role
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Fetch the sender to use (default first, then first active, then fallback to env)
+    // Fetch sender (DB first, ENV fallback)
     let apiKey = Deno.env.get('ZIONTALK_API_KEY');
     let senderPhone = 'ENV_DEFAULT';
 
@@ -214,10 +186,9 @@ serve(async (req) => {
       );
     }
 
-    // Basic Auth: API Key as username, empty password
     const authHeader = 'Basic ' + encode(`${apiKey}:`);
 
-    // Fetch members from BOTH sources: profiles (authenticated) and condo_members (manual)
+    // Fetch members from BOTH sources
     const { data: rolesData, error: membersError } = await supabase
       .from('user_roles')
       .select(`
@@ -238,7 +209,6 @@ serve(async (req) => {
 
     const memberRows = rolesData as unknown as MemberRow[];
 
-    // Unify members from both sources, filtering those with valid phone numbers
     let members: UnifiedMember[] = memberRows
       .map(role => {
         const source = role.profiles || role.condo_members;
@@ -276,16 +246,11 @@ serve(async (req) => {
 
     console.log(`Found ${members.length} members with phone numbers after filtering`);
 
-    // Preview da mensagem genérica no log
-    const previewMessage = generateMessage(announcement, condominium, baseUrl);
-    console.log("Preview message:", previewMessage.substring(0, 100) + "...");
-
-    // Start background processing with delays (cada mensagem personalizada com nome)
+    // Start background processing
     EdgeRuntime.waitUntil(
-      sendMessagesInBackground(members, authHeader, announcement, condominium, baseUrl, supabase)
+      sendMessagesInBackground(members, authHeader, announcement, condominium, supabase)
     );
 
-    // Return immediate response
     console.log(`Returning immediate response, ${members.length} messages will be sent in background with 15-30s delays`);
 
     return new Response(

@@ -1,7 +1,11 @@
-// Template único aprovado pela Meta (categoria Utilidade)
-// Variáveis: {nome}, {aviso}, {lembrete}
-// Botão CTA dinâmico: "Ver detalhes" -> https://avisopro.com.br/c/{slug}
+// Template aprovado pela Meta (categoria Utilidade)
+// Gerenciado na Meta Business Suite — as Edge Functions enviam via send_template_message
+// Esta constante é usada apenas para preview local (mostrar ao gestor como ficará a mensagem)
 
+export const TEMPLATE_IDENTIFIER = 'aviso_informativo';
+export const TEMPLATE_LANGUAGE = 'pt_BR';
+
+// Preview text — simula o template da Meta para exibição local
 export const WHATSAPP_UNIVERSAL_TEMPLATE = `Olá {nome}, este é um aviso informativo importante.
 
 {aviso}
@@ -22,13 +26,16 @@ export interface CondominiumForShare {
   slug: string;
 }
 
+/**
+ * Gera preview local da mensagem (para exibir ao gestor antes do envio).
+ * O envio real usa send_template_message com bodyParams.
+ */
 export function generateWhatsAppMessage(
   announcement: AnnouncementForShare,
   condominium: CondominiumForShare,
   baseUrl: string,
   recipientName?: string
 ): string {
-  // Fallback: enquanto usa Zion Talk, inclui o link no corpo
   const timelineUrl = `${baseUrl}/c/${condominium.slug}`;
   const lembrete = announcement.summary || "Acesse o link para mais detalhes.";
 
@@ -37,7 +44,6 @@ export function generateWhatsAppMessage(
     .replace("{aviso}", announcement.title)
     .replace("{lembrete}", lembrete);
 
-  // Fallback: adiciona link no final enquanto não migra para API Meta com botão CTA
   message += `\n\n${timelineUrl}`;
 
   return message;

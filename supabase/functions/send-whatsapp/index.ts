@@ -58,6 +58,13 @@ interface UnifiedMember {
   unit: string | null;
 }
 
+// Normalize phone to +55XXXXXXXXXXX format
+function normalizePhone(phone: string): string {
+  const cleaned = phone.replace(/\D/g, '');
+  const withPrefix = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
+  return `+${withPrefix}`;
+}
+
 // Random delay between min and max seconds
 function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
   const ms = Math.floor(Math.random() * (maxSeconds - minSeconds + 1) + minSeconds) * 1000;
@@ -214,7 +221,7 @@ serve(async (req) => {
         const source = role.profiles || role.condo_members;
         if (!source || !source.phone) return null;
         return {
-          phone: source.phone,
+          phone: normalizePhone(source.phone),
           full_name: source.full_name,
           block: role.block,
           unit: role.unit,

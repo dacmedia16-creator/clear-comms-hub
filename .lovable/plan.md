@@ -1,20 +1,27 @@
 
 
-## Atualizar ZIONTALK_API_KEY e Testar Envio
+## Corrigir buttonParams e adicionar logs detalhados
 
-### Passo 1: Atualizar o secret ZIONTALK_API_KEY
-- Substituir o valor atual do secret `ZIONTALK_API_KEY` pelo novo valor: `7d601848-6cb4-4a58-805d-2ba3c5a10140`
+### Problema
+As mensagens são aceitas pela API Zion Talk (status 201) mas não chegam ao destinatário. O suporte confirmou que os parâmetros nomeados (`bodyParams[nome]`, `bodyParams[aviso]`, `bodyParams[lembrete]`) estão corretos. Portanto, o problema está em outro lugar.
 
-### Passo 2: Re-deploy das Edge Functions
-- Fazer deploy das funções `test-whatsapp` e `send-whatsapp` para que capturem o novo valor do secret
+### Causa provavel identificada
+O parâmetro do botão CTA está sendo enviado como `buttonParams[1]` (segundo botão), mas provavelmente deveria ser `buttonParams[0]` (primeiro botão, índice zero). Se o template só tem um botão CTA, enviar no índice errado pode causar falha silenciosa na Meta.
 
-### Passo 3: Testar envio
-- Chamar a edge function `test-whatsapp` via GET para confirmar que a API key está configurada
-- Chamar a edge function `test-whatsapp` via POST com um numero de teste para validar o envio real
-- Verificar nos logs se o envio foi bem-sucedido (status 201) ou se houve erro
+### Correções
 
-### Detalhes Tecnicoss
-- O secret sera atualizado usando a ferramenta de gerenciamento de secrets do projeto
-- As edge functions usam `Deno.env.get('ZIONTALK_API_KEY')` como fallback quando nao ha sender ativo na tabela `whatsapp_senders`
-- A autenticacao com a Zion Talk usa Basic Auth: `Base64(apiKey + ":")`
+**Arquivo 1: `supabase/functions/test-whatsapp/index.ts`**
+- Trocar `buttonParams[1]` por `buttonParams[0]`
+- Adicionar log detalhado dos response headers da Zion Talk para diagnóstico
 
+**Arquivo 2: `supabase/functions/send-whatsapp/index.ts`**
+- Trocar `buttonParams[1]` por `buttonParams[0]`
+- Adicionar log detalhado dos response headers para diagnóstico
+
+### O que NAO muda
+- `bodyParams[nome]`, `bodyParams[aviso]`, `bodyParams[lembrete]` permanecem com nomes (confirmado pelo suporte)
+
+### Apos a correcao
+- Re-deploy automatico das duas edge functions
+- Teste de envio para o numero 15981767268 para validar se as mensagens chegam
+- Se ainda nao chegar, os logs detalhados nos ajudarao a entender o que a Zion Talk retorna

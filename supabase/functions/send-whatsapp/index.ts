@@ -102,6 +102,7 @@ async function sendMessagesInBackground(
       formData.append('bodyParams[nome]', member.full_name || 'morador(a)');
       formData.append('bodyParams[aviso]', announcement.title);
       formData.append('bodyParams[lembrete]', lembrete);
+      formData.append('buttonParams[0]', condominium.slug);
 
       const response = await fetch(
         'https://app.ziontalk.com/api/send_template_message/',

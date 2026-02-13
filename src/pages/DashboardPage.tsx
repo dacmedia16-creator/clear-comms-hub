@@ -29,7 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { RefreshButton } from "@/components/RefreshButton";
 import { PendingApprovalScreen } from "@/components/PendingApprovalScreen";
-import { getOrganizationIcon, getOrganizationTerms } from "@/lib/organization-types";
+import { getOrganizationIcon, getOrganizationTerms, ORGANIZATION_TYPE_OPTIONS, OrganizationType } from "@/lib/organization-types";
 import { useAllCondominiums } from "@/hooks/useAllCondominiums";
 
 // Role labels and styles
@@ -73,9 +73,13 @@ export default function DashboardPage() {
     condominiums.every(c => c.userRole === 'resident');
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [typePickerOpen, setTypePickerOpen] = useState(false);
+  const [selectedOrgType, setSelectedOrgType] = useState<OrganizationType>("condominium");
   const [newCondoName, setNewCondoName] = useState("");
   const [newCondoDescription, setNewCondoDescription] = useState("");
   const [creating, setCreating] = useState(false);
+
+  const selectedTerms = getOrganizationTerms(selectedOrgType);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -108,6 +112,7 @@ export default function DashboardPage() {
           slug: slugData,
           description: newCondoDescription.trim() || null,
           owner_id: profile.id,
+          organization_type: selectedOrgType,
         })
         .select()
         .single();
@@ -115,8 +120,8 @@ export default function DashboardPage() {
       if (error) throw error;
 
       toast({
-        title: "Condomínio criado!",
-        description: "Seu condomínio foi criado com sucesso.",
+        title: `${selectedTerms.organization} criado!`,
+        description: `${selectedTerms.organization} foi criado com sucesso.`,
       });
 
       setCreateDialogOpen(false);
@@ -223,53 +228,89 @@ export default function DashboardPage() {
           </div>
 
           {isSuperAdmin && (
-            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="touch-target">
-                  <Plus className="w-5 h-5 mr-2" />
-                  Novo Condomínio
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-card">
-                <DialogHeader>
-                  <DialogTitle className="font-display">Criar novo condomínio</DialogTitle>
-                  <DialogDescription>
-                    Preencha as informações básicas do seu condomínio
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleCreateCondominium} className="space-y-4 mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="condoName">Nome do condomínio *</Label>
-                    <Input
-                      id="condoName"
-                      placeholder="Ex: Residencial Jardins"
-                      value={newCondoName}
-                      onChange={(e) => setNewCondoName(e.target.value)}
-                      required
-                    />
+            <>
+              {/* Type Picker Dialog */}
+              <Dialog open={typePickerOpen} onOpenChange={setTypePickerOpen}>
+                <DialogTrigger asChild>
+                  <Button className="touch-target">
+                    <Plus className="w-5 h-5 mr-2" />
+                    Nova Organização
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-card sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle className="font-display">Escolha o tipo de organização</DialogTitle>
+                    <DialogDescription>
+                      Selecione o segmento para adaptar a terminologia e funcionalidades
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    {ORGANIZATION_TYPE_OPTIONS.map((opt) => {
+                      const Icon = opt.icon;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className="flex flex-col items-start gap-1 rounded-lg border border-border p-4 text-left hover:bg-accent hover:border-primary transition-colors"
+                          onClick={() => {
+                            setSelectedOrgType(opt.value);
+                            setTypePickerOpen(false);
+                            setCreateDialogOpen(true);
+                          }}
+                        >
+                          <Icon className="w-6 h-6 text-primary mb-1" />
+                          <span className="font-semibold text-sm text-foreground">{opt.label}</span>
+                          <span className="text-xs text-muted-foreground">{opt.description}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="condoDescription">Descrição (opcional)</Label>
-                    <Textarea
-                      id="condoDescription"
-                      placeholder="Uma breve descrição do condomínio..."
-                      value={newCondoDescription}
-                      onChange={(e) => setNewCondoDescription(e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
-                      Cancelar
-                    </Button>
-                    <Button type="submit" disabled={creating || !newCondoName.trim()}>
-                      {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      Criar condomínio
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+
+              {/* Create Form Dialog */}
+              <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                <DialogContent className="bg-card">
+                  <DialogHeader>
+                    <DialogTitle className="font-display">Criar {selectedTerms.organization.toLowerCase()}</DialogTitle>
+                    <DialogDescription>
+                      Preencha as informações básicas
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleCreateCondominium} className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="condoName">Nome *</Label>
+                      <Input
+                        id="condoName"
+                        placeholder={`Ex: ${selectedTerms.organization} Exemplo`}
+                        value={newCondoName}
+                        onChange={(e) => setNewCondoName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="condoDescription">Descrição (opcional)</Label>
+                      <Textarea
+                        id="condoDescription"
+                        placeholder="Uma breve descrição..."
+                        value={newCondoDescription}
+                        onChange={(e) => setNewCondoDescription(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-3 pt-4">
+                      <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                        Cancelar
+                      </Button>
+                      <Button type="submit" disabled={creating || !newCondoName.trim()}>
+                        {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        Criar {selectedTerms.organization.toLowerCase()}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </>
           )}
         </div>
 
@@ -319,9 +360,9 @@ export default function DashboardPage() {
                   : "Você ainda não está vinculado a nenhum condomínio. Entre em contato com o administrador."}
               </p>
               {isSuperAdmin && (
-                <Button onClick={() => setCreateDialogOpen(true)}>
+                <Button onClick={() => setTypePickerOpen(true)}>
                   <Plus className="w-5 h-5 mr-2" />
-                  Criar meu primeiro condomínio
+                  Criar minha primeira organização
                 </Button>
               )}
             </CardContent>

@@ -113,12 +113,15 @@ serve(async (req) => {
       }
     );
 
+    const responseBody = await response.text();
+    console.log(`Zion Talk response: status=${response.status} body=${responseBody}`);
+
     const success = response.status === 201;
     let errorMessage: string | undefined;
-    
+
     if (!success) {
-      errorMessage = await response.text();
-      console.error(`Failed to send test message: ${response.status} - ${errorMessage}`);
+      errorMessage = responseBody;
+      console.error(`Failed to send test message: ${response.status} - ${responseBody}`);
     } else {
       console.log(`Successfully sent test message to ${formattedPhone}`);
     }

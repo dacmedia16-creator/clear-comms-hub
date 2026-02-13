@@ -1,47 +1,20 @@
 
 
-# Adicionar log detalhado da resposta da Zion Talk
+## Atualizar ZIONTALK_API_KEY e Testar Envio
 
-## Problema
+### Passo 1: Atualizar o secret ZIONTALK_API_KEY
+- Substituir o valor atual do secret `ZIONTALK_API_KEY` pelo novo valor: `7d601848-6cb4-4a58-805d-2ba3c5a10140`
 
-A API retorna status 201 mas as mensagens nao chegam. O codigo atual so captura o corpo da resposta quando o status NAO e 201. Precisamos ver o que a Zion Talk responde em TODOS os casos para diagnosticar se ha erro silencioso (template pausado, conta bloqueada, parametros invalidos).
+### Passo 2: Re-deploy das Edge Functions
+- Fazer deploy das funções `test-whatsapp` e `send-whatsapp` para que capturem o novo valor do secret
 
-## Alteracoes
+### Passo 3: Testar envio
+- Chamar a edge function `test-whatsapp` via GET para confirmar que a API key está configurada
+- Chamar a edge function `test-whatsapp` via POST com um numero de teste para validar o envio real
+- Verificar nos logs se o envio foi bem-sucedido (status 201) ou se houve erro
 
-### 1. `supabase/functions/test-whatsapp/index.ts`
-
-Capturar e logar o corpo da resposta da Zion Talk independentemente do status:
-
-```typescript
-const responseBody = await response.text();
-console.log(`Zion Talk response: status=${response.status} body=${responseBody}`);
-
-const success = response.status === 201;
-let errorMessage: string | undefined;
-
-if (!success) {
-  errorMessage = responseBody;
-  console.error(`Failed: ${response.status} - ${responseBody}`);
-}
-```
-
-### 2. `supabase/functions/send-whatsapp/index.ts`
-
-Mesmo ajuste na funcao `sendMessagesInBackground`:
-
-```typescript
-const responseBody = await response.text();
-console.log(`[Background] Zion Talk response for ${member.phone}: status=${response.status} body=${responseBody}`);
-
-const success = response.status === 201;
-let errorMessage: string | undefined;
-
-if (!success) {
-  errorMessage = responseBody;
-}
-```
-
-## Resultado
-
-Apos o deploy, ao enviar um novo teste, os logs mostrarao exatamente o que a Zion Talk retorna, permitindo identificar se o template esta pausado, se ha erro de parametro, ou se o problema e na entrega pela Meta.
+### Detalhes Tecnicoss
+- O secret sera atualizado usando a ferramenta de gerenciamento de secrets do projeto
+- As edge functions usam `Deno.env.get('ZIONTALK_API_KEY')` como fallback quando nao ha sender ativo na tabela `whatsapp_senders`
+- A autenticacao com a Zion Talk usa Basic Auth: `Base64(apiKey + ":")`
 

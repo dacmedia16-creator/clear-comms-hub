@@ -113,12 +113,15 @@ async function sendMessagesInBackground(
         }
       );
 
+      const responseBody = await response.text();
+      console.log(`[Background] Zion Talk response for ${member.phone}: status=${response.status} body=${responseBody}`);
+
       const success = response.status === 201;
       let errorMessage: string | undefined;
 
       if (!success) {
-        errorMessage = await response.text();
-        console.error(`[Background] Falha ao enviar para ${member.phone}: ${response.status} - ${errorMessage}`);
+        errorMessage = responseBody;
+        console.error(`[Background] Falha ao enviar para ${member.phone}: ${response.status} - ${responseBody}`);
       } else {
         console.log(`[Background] ✓ Enviado com sucesso para ${member.phone}`);
       }

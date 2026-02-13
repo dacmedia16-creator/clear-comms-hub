@@ -1,18 +1,20 @@
 
 
-## Corrigir nome do parâmetro do botão CTA
+## Corrigir URL do botão CTA do WhatsApp
 
-Trocar `buttonParams[0]` por `buttonUrlDynamicParams[0]` nas duas Edge Functions.
+### Problema
+O template da Meta tem a URL base como `https://avisopro.com.br/{{1}}`, e o parâmetro dinâmico envia apenas o slug (ex: `vitrine-esplanada-a3abc5`). Resultado: `avisopro.com.br/vitrine-esplanada-a3abc5` (404). O correto seria `avisopro.com.br/c/vitrine-esplanada-a3abc5`.
 
-### Alterações
+### Solucao
+Adicionar o prefixo `c/` ao valor enviado no `buttonUrlDynamicParams[0]`.
 
-**Arquivo 1: `supabase/functions/test-whatsapp/index.ts`** (linha 105)
-- `buttonParams[0]` → `buttonUrlDynamicParams[0]`
+### Alteracoes
 
-**Arquivo 2: `supabase/functions/send-whatsapp/index.ts`** (linha 105)
-- `buttonParams[0]` → `buttonUrlDynamicParams[0]`
+**Arquivo 1: `supabase/functions/send-whatsapp/index.ts`**
+- Trocar `condominium.slug` por `` `c/${condominium.slug}` ``
 
-### Após a correção
-- Re-deploy automático das duas edge functions
-- Teste de envio para validar entrega
+**Arquivo 2: `supabase/functions/test-whatsapp/index.ts`**
+- Trocar `'demo'` por `'c/demo'`
 
+### Resultado esperado
+- URL final: `https://avisopro.com.br/c/{slug}` -- que corresponde a rota `/c/:slug` do app

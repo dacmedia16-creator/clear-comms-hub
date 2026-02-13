@@ -1,20 +1,26 @@
 
+## Transformar botao "Novo Condominio" em seletor de tipo de organizacao
 
-## Corrigir URL do botão CTA do WhatsApp
+### O que muda
+O botao "+ Novo Condominio" no Dashboard vai abrir primeiro um dialog com as 6 opcoes de segmento (Condominio, Clinicas, Empresas, Comunidades, Igrejas, Franquias). Ao clicar em um segmento, abre o formulario de criacao ja com o tipo pre-selecionado e a terminologia adaptada.
 
-### Problema
-O template da Meta tem a URL base como `https://avisopro.com.br/{{1}}`, e o parâmetro dinâmico envia apenas o slug (ex: `vitrine-esplanada-a3abc5`). Resultado: `avisopro.com.br/vitrine-esplanada-a3abc5` (404). O correto seria `avisopro.com.br/c/vitrine-esplanada-a3abc5`.
+### Detalhes tecnicos
 
-### Solucao
-Adicionar o prefixo `c/` ao valor enviado no `buttonUrlDynamicParams[0]`.
+**Arquivo: `src/pages/DashboardPage.tsx`**
 
-### Alteracoes
+1. Adicionar estado `selectedOrgType` para controlar o tipo selecionado
+2. Adicionar estado `typePickerOpen` para um dialog de selecao de tipo
+3. O botao "Novo Condominio" passa a ser "Nova Organizacao" e abre o dialog de selecao de tipo
+4. O dialog de selecao mostra os 6 cards com icone, label e descricao (reutilizando `ORGANIZATION_TYPE_OPTIONS` de `organization-types.ts`)
+5. Ao selecionar um tipo, fecha o picker e abre o dialog de criacao existente, agora com:
+   - Titulo dinamico: "Criar novo {terms.organization}" (ex: "Criar nova Igreja")
+   - Campo `organization_type` enviado no insert
+   - Placeholder do nome adaptado ao tipo
+6. Importar `ORGANIZATION_TYPE_OPTIONS` e `ORGANIZATION_TYPES`
 
-**Arquivo 1: `supabase/functions/send-whatsapp/index.ts`**
-- Trocar `condominium.slug` por `` `c/${condominium.slug}` ``
-
-**Arquivo 2: `supabase/functions/test-whatsapp/index.ts`**
-- Trocar `'demo'` por `'c/demo'`
-
-### Resultado esperado
-- URL final: `https://avisopro.com.br/c/{slug}` -- que corresponde a rota `/c/:slug` do app
+### Fluxo do usuario
+1. Clica em "+ Nova Organizacao"
+2. Ve 6 cards (Condominio, Clinicas, Empresas, Comunidades, Igrejas, Franquias)
+3. Clica em um tipo
+4. Formulario abre com terminologia correta
+5. Preenche nome e descricao, cria a organizacao com o tipo correto

@@ -102,7 +102,7 @@ async function sendMessagesInBackground(
       formData.append('bodyParams[nome]', member.full_name || 'morador(a)');
       formData.append('bodyParams[aviso]', announcement.title);
       formData.append('bodyParams[lembrete]', lembrete);
-      formData.append('buttonParams[1]', condominium.slug);
+      formData.append('buttonParams[0]', condominium.slug);
 
       const response = await fetch(
         'https://app.ziontalk.com/api/send_template_message/',
@@ -114,7 +114,9 @@ async function sendMessagesInBackground(
       );
 
       const responseBody = await response.text();
-      console.log(`[Background] Zion Talk response for ${member.phone}: status=${response.status} body=${responseBody}`);
+      const responseHeaders: Record<string, string> = {};
+      response.headers.forEach((value, key) => { responseHeaders[key] = value; });
+      console.log(`[Background] Zion Talk response for ${member.phone}: status=${response.status} headers=${JSON.stringify(responseHeaders)} body=${responseBody}`);
 
       const success = response.status === 201;
       let errorMessage: string | undefined;

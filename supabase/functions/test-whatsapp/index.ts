@@ -102,7 +102,7 @@ serve(async (req) => {
     formData.append('bodyParams[nome]', 'Teste');
     formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
     formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
-    formData.append('buttonParams[1]', 'demo');
+    formData.append('buttonParams[0]', 'demo');
 
     const response = await fetch(
       'https://app.ziontalk.com/api/send_template_message/',
@@ -114,7 +114,9 @@ serve(async (req) => {
     );
 
     const responseBody = await response.text();
-    console.log(`Zion Talk response: status=${response.status} body=${responseBody}`);
+    const responseHeaders: Record<string, string> = {};
+    response.headers.forEach((value, key) => { responseHeaders[key] = value; });
+    console.log(`Zion Talk response: status=${response.status} headers=${JSON.stringify(responseHeaders)} body=${responseBody}`);
 
     const success = response.status === 201;
     let errorMessage: string | undefined;

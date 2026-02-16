@@ -13,10 +13,10 @@ import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottom
 
 const superAdminNavItems: MobileNavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/super-admin" },
-  { icon: Grid3X3, label: "Segmentos", path: "/super-admin/segments" },
-  { icon: Building2, label: "Orgs", path: "/super-admin/condominiums" },
+  { icon: Building2, label: "Condos", path: "/super-admin/condominiums" },
   { icon: Users, label: "Usuários", path: "/super-admin/users" },
-  { icon: Bell, label: "Notif.", path: "/super-admin/notifications" },
+  { icon: FileText, label: "Timelines", path: "/super-admin/timelines" },
+  { icon: Bell, label: "Notificações", path: "/super-admin/notifications" },
 ];
 
 export default function SuperAdminDashboard() {

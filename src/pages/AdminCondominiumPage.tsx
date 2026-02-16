@@ -53,6 +53,7 @@ import { SendWhatsAppButton } from "@/components/SendWhatsAppButton";
 import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { FileUpload } from "@/components/FileUpload";
+import { MobileAnnouncementActions } from "@/components/mobile/MobileAnnouncementActions";
 import { useCondoBlocks } from "@/hooks/useCondoBlocks";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
@@ -128,6 +129,10 @@ export default function AdminCondominiumPage() {
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [sendSMS, setSendSMS] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
+  
+  // Mobile drawer for announcement actions
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   
   const { sendToMembers: sendWhatsAppToMembers } = useSendWhatsApp();
   const { sendToMembers: sendSMSToMembers } = useSendSMS();
@@ -417,13 +422,13 @@ export default function AdminCondominiumPage() {
             </div>
             <div className="flex items-center gap-2">
               <RefreshButton />
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="outline" size="sm" className="hidden sm:flex">
                 <Link to={`/admin/${condoId}/members`}>
                   <Users className="w-4 h-4 mr-1" />
                   {terms.memberPlural}
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="outline" size="sm" className="hidden sm:flex">
                 <Link to={`/c/${condominium.slug}`} target="_blank">
                   <ExternalLink className="w-4 h-4 mr-1" />
                   Ver timeline
@@ -482,7 +487,7 @@ export default function AdminCondominiumPage() {
                 Novo Aviso
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card">
+            <DialogContent className="max-w-2xl max-h-[90dvh] sm:max-h-[90vh] overflow-y-auto bg-card w-[calc(100vw-2rem)] sm:w-auto">
               <DialogHeader>
                 <DialogTitle className="font-display">Criar novo aviso</DialogTitle>
                 <DialogDescription>
@@ -802,7 +807,11 @@ export default function AdminCondominiumPage() {
               return (
                 <Card 
                   key={announcement.id} 
-                  className={`${announcement.is_urgent ? "border-destructive bg-destructive/5" : ""}`}
+                  className={`${announcement.is_urgent ? "border-destructive bg-destructive/5" : ""} ${isMobile ? "cursor-pointer active:bg-muted/50" : ""}`}
+                  onClick={isMobile ? () => {
+                    setSelectedAnnouncement(announcement);
+                    setDrawerOpen(true);
+                  } : undefined}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between gap-4">
@@ -838,28 +847,31 @@ export default function AdminCondominiumPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1">
-                        <SendWhatsAppButton
-                          announcement={{ ...announcement, id: announcement.id }}
-                          condominium={{ ...condominium, id: condominium.id }}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleTogglePin(announcement)}
-                          title={announcement.is_pinned ? "Desafixar" : "Fixar no topo"}
-                        >
-                          <Pin className={`w-4 h-4 ${announcement.is_pinned ? "text-primary" : ""}`} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(announcement.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      {/* Desktop actions */}
+                      {!isMobile && (
+                        <div className="flex items-center gap-1">
+                          <SendWhatsAppButton
+                            announcement={{ ...announcement, id: announcement.id }}
+                            condominium={{ ...condominium, id: condominium.id }}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleTogglePin(announcement)}
+                            title={announcement.is_pinned ? "Desafixar" : "Fixar no topo"}
+                          >
+                            <Pin className={`w-4 h-4 ${announcement.is_pinned ? "text-primary" : ""}`} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(announcement.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardHeader>
                   {announcement.summary && (
@@ -902,6 +914,28 @@ export default function AdminCondominiumPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Mobile Announcement Actions Drawer */}
+        {selectedAnnouncement && (
+          <MobileAnnouncementActions
+            open={drawerOpen}
+            onOpenChange={setDrawerOpen}
+            announcementTitle={selectedAnnouncement.title}
+            isPinned={selectedAnnouncement.is_pinned}
+            onTogglePin={() => handleTogglePin(selectedAnnouncement)}
+            onDelete={() => handleDelete(selectedAnnouncement.id)}
+            onSendWhatsApp={() => {
+              // Trigger WhatsApp send via the existing button logic
+              const baseUrl = window.location.origin;
+              sendWhatsAppToMembers(
+                { ...selectedAnnouncement, target_blocks: null, target_units: null },
+                { ...condominium, id: condominium.id },
+                baseUrl
+              );
+            }}
+            showWhatsApp={condominium.notification_whatsapp}
+          />
+        )}
 
         <MobileBottomNav items={syndicNavItems} />
       </main>

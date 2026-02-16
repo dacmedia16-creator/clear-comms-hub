@@ -2,7 +2,7 @@
 // Gerenciado na Meta Business Suite — as Edge Functions enviam via send_template_message
 // Esta constante é usada apenas para preview local (mostrar ao gestor como ficará a mensagem)
 
-export const TEMPLATE_IDENTIFIER = 'aviso_informativo';
+export const TEMPLATE_IDENTIFIER = 'avisopro_confirma_2';
 export const TEMPLATE_LANGUAGE = 'pt_BR';
 
 // Preview text — simula o template da Meta para exibição local

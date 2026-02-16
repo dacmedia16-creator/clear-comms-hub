@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const TEMPLATE_IDENTIFIER = 'aviso_informativo';
+const TEMPLATE_IDENTIFIER = 'avisopro_confirma_2';
 const TEMPLATE_LANGUAGE = 'pt_BR';
 
 interface RequestBody {

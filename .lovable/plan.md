@@ -1,26 +1,24 @@
 
-## Transformar botao "Novo Condominio" em seletor de tipo de organizacao
+## Trocar template WhatsApp para `avisopro_confirma_2`
 
-### O que muda
-O botao "+ Novo Condominio" no Dashboard vai abrir primeiro um dialog com as 6 opcoes de segmento (Condominio, Clinicas, Empresas, Comunidades, Igrejas, Franquias). Ao clicar em um segmento, abre o formulario de criacao ja com o tipo pre-selecionado e a terminologia adaptada.
+### Resumo
+Substituir o template `aviso_informativo` pelo novo template `avisopro_confirma_2` em todos os pontos do sistema. As variaveis do template sao as mesmas (`nome`, `aviso`, `lembrete`) e o botao CTA dinamico continua igual, entao a unica mudanca e o nome do identificador.
 
-### Detalhes tecnicos
+### Arquivos a modificar
 
-**Arquivo: `src/pages/DashboardPage.tsx`**
+**1. `src/lib/whatsapp-templates.ts` (linha 5)**
+- Alterar `TEMPLATE_IDENTIFIER` de `'aviso_informativo'` para `'avisopro_confirma_2'`
+- Atualizar o texto de preview local para refletir o novo corpo do template ("Confirmado")
 
-1. Adicionar estado `selectedOrgType` para controlar o tipo selecionado
-2. Adicionar estado `typePickerOpen` para um dialog de selecao de tipo
-3. O botao "Novo Condominio" passa a ser "Nova Organizacao" e abre o dialog de selecao de tipo
-4. O dialog de selecao mostra os 6 cards com icone, label e descricao (reutilizando `ORGANIZATION_TYPE_OPTIONS` de `organization-types.ts`)
-5. Ao selecionar um tipo, fecha o picker e abre o dialog de criacao existente, agora com:
-   - Titulo dinamico: "Criar novo {terms.organization}" (ex: "Criar nova Igreja")
-   - Campo `organization_type` enviado no insert
-   - Placeholder do nome adaptado ao tipo
-6. Importar `ORGANIZATION_TYPE_OPTIONS` e `ORGANIZATION_TYPES`
+**2. `supabase/functions/send-whatsapp/index.ts` (linha 14)**
+- Alterar `TEMPLATE_IDENTIFIER` de `'aviso_informativo'` para `'avisopro_confirma_2'`
 
-### Fluxo do usuario
-1. Clica em "+ Nova Organizacao"
-2. Ve 6 cards (Condominio, Clinicas, Empresas, Comunidades, Igrejas, Franquias)
-3. Clica em um tipo
-4. Formulario abre com terminologia correta
-5. Preenche nome e descricao, cria a organizacao com o tipo correto
+**3. `supabase/functions/test-whatsapp/index.ts` (linha 10)**
+- Alterar `TEMPLATE_IDENTIFIER` de `'aviso_informativo'` para `'avisopro_confirma_2'`
+- Atualizar comentario na linha 97
+
+### O que NAO muda
+- Variaveis `bodyParams[nome]`, `bodyParams[aviso]`, `bodyParams[lembrete]` permanecem iguais
+- `buttonUrlDynamicParams[0]` com prefixo `c/slug` permanece igual
+- Idioma `pt_BR` permanece igual
+- Logica de envio, delays e fallback de remetente nao mudam

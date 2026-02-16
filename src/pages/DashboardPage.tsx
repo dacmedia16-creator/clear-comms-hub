@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { MobileBottomNav, MobileNavItem } from "@/components/mobile/MobileBottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -162,7 +163,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background has-bottom-nav">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card border-b border-border">
         <div className="container px-4 mx-auto">
@@ -437,6 +438,19 @@ export default function DashboardPage() {
               );
             })}
           </div>
+        )}
+        {/* Mobile Bottom Nav */}
+        {isSuperAdmin ? (
+          <MobileBottomNav items={[
+            { icon: Building2, label: "Orgs", path: "/dashboard" },
+            { icon: Shield, label: "Super Admin", path: "/super-admin" },
+            { icon: User, label: "Perfil", path: "/profile" },
+          ]} />
+        ) : (
+          <MobileBottomNav items={[
+            { icon: Building2, label: "Orgs", path: "/dashboard" },
+            { icon: User, label: "Perfil", path: "/profile" },
+          ]} />
         )}
       </main>
     </div>

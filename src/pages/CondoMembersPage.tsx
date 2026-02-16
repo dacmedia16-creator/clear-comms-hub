@@ -239,14 +239,14 @@ export default function CondoMembersPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-                <Upload className="w-4 h-4 mr-2" />
-                Importar
+              <Button variant="outline" size={isMobile ? "icon" : "default"} onClick={() => setImportDialogOpen(true)}>
+                <Upload className="w-4 h-4" />
+                {!isMobile && <span className="ml-2">Importar</span>}
               </Button>
               <RefreshButton />
-              <Button onClick={() => setAddDialogOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar
+              <Button size={isMobile ? "icon" : "default"} onClick={() => setAddDialogOpen(true)}>
+                <Plus className="w-4 h-4" />
+                {!isMobile && <span className="ml-2">Adicionar</span>}
               </Button>
             </div>
           </div>

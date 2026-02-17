@@ -7,6 +7,7 @@ import {
   Briefcase,
   Clock,
   Store,
+  GraduationCap,
   LucideIcon
 } from "lucide-react";
 import { OrganizationType } from "@/lib/organization-types";
@@ -56,6 +57,12 @@ const actionsByType: Record<OrganizationType, QuickAction[]> = {
     { icon: Bell, label: "Comunicado", description: "Comunicado da rede", color: "text-blue-600" },
     { icon: Calendar, label: "Evento", description: "Evento da rede", color: "text-fuchsia-600" },
     { icon: DollarSign, label: "Comercial", description: "Aviso comercial", color: "text-emerald-600" },
+  ],
+  school: [
+    { icon: GraduationCap, label: "Pedagógico", description: "Reunião de pais", color: "text-lime-600" },
+    { icon: Calendar, label: "Calendário", description: "Calendário escolar", color: "text-indigo-600" },
+    { icon: Bell, label: "Comunicado", description: "Aviso da diretoria", color: "text-blue-600" },
+    { icon: DollarSign, label: "Financeiro", description: "Matrículas e taxas", color: "text-emerald-600" },
   ],
 };
 

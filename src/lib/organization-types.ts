@@ -5,6 +5,7 @@ import {
   Users,
   Church,
   Store,
+  GraduationCap,
   LucideIcon,
 } from "lucide-react";
 
@@ -14,7 +15,8 @@ export type OrganizationType =
   | "company"
   | "community"
   | "church"
-  | "franchise";
+  | "franchise"
+  | "school";
 
 export interface OrganizationTerms {
   organization: string;
@@ -190,6 +192,30 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
       showLocationTargeting: true,
     },
   },
+  school: {
+    label: "Escolas e Cursos",
+    description: "Instituições de ensino",
+    examples: "Escolas, cursinhos, universidades",
+    icon: GraduationCap,
+    terms: {
+      organization: "Escola",
+      organizationPlural: "Escolas",
+      manager: "Diretor",
+      member: "Aluno",
+      memberPlural: "Alunos",
+      block: "Série",
+      blockPlural: "Séries",
+      unit: "Turma",
+      unitPlural: "Turmas",
+    },
+    behavior: {
+      requiresLocation: false,
+      blockValidation: "flexible",
+      unitValidation: "flexible",
+      showLocationInTimeline: false,
+      showLocationTargeting: false,
+    },
+  },
 };
 
 // Helper to get organization config with fallback
@@ -260,6 +286,7 @@ export function getLocationPlaceholders(type?: OrganizationType | string | null)
     church: { block: "Louvor, Jovens", unit: "Coral, Células" },
     community: { block: "Diretoria, Esportes", unit: "Presidente, Sócio" },
     franchise: { block: "Sul, Norte", unit: "Loja 01, Loja 02" },
+    school: { block: "1º Ano, 2º Ano", unit: "Turma A, Turma B" },
   };
   
   const orgType = type && type in ORGANIZATION_TYPES ? type as OrganizationType : "condominium";

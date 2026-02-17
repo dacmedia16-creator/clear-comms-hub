@@ -6,6 +6,7 @@ import {
   Users, 
   Church,
   Store,
+  GraduationCap,
   CheckCircle,
   LucideIcon
 } from "lucide-react";
@@ -110,6 +111,20 @@ const segmentsData: SegmentData[] = [
       { title: "Treinamentos", description: "Capacitação da rede" },
     ],
     ctaText: "Sou Franqueador",
+  },
+  {
+    id: "school",
+    icon: GraduationCap,
+    label: "Escolas e Cursos",
+    headline: "Comunicação escolar organizada",
+    subheadline: "Pais e alunos informados, diretoria protegida.",
+    useCases: [
+      { title: "Reuniões de pais", description: "Convocações e pautas documentadas" },
+      { title: "Calendário escolar", description: "Datas, feriados e eventos" },
+      { title: "Matrículas e rematrículas", description: "Prazos e orientações" },
+      { title: "Comunicados da diretoria", description: "Decisões e informes oficiais" },
+    ],
+    ctaText: "Sou Diretor",
   },
 ];
 

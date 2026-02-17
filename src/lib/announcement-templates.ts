@@ -494,6 +494,75 @@ Matriz`,
       isUrgent: false,
     },
   ],
+  school: [
+    {
+      id: "school-parents-meeting",
+      name: "Reunião de Pais",
+      title: "Convocação para Reunião de Pais",
+      summary: "Reunião de pais e responsáveis para tratar de assuntos pedagógicos.",
+      content: `Prezados pais e responsáveis,
+
+Convocamos para a reunião de pais:
+
+📅 Data: [DATA]
+🕐 Horário: [HORÁRIO]
+📍 Local: [LOCAL]
+
+Pauta:
+1. [PAUTA 1]
+2. [PAUTA 2]
+3. Assuntos gerais
+
+A presença é fundamental para o acompanhamento escolar.
+
+Atenciosamente,
+Diretoria`,
+      category: "pedagogico",
+      isUrgent: false,
+    },
+    {
+      id: "school-calendar",
+      name: "Calendário Escolar",
+      title: "Atualização do Calendário Escolar",
+      summary: "Datas importantes e alterações no calendário.",
+      content: `Prezados pais e alunos,
+
+Informamos sobre o calendário escolar:
+
+📅 [DATA/PERÍODO]: [EVENTO]
+📅 [DATA/PERÍODO]: [EVENTO]
+
+⚠️ Observações: [OBSERVAÇÕES]
+
+Dúvidas: [CONTATO]
+
+Atenciosamente,
+Secretaria Escolar`,
+      category: "academico",
+      isUrgent: false,
+    },
+    {
+      id: "school-announcement",
+      name: "Comunicado da Diretoria",
+      title: "Comunicado da Diretoria",
+      summary: "Informativo oficial da diretoria escolar.",
+      content: `Prezados pais, alunos e colaboradores,
+
+Comunicamos:
+
+📋 [ASSUNTO]
+
+Detalhes:
+[DESCRIÇÃO]
+
+Dúvidas: [CONTATO]
+
+Atenciosamente,
+Diretoria`,
+      category: "informativo",
+      isUrgent: false,
+    },
+  ],
 };
 
 // Templates universais disponíveis para todos

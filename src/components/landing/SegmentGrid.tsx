@@ -114,7 +114,7 @@ export function SegmentGrid() {
             const classes = "relative flex flex-col items-center text-center p-5 rounded-2xl bg-card border border-border hover:border-primary/50 hover:shadow-md transition-all duration-300";
 
             return segment.link ? (
-              <Link key={segment.label} to={segment.link} className={classes}>
+              <Link key={segment.label} to={segment.link} className={classes} onClick={() => window.scrollTo(0, 0)}>
                 {content}
               </Link>
             ) : (

@@ -40,7 +40,9 @@ import {
   FileText,
   LayoutDashboard,
   Smartphone,
-  Mail
+  Mail,
+  UserX,
+  RotateCcw
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshButton } from "@/components/RefreshButton";
@@ -82,6 +84,16 @@ interface LogEntry {
   condominiums: { name: string } | null;
 }
 
+interface OptOutEntry {
+  id: string;
+  phone: string;
+  member_name: string | null;
+  condominium_id: string | null;
+  opted_out_at: string | null;
+  created_at: string;
+  condominiums: { name: string } | null;
+}
+
 type NotificationType = 'whatsapp' | 'sms' | 'email';
 
 interface ApiStatus {
@@ -107,7 +119,7 @@ export default function SuperAdminNotifications() {
   const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   const [condominiums, setCondominiums] = useState<Condominium[]>([]);
-  const [activeLogTab, setActiveLogTab] = useState<NotificationType>('whatsapp');
+  const [activeLogTab, setActiveLogTab] = useState<NotificationType | 'optouts'>('whatsapp');
   const [logs, setLogs] = useState<Record<NotificationType, LogEntry[]>>({
     whatsapp: [],
     sms: [],
@@ -128,11 +140,14 @@ export default function SuperAdminNotifications() {
   const [testCondoId, setTestCondoId] = useState<string | null>(null);
   const [testCondoName, setTestCondoName] = useState<string | null>(null);
   const [sendingTest, setSendingTest] = useState(false);
-
+  
+  // Opt-outs
+  const [optouts, setOptouts] = useState<OptOutEntry[]>([]);
+  const [reactivating, setReactivating] = useState<string | null>(null);
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [condosResult, whatsappLogsResult, smsLogsResult, emailLogsResult] = await Promise.all([
+      const [condosResult, whatsappLogsResult, smsLogsResult, emailLogsResult, optoutsResult] = await Promise.all([
         supabase
           .from("condominiums")
           .select("id, name, slug, plan, notification_whatsapp, notification_sms, notification_email")
@@ -152,6 +167,12 @@ export default function SuperAdminNotifications() {
           .select("*, condominiums:condominium_id (name)")
           .order("sent_at", { ascending: false })
           .limit(50),
+        supabase
+          .from("whatsapp_optouts")
+          .select("*, condominiums:condominium_id (name)")
+          .not('opted_out_at', 'is', null)
+          .order("opted_out_at", { ascending: false })
+          .limit(100),
       ]);
 
       if (condosResult.error) throw condosResult.error;
@@ -162,6 +183,7 @@ export default function SuperAdminNotifications() {
         sms: (smsLogsResult.data as unknown as LogEntry[]) || [],
         email: (emailLogsResult.data as unknown as LogEntry[]) || [],
       });
+      setOptouts((optoutsResult.data as unknown as OptOutEntry[]) || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
@@ -304,6 +326,33 @@ export default function SuperAdminNotifications() {
       });
     } finally {
       setSendingTest(false);
+    }
+  };
+
+  const reactivatePhone = async (optoutId: string) => {
+    setReactivating(optoutId);
+    try {
+      const { error } = await supabase
+        .from("whatsapp_optouts")
+        .delete()
+        .eq("id", optoutId);
+
+      if (error) throw error;
+
+      setOptouts(prev => prev.filter(o => o.id !== optoutId));
+      toast({
+        title: "Telefone reativado",
+        description: "O número voltará a receber mensagens nos próximos envios.",
+      });
+    } catch (error) {
+      console.error("Error reactivating:", error);
+      toast({
+        title: "Erro ao reativar",
+        description: "Não foi possível reativar o número.",
+        variant: "destructive",
+      });
+    } finally {
+      setReactivating(null);
     }
   };
 
@@ -506,7 +555,7 @@ export default function SuperAdminNotifications() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Tabs value={activeLogTab} onValueChange={(v) => setActiveLogTab(v as NotificationType)}>
+                  <Tabs value={activeLogTab} onValueChange={(v) => setActiveLogTab(v as NotificationType | 'optouts')}>
                     <TabsList className="mb-4">
                       <TabsTrigger value="whatsapp" className="flex items-center gap-2">
                         <MessageSquare className="w-4 h-4" />
@@ -519,6 +568,13 @@ export default function SuperAdminNotifications() {
                       <TabsTrigger value="email" className="flex items-center gap-2">
                         <Mail className="w-4 h-4" />
                         Email
+                      </TabsTrigger>
+                      <TabsTrigger value="optouts" className="flex items-center gap-2">
+                        <UserX className="w-4 h-4" />
+                        Descadastros
+                        {optouts.length > 0 && (
+                          <Badge variant="secondary" className="ml-1 text-xs">{optouts.length}</Badge>
+                        )}
                       </TabsTrigger>
                     </TabsList>
 
@@ -578,6 +634,61 @@ export default function SuperAdminNotifications() {
                         </Table>
                       </TabsContent>
                     ))}
+
+                    <TabsContent value="optouts">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Data</TableHead>
+                            <TableHead>Telefone</TableHead>
+                            <TableHead>Nome</TableHead>
+                            <TableHead>Condomínio</TableHead>
+                            <TableHead>Ação</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {optouts.map((opt) => (
+                            <TableRow key={opt.id}>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {opt.opted_out_at
+                                  ? format(new Date(opt.opted_out_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                                  : "-"
+                                }
+                              </TableCell>
+                              <TableCell className="font-mono text-sm">{opt.phone}</TableCell>
+                              <TableCell className="text-sm">{opt.member_name || "-"}</TableCell>
+                              <TableCell className="font-medium">
+                                {opt.condominiums?.name || "-"}
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => reactivatePhone(opt.id)}
+                                  disabled={reactivating === opt.id}
+                                >
+                                  {reactivating === opt.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <RotateCcw className="w-3 h-3 mr-1" />
+                                      Reativar
+                                    </>
+                                  )}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {optouts.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                                Nenhum descadastro encontrado
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </TabsContent>
                   </Tabs>
                 </CardContent>
               </Card>

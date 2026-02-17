@@ -58,20 +58,26 @@ interface UnifiedMember {
   unit: string | null;
 }
 
-// Normalize phone to +55XXXXXXXXXXX format
 function normalizePhone(phone: string): string {
   const cleaned = phone.replace(/\D/g, '');
   const withPrefix = cleaned.startsWith('55') ? cleaned : `55${cleaned}`;
   return `+${withPrefix}`;
 }
 
-// Random delay between min and max seconds
+function generateShortToken(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 12; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
   const ms = Math.floor(Math.random() * (maxSeconds - minSeconds + 1) + minSeconds) * 1000;
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Background task to send template messages with delays
 async function sendMessagesInBackground(
   members: UnifiedMember[],
   authHeader: string,
@@ -95,6 +101,16 @@ async function sendMessagesInBackground(
     console.log(`[Background] Enviando para membro ${i + 1} de ${members.length}: ${member.phone} (${member.full_name || 'Unknown'})`);
 
     try {
+      // Generate opt-out token and save to DB
+      const optoutToken = generateShortToken();
+      await supabase.from('whatsapp_optouts').insert({
+        phone: member.phone,
+        token: optoutToken,
+        condominium_id: condominium.id,
+        member_name: member.full_name,
+        opted_out_at: null,
+      });
+
       const formData = new FormData();
       formData.append('mobile_phone', member.phone);
       formData.append('template_identifier', TEMPLATE_IDENTIFIER);
@@ -103,6 +119,7 @@ async function sendMessagesInBackground(
       formData.append('bodyParams[aviso]', announcement.title);
       formData.append('bodyParams[lembrete]', lembrete);
       formData.append('buttonUrlDynamicParams[0]', `c/${condominium.slug}`);
+      formData.append('buttonUrlDynamicParams[1]', `optout?t=${optoutToken}`);
 
       const response = await fetch(
         'https://app.ziontalk.com/api/send_template_message/',
@@ -247,6 +264,22 @@ serve(async (req) => {
     if (hasUnitFilter) {
       console.log(`Filtering by units: ${announcement.target_units!.join(', ')}`);
       members = members.filter(m => m.unit && announcement.target_units!.includes(m.unit));
+    }
+
+    // Filter out opted-out phones
+    const { data: optouts } = await supabase
+      .from('whatsapp_optouts')
+      .select('phone')
+      .not('opted_out_at', 'is', null);
+
+    if (optouts && optouts.length > 0) {
+      const optedOutPhones = new Set(optouts.map(o => o.phone));
+      const beforeCount = members.length;
+      members = members.filter(m => !optedOutPhones.has(m.phone));
+      const filtered = beforeCount - members.length;
+      if (filtered > 0) {
+        console.log(`Filtered out ${filtered} opted-out phone(s)`);
+      }
     }
 
     if (members.length === 0) {

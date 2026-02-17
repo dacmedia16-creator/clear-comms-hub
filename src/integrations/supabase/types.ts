@@ -757,6 +757,44 @@ export type Database = {
           },
         ]
       }
+      whatsapp_optouts: {
+        Row: {
+          condominium_id: string | null
+          created_at: string
+          id: string
+          member_name: string | null
+          opted_out_at: string | null
+          phone: string
+          token: string
+        }
+        Insert: {
+          condominium_id?: string | null
+          created_at?: string
+          id?: string
+          member_name?: string | null
+          opted_out_at?: string | null
+          phone: string
+          token: string
+        }
+        Update: {
+          condominium_id?: string | null
+          created_at?: string
+          id?: string
+          member_name?: string | null
+          opted_out_at?: string | null
+          phone?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_optouts_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_senders: {
         Row: {
           api_key: string

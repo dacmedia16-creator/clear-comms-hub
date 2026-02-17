@@ -30,6 +30,7 @@ import ProfilePage from "./pages/ProfilePage";
 import DemoPage from "./pages/DemoPage";
 import ReferSyndicPage from "./pages/ReferSyndicPage";
 import OptOutPage from "./pages/OptOutPage";
+import CondominiosLandingPage from "./pages/CondominiosLandingPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,6 +75,7 @@ const App = () => (
             <Route path="/super-admin/plans" element={<SuperAdminPlans />} />
             <Route path="/super-admin/whatsapp" element={<Navigate to="/super-admin/notifications" replace />} />
             <Route path="/optout" element={<OptOutPage />} />
+            <Route path="/condominios" element={<CondominiosLandingPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

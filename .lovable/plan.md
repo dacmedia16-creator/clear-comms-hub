@@ -1,90 +1,124 @@
 
-## Landing Page Exclusiva para Condominios - `/condominios`
 
-Criar uma pagina dedicada ao segmento de condominios, otimizada para conversao de sindicos e administradoras, reutilizando a identidade visual e componentes existentes.
+## Landing Pages por Segmento + Links na Home
+
+Criar 6 novas landing pages dedicadas (Empresas, Clinicas, Associacoes, Igrejas, Franquias, Escolas) seguindo a mesma estrutura da `/condominios` existente, e atualizar a Home para linkar todos os cards.
 
 ---
 
-### Novo arquivo
+### Paginas novas (6 arquivos)
 
-**`src/pages/CondominiosLandingPage.tsx`** - Pagina completa com todas as 8 secoes inline (sem criar componentes separados, pois sao especificos desta pagina):
+Todas seguem a mesma estrutura de 8 secoes da `CondominiosLandingPage.tsx`: Hero, Dores, Como Funciona, Beneficios, Exemplos de Avisos, WhatsApp vs AVISO PRO, LGPD, CTA Final. Cada uma com Header e Footer reutilizados.
 
-#### Secao 1 - Hero
-- Badge: "Teste gratuito"
-- Headline: "Comunicacao oficial do condominio, sem confusao."
-- Subtitulo: "Centralize todos os avisos importantes em uma unica linha do tempo. WhatsApp e e-mail apenas avisam -- a informacao oficial fica registrada."
-- CTA: "Criar canal oficial do condominio" (link para `/auth/signup/condominium`)
-- Micro texto: "Configuracao rapida. Sem complicacao. Teste gratuito."
-- Mockup estatico de celular mostrando "Condominio Jardins" com 3 avisos tipicos (Manutencao Elevadores, Boleto Disponivel, Assembleia Geral) -- mesmo estilo visual do Hero da home
+#### 1. `src/pages/EmpresasLandingPage.tsx` -- `/empresas`
 
-#### Secao 2 - Dor Real do Sindico
-- Headline: "O sindico conhece bem esses problemas"
-- 5 cards com icones (MessageSquareOff, EyeOff, Search, RefreshCw, FileX):
-  1. Avisos importantes se perdem em grupos de WhatsApp
-  2. Moradores dizem que nao foram avisados
-  3. Informacoes antigas sao dificeis de encontrar
-  4. Duvidas repetidas geram retrabalho
-  5. Falta de registro formal de comunicacao
-- Frase de fechamento: "O condominio precisa de uma fonte oficial de informacao."
+| Campo | Conteudo |
+|---|---|
+| Headline | "Quadro de avisos oficial para sua equipe." |
+| Subtitulo | "Tudo que e importante fica registrado. WhatsApp e e-mail so alertam." |
+| Mockup | "Equipe Operacional" com avisos: Mudanca de Turno, Procedimento de Seguranca, Politica Interna |
+| Dores | Time operacional nao le e-mail; informacoes se perdem; mudanca de turno confunde; comunicados sem registro |
+| Exemplos | Mudanca de turno (Urgente), Procedimento de seguranca (Seguranca), Atualizacao de politica (Informativo) |
+| CTA | "Centralizar avisos da empresa" |
+| Signup link | `/auth/signup/company` |
 
-#### Secao 3 - Como Funciona (3 passos)
-- Headline: "Como funciona?"
-- 3 passos com icones (Edit3, Send, Eye):
-  1. "Crie o aviso" -- "Escreva o comunicado e escolha a categoria."
-  2. "Publique com um clique" -- "WhatsApp e e-mail avisam automaticamente."
-  3. "Moradores acessam a linha do tempo" -- "A informacao fica disponivel para consulta a qualquer momento."
-- Frase de reforco: "Sem grupo. Sem discussao. Sem ruido."
+#### 2. `src/pages/ClinicasLandingPage.tsx` -- `/clinicas`
 
-#### Secao 4 - Beneficios
-- Headline: "O que muda na pratica?"
-- 4 cards com icone de check:
-  1. "Tudo fica registrado" -- "Cada aviso com data e hora. Historico completo e acessivel."
-  2. "Reduz conflitos e mal-entendidos" -- "A informacao oficial esta sempre disponivel. Sem espaco para 'eu nao vi'."
-  3. "Organizacao por categoria" -- "Financeiro, manutencao, urgente, assembleia... Cada aviso no seu lugar."
-  4. "Comprovacao de envio" -- "Historico de comunicados enviados. Protecao para o sindico e a administradora."
+| Campo | Conteudo |
+|---|---|
+| Headline | "Comunicados oficiais para clinica, equipe e pacientes." |
+| Subtitulo | "Avisos organizados e consultaveis. WhatsApp e e-mail so avisam." |
+| Mockup | "Clinica Saude Integral" com avisos: Mudanca de Horario, Novo Protocolo, Manutencao do Sistema |
+| Dores | Alteracoes de agenda; orientacoes importantes perdidas; mudancas de protocolo; ruido com pacientes |
+| Exemplos | Mudanca de horario (Urgente), Novo protocolo (Protocolo), Manutencao do sistema (Informativo) |
+| CTA | "Criar canal oficial da clinica" |
+| Signup link | `/auth/signup/healthcare` |
 
-#### Secao 5 - Exemplos Reais de Avisos
-- Headline: "Exemplos de avisos publicados"
-- Subtitulo: "Veja como ficam os comunicados na linha do tempo do condominio."
-- 5 cards simulando avisos reais no estilo da timeline:
-  1. Urgente - "Interrupcao de agua" (Hoje, 08:30)
-  2. Manutencao - "Manutencao dos elevadores" (Ontem, 14:00)
-  3. Financeiro - "Boleto de condominio disponivel" (12/02)
-  4. Informativo - "Assembleia geral ordinaria" (10/02)
-  5. Regras - "Normas para reformas e obras" (05/02)
-- Layout de cards empilhados com badge de categoria colorido, simulando a timeline real
+#### 3. `src/pages/AssociacoesLandingPage.tsx` -- `/associacoes`
 
-#### Secao 6 - Por que nao apenas WhatsApp?
-- Layout de comparacao visual (2 colunas):
-  - Coluna esquerda (WhatsApp): "E conversa. Conversa se perde." com lista: mensagens se misturam, sem registro, sem organizacao, dificil de encontrar
-  - Coluna direita (AVISO PRO): "E registro oficial. O aviso fica organizado, consultavel e permanente." com lista: linha do tempo, categorizado, historico completo, acesso sem login
+| Campo | Conteudo |
+|---|---|
+| Headline | "Avisos importantes para associados, em um so lugar." |
+| Subtitulo | "Timeline oficial + lembretes por WhatsApp e e-mail." |
+| Mockup | "Clube Atlantico" com avisos: Evento do Fim de Semana, Mudanca de Regulamento, Pagamento |
+| Dores | Avisos de eventos se perdem; regras nao ficam claras; associados reclamam "nao vi" |
+| Exemplos | Evento do fim de semana (Evento), Mudanca de regulamento (Regras), Taxa/pagamento (Financeiro) |
+| CTA | "Criar canal oficial do clube" |
+| Signup link | `/auth/signup/community` |
 
-#### Secao 7 - Privacidade e LGPD
-- Reutilizar o mesmo layout visual da TrustSection da home
-- Copy adaptada para condominios:
-  - "Contatos usados apenas para avisos oficiais do condominio"
-  - "Sem propaganda. Sem compartilhamento."
-  - "Descadastro a qualquer momento."
+#### 4. `src/pages/IgrejasLandingPage.tsx` -- `/igrejas`
 
-#### Secao 8 - CTA Final
-- Headline: "Pronto para organizar a comunicacao do seu condominio?"
-- Botao: "Criar canal oficial agora"
-- Micro texto: "Comece gratuitamente e organize seus avisos hoje mesmo."
+| Campo | Conteudo |
+|---|---|
+| Headline | "Comunicacao oficial da igreja, clara e organizada." |
+| Subtitulo | "Avisos em timeline unica. WhatsApp e e-mail so lembram." |
+| Mockup | "Igreja Nova Alianca" com avisos: Agenda Semanal, Evento Especial, Comunicado Importante |
+| Dores | Avisos de cultos e eventos perdidos; mudancas de agenda; comunicacao espalhada |
+| Exemplos | Agenda semanal (Informativo), Evento especial (Evento), Comunicado importante (Urgente) |
+| CTA | "Criar canal oficial da igreja" |
+| Signup link | `/auth/signup/church` |
+
+#### 5. `src/pages/FranquiasLandingPage.tsx` -- `/franquias`
+
+| Campo | Conteudo |
+|---|---|
+| Headline | "Comunicacao oficial da franqueadora para toda a rede." |
+| Subtitulo | "Avisos padronizados e registrados, com lembretes por WhatsApp e e-mail." |
+| Mockup | "Rede FastFood Brasil" com avisos: Campanha do Mes, Atualizacao de Padrao, Mudanca de Fornecedor |
+| Dores | Comunicacao inconsistente; franqueado perde comunicado; mudanca de padrao sem registro |
+| Exemplos | Campanha do mes (Marketing), Atualizacao de padrao (Padrao), Mudanca de fornecedor (Operacional) |
+| CTA | "Centralizar avisos da rede" |
+| Signup link | `/auth/signup/franchise` |
+
+#### 6. `src/pages/EscolasLandingPage.tsx` -- `/escolas`
+
+| Campo | Conteudo |
+|---|---|
+| Headline | "Avisos oficiais para pais e alunos, sem ruido." |
+| Subtitulo | "WhatsApp avisa. A informacao oficial fica registrada em uma timeline consultavel." |
+| Mockup | "Colegio Nova Geracao" com avisos: Reuniao de Pais, Calendario de Provas, Mudanca de Horario |
+| Dores | Pais dizem que nao viram; grupos viram caos; avisos antigos somem |
+| Exemplos | Reuniao de pais (Pedagogico), Calendario de provas (Academico), Mudanca de horario (Urgente) |
+| CTA | "Criar canal oficial da escola" |
+| Signup link | `/auth/signup/school` |
 
 ---
 
 ### Arquivos a alterar
 
-| Arquivo | Mudanca |
+#### `src/App.tsx`
+Adicionar 6 novas rotas:
+- `/empresas` -> `EmpresasLandingPage`
+- `/clinicas` -> `ClinicasLandingPage`
+- `/associacoes` -> `AssociacoesLandingPage`
+- `/igrejas` -> `IgrejasLandingPage`
+- `/franquias` -> `FranquiasLandingPage`
+- `/escolas` -> `EscolasLandingPage`
+
+#### `src/components/landing/SegmentGrid.tsx`
+Adicionar `link` a todos os segmentos:
+
+| Segmento | Link |
 |---|---|
-| `src/pages/CondominiosLandingPage.tsx` | **Novo** - Pagina completa com todas as secoes |
-| `src/App.tsx` | Adicionar rota `/condominios` apontando para `CondominiosLandingPage` |
+| Condominios | `/condominios` (ja existe) |
+| Clinicas e Saude | `/clinicas` |
+| Empresas | `/empresas` |
+| Associacoes e Clubes | `/associacoes` |
+| Igrejas | `/igrejas` |
+| Franquias | `/franquias` |
+| Escolas e Cursos | `/escolas` |
 
-### Componentes reutilizados
-- `Header` e `Footer` da landing (manter navegacao consistente)
-- `Button` do shadcn/ui
-- Icones do lucide-react
-- Classes Tailwind existentes (font-display, bg-muted, etc.)
-- Screenshots existentes (timeline, dashboard) na secao de beneficios, se aplicavel
+#### `src/components/landing/Header.tsx`
+Remover o link individual "Condominios" do header (agora todos os segmentos estao acessiveis pelo grid; manter nav limpa com apenas "Como funciona", "Beneficios", "Para quem e").
 
-### Nenhum arquivo existente sera modificado alem do App.tsx (nova rota)
+---
+
+### Resumo de entregas
+
+- 6 novos arquivos de pagina
+- 6 novas rotas no App.tsx
+- SegmentGrid atualizado com links para todas as landings
+- Header simplificado (sem link avulso de Condominios)
+- Copy, exemplos e CTAs especificos por segmento
+- Estrutura identica a da landing de Condominios ja existente
+

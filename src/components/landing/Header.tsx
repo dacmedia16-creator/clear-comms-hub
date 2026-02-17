@@ -26,6 +26,9 @@ export function Header() {
             <a href="#segmentos" className="text-muted-foreground hover:text-foreground transition-colors">
               Para quem é
             </a>
+            <Link to="/condominios" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+              Condomínios
+            </Link>
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
@@ -58,6 +61,9 @@ export function Header() {
               <a href="#segmentos" className="text-muted-foreground hover:text-foreground transition-colors py-2" onClick={() => setIsMenuOpen(false)}>
                 Para quem é
               </a>
+              <Link to="/condominios" className="text-muted-foreground hover:text-foreground transition-colors py-2 font-medium" onClick={() => setIsMenuOpen(false)}>
+                Condomínios
+              </Link>
               <div className="flex flex-col gap-3 pt-4 border-t border-border">
                 <Button asChild variant="outline" className="w-full touch-target">
                   <Link to="/auth">Entrar</Link>

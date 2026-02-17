@@ -13,6 +13,8 @@ import {
   FileCheck,
   Calendar,
   Store,
+  BookOpen,
+  GraduationCap,
   LucideIcon
 } from "lucide-react";
 import { OrganizationType } from "./organization-types";
@@ -157,6 +159,26 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     organizationTypes: ["franchise"],
   },
 
+  // School (Escolas e Cursos)
+  academico: {
+    slug: "academico",
+    label: "Acadêmico",
+    icon: BookOpen,
+    bgClass: "bg-indigo-100 text-indigo-700",
+    badgeClass: "bg-indigo-100 text-indigo-700 border-indigo-200",
+    isUniversal: false,
+    organizationTypes: ["school"],
+  },
+  pedagogico: {
+    slug: "pedagogico",
+    label: "Pedagógico",
+    icon: GraduationCap,
+    bgClass: "bg-lime-100 text-lime-700",
+    badgeClass: "bg-lime-100 text-lime-700 border-lime-200",
+    isUniversal: false,
+    organizationTypes: ["school"],
+  },
+
   // Eventos (compartilhado por vários tipos)
   eventos: {
     slug: "eventos",
@@ -165,7 +187,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     bgClass: "bg-fuchsia-100 text-fuchsia-700",
     badgeClass: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200",
     isUniversal: false,
-    organizationTypes: ["company", "church", "community", "franchise"],
+    organizationTypes: ["company", "church", "community", "franchise", "school"],
   },
 };
 

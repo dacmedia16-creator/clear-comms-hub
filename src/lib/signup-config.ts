@@ -77,6 +77,16 @@ const configMap: Record<OrganizationType, Partial<SignupFormConfig>> = {
     managerTitle: "Cadastro de Franqueador",
     managerDescription: "Solicite acesso como franqueador de uma rede existente",
   },
+  school: {
+    memberTitle: "Cadastro de Aluno/Responsável",
+    memberDescription: "Entre com o código da sua escola para se cadastrar",
+    unitLabel: "Série e Turma",
+    unitPlaceholder: "ex: 3º Ano, Turma B",
+    codeLabel: "Código da Escola",
+    codeDescription: "Solicite à diretoria",
+    managerTitle: "Cadastro de Diretor",
+    managerDescription: "Solicite acesso como diretor de uma escola existente",
+  },
 };
 
 const defaultConfig: SignupFormConfig = {

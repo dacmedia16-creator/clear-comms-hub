@@ -5,6 +5,7 @@ import {
   Users, 
   Church, 
   Store,
+  GraduationCap,
   Sparkles
 } from "lucide-react";
 import { useState } from "react";
@@ -58,6 +59,12 @@ const segments: Segment[] = [
     label: "Franquias",
     description: "Franqueadores e franqueados",
     terms: { manager: "Franqueador", member: "Franqueado" },
+  },
+  {
+    icon: GraduationCap,
+    label: "Escolas e Cursos",
+    description: "Diretores e alunos",
+    terms: { manager: "Diretor", member: "Aluno" },
     isNew: true,
   },
 ];

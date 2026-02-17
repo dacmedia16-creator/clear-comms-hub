@@ -1,14 +1,17 @@
 
 
-## Atualizar template para `avisopro_confirma_3`
+## Corrigir identificador do template WhatsApp
 
-Preciso trocar o identificador do template em 3 arquivos onde ele esta definido:
+O template na Zion Talk/Meta se chama **`aviso_pro_confirma_3`** (com underscores separando as palavras), mas no codigo esta como `avisopro_confirma_3` (sem underscores).
 
-| Arquivo | Linha | Mudanca |
-|---------|-------|---------|
-| `src/lib/whatsapp-templates.ts` | 5 | `avisopro_confirma_2` -> `avisopro_confirma_3` |
-| `supabase/functions/send-whatsapp/index.ts` | 14 | `avisopro_confirma_2` -> `avisopro_confirma_3` |
-| `supabase/functions/test-whatsapp/index.ts` | 10 | `avisopro_confirma_2` -> `avisopro_confirma_3` |
+### Mudanca
 
-Mudanca simples: apenas substituir a string do identificador nos 3 locais. Nenhuma outra alteracao necessaria.
+Substituir `avisopro_confirma_3` por `aviso_pro_confirma_3` nos 3 arquivos:
 
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/lib/whatsapp-templates.ts` | `'avisopro_confirma_3'` -> `'aviso_pro_confirma_3'` |
+| `supabase/functions/send-whatsapp/index.ts` | `'avisopro_confirma_3'` -> `'aviso_pro_confirma_3'` |
+| `supabase/functions/test-whatsapp/index.ts` | `'avisopro_confirma_3'` -> `'aviso_pro_confirma_3'` |
+
+Apos essa correcao, o envio de teste deve funcionar normalmente.

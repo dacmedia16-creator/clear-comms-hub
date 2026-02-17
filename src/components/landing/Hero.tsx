@@ -80,14 +80,13 @@ export function Hero() {
             </div>
 
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground mb-6">
-              Quando é importante,
+              O canal oficial de avisos
               <br />
-              <span className="text-primary">vira AVISO.</span>
+              <span className="text-primary">da sua organização.</span>
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed">
-              O canal oficial de avisos da sua organização. Uma linha do tempo. 
-              Tudo registrado. WhatsApp e e-mail apenas lembram.
+              Uma linha do tempo com tudo registrado. WhatsApp e e-mail apenas lembram. A informação oficial fica aqui.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-4">
@@ -116,25 +115,20 @@ export function Hero() {
               </Link>
             </div>
 
-            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4 justify-center lg:justify-start text-sm text-muted-foreground mb-6">
+            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4 justify-center lg:justify-start text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <MessageSquareOff className="w-4 h-4 text-primary" />
                 <span>Sem grupo de WhatsApp</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-emerald-600" />
-                <span>3 meses grátis</span>
+                <span>Tudo registrado com data e hora</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-primary" />
-                <span>Sem cartão de crédito</span>
+                <span>3 meses grátis, sem cartão</span>
               </div>
             </div>
-
-            {/* Segmentos */}
-            <p className="text-sm text-muted-foreground/80">
-              Para condomínios, escolas, empresas, clínicas, associações e igrejas.
-            </p>
           </div>
 
           {/* Visual */}

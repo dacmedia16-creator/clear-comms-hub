@@ -1,9 +1,7 @@
 import { Header } from "@/components/landing/Header";
 import { Hero } from "@/components/landing/Hero";
-import { HighlightsBar } from "@/components/landing/HighlightsBar";
+import { ProblemSection } from "@/components/landing/ProblemSection";
 import { SegmentGrid } from "@/components/landing/SegmentGrid";
-import { UseCaseTabs } from "@/components/landing/UseCaseTabs";
-import { TerminologyShowcase } from "@/components/landing/TerminologyShowcase";
 import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { TrustSection } from "@/components/landing/TrustSection";
@@ -21,33 +19,25 @@ const Index = () => {
       <main className="flex-1">
         <Hero />
         
-        {/* Highlights Bar - New features */}
-        <HighlightsBar />
+        <ProblemSection />
         
-        {/* Segment Grid - Shows all supported organization types */}
-        <SegmentGrid />
-        
-        {/* Use Case Tabs - Interactive segment-specific content */}
-        <UseCaseTabs />
-        
-        {/* Terminology Showcase - Shows adaptive terminology */}
-        <TerminologyShowcase />
+        <section id="how-it-works">
+          <HowItWorks />
+        </section>
         
         <section id="features">
           <FeatureShowcase />
         </section>
         
-        <TrustSection />
+        <SegmentGrid />
         
-        <section id="how-it-works">
-          <HowItWorks />
-        </section>
+        <TrustSection />
 
-        {/* CTA Section */}
+        {/* CTA Final */}
         <section className="py-16 md:py-24">
           <div className="container px-4 mx-auto text-center">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Crie o canal oficial da sua organização
+              Centralize a comunicação oficial da sua organização
             </h2>
             <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
               Teste grátis por 3 meses. Sem cartão, sem compromisso.

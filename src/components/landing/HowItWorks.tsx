@@ -36,7 +36,7 @@ export function HowItWorks() {
             Como funciona?
           </h2>
           <p className="text-lg text-muted-foreground">
-            Sem grupo. Sem confusão. Sem perda de informação.
+            Sem grupo. Sem discussão. Sem confusão.
           </p>
         </div>
 

@@ -1,21 +1,69 @@
 
 
-## Corrigir URL duplicada no botao de opt-out do WhatsApp
+## Novo Segmento: Escolas e Cursos
 
-### Problema
-A URL do botao de opt-out esta ficando duplicada: `avisopro.com.br/optout?t=optout?t=test-demo`. Isso acontece porque o template na Meta ja inclui `https://avisopro.com.br/optout?t=` como parte fixa da URL do botao, e o parametro dinamico `{{1}}` e apenas o valor do token. Porem, o codigo esta enviando `optout?t=TOKEN` como parametro, causando a duplicacao.
+Adicionar o 7o segmento da plataforma para instituicoes de ensino como escolas, cursinhos e universidades.
 
-### Solucao
-Remover o prefixo `optout?t=` do valor enviado em `buttonUrlDynamicParams[1]`, passando apenas o token puro.
+### Terminologia do segmento
+
+| Campo | Valor |
+|-------|-------|
+| Tipo | `school` |
+| Label | Escolas e Cursos |
+| Icone | `GraduationCap` |
+| Gestor | Diretor |
+| Membro | Aluno |
+| Bloco | Serie |
+| Unidade | Turma |
+| Exemplos | Escolas, cursinhos, universidades |
+
+### Comportamento
+
+- Localizacao (Serie/Turma): **opcional** (flexivel)
+- Segmentacao por localizacao na interface: **desativada** (mesmo padrao de healthcare/company)
 
 ### Arquivos a alterar
 
-| Arquivo | Mudanca |
-|---------|---------|
-| `supabase/functions/send-whatsapp/index.ts` (linha 122) | `optout?t=${optoutToken}` -> `${optoutToken}` |
-| `supabase/functions/test-whatsapp/index.ts` (linha ~107) | `optout?t=test-demo` -> `test-demo` |
+**1. Banco de dados** - Adicionar valor `school` ao enum `organization_type`
+```sql
+ALTER TYPE public.organization_type ADD VALUE IF NOT EXISTS 'school';
+```
 
-### Detalhes tecnicos
-- Na `send-whatsapp`, linha 122: mudar `buttonUrlDynamicParams[1]` de `` `optout?t=${optoutToken}` `` para `` `${optoutToken}` ``
-- Na `test-whatsapp`, mudar `buttonUrlDynamicParams[1]` de `'optout?t=test-demo'` para `'test-demo'`
-- Nenhuma alteracao necessaria no frontend (`OptOutPage.tsx`) pois ele ja le o token corretamente via `searchParams.get("t")`
+**2. `src/lib/organization-types.ts`**
+- Adicionar `"school"` ao tipo `OrganizationType`
+- Adicionar import do icone `GraduationCap`
+- Adicionar configuracao completa do segmento `school` em `ORGANIZATION_TYPES`
+- Adicionar placeholders de localizacao: `{ block: "1o Ano, 2o Ano", unit: "Turma A, Turma B" }`
+
+**3. `src/lib/category-config.ts`**
+- Adicionar 2 categorias especificas do segmento:
+  - `academico` (icon: BookOpen, "Academico") - para comunicados sobre aulas, notas, matriculas
+  - `pedagogico` (icon: GraduationCap, "Pedagogico") - para reunioes de pais, orientacao pedagogica
+- Adicionar `"school"` ao array `organizationTypes` da categoria `eventos` (ja compartilhada por outros segmentos)
+
+**4. `src/lib/announcement-templates.ts`**
+- Adicionar templates especificos para escolas:
+  - "Reuniao de Pais" (categoria: pedagogico)
+  - "Calendario Escolar" (categoria: academico)
+  - "Comunicado da Diretoria" (categoria: informativo)
+
+**5. `src/lib/signup-config.ts`**
+- Adicionar configuracao de formulario para `school`:
+  - memberTitle: "Cadastro de Aluno/Responsavel"
+  - unitLabel: "Serie e Turma"
+  - codeLabel: "Codigo da Escola"
+  - managerTitle: "Cadastro de Diretor"
+
+**6. `src/components/landing/SegmentGrid.tsx`**
+- Adicionar card "Escolas e Cursos" com icone GraduationCap e termos Diretor/Aluno
+
+**7. `src/components/landing/UseCaseTabs.tsx`**
+- Adicionar aba "Escolas e Cursos" com 4 casos de uso: reunioes de pais, calendario escolar, matriculas e comunicados da diretoria
+
+### Arquivos que NAO precisam de alteracao
+
+- Hooks (`useOrganizationTerms`, `useOrganizationBehavior`, `useCategoriesForOrganization`) - sao genericos e ja funcionam com qualquer tipo
+- Paginas de signup - usam rotas parametrizadas que ja se adaptam
+- Super Admin - filtros e gestao ja funcionam dinamicamente
+- Templates WhatsApp - sao universais para todos os segmentos
+

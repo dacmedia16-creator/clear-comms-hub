@@ -35,18 +35,21 @@ const segments: Segment[] = [
     label: "Clínicas e Saúde",
     description: "Gestores e pacientes",
     terms: { manager: "Administrador", member: "Paciente" },
+    link: "/clinicas",
   },
   {
     icon: Briefcase,
     label: "Empresas",
     description: "Gestores e colaboradores",
     terms: { manager: "Gestor", member: "Colaborador" },
+    link: "/empresas",
   },
   {
     icon: Users,
     label: "Associações e Clubes",
     description: "Presidentes e membros",
     terms: { manager: "Presidente", member: "Associado" },
+    link: "/associacoes",
   },
   {
     icon: Church,
@@ -54,12 +57,14 @@ const segments: Segment[] = [
     description: "Pastores e membros",
     terms: { manager: "Pastor", member: "Membro" },
     isNew: true,
+    link: "/igrejas",
   },
   {
     icon: Store,
     label: "Franquias",
     description: "Franqueadores e franqueados",
     terms: { manager: "Franqueador", member: "Franqueado" },
+    link: "/franquias",
   },
   {
     icon: GraduationCap,
@@ -67,6 +72,7 @@ const segments: Segment[] = [
     description: "Diretores e alunos",
     terms: { manager: "Diretor", member: "Aluno" },
     isNew: true,
+    link: "/escolas",
   },
 ];
 

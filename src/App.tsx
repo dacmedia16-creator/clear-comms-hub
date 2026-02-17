@@ -31,6 +31,12 @@ import DemoPage from "./pages/DemoPage";
 import ReferSyndicPage from "./pages/ReferSyndicPage";
 import OptOutPage from "./pages/OptOutPage";
 import CondominiosLandingPage from "./pages/CondominiosLandingPage";
+import EmpresasLandingPage from "./pages/EmpresasLandingPage";
+import ClinicasLandingPage from "./pages/ClinicasLandingPage";
+import AssociacoesLandingPage from "./pages/AssociacoesLandingPage";
+import IgrejasLandingPage from "./pages/IgrejasLandingPage";
+import FranquiasLandingPage from "./pages/FranquiasLandingPage";
+import EscolasLandingPage from "./pages/EscolasLandingPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -76,6 +82,12 @@ const App = () => (
             <Route path="/super-admin/whatsapp" element={<Navigate to="/super-admin/notifications" replace />} />
             <Route path="/optout" element={<OptOutPage />} />
             <Route path="/condominios" element={<CondominiosLandingPage />} />
+            <Route path="/empresas" element={<EmpresasLandingPage />} />
+            <Route path="/clinicas" element={<ClinicasLandingPage />} />
+            <Route path="/associacoes" element={<AssociacoesLandingPage />} />
+            <Route path="/igrejas" element={<IgrejasLandingPage />} />
+            <Route path="/franquias" element={<FranquiasLandingPage />} />
+            <Route path="/escolas" element={<EscolasLandingPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

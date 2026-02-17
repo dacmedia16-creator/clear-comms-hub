@@ -1,17 +1,21 @@
 
 
-## Corrigir identificador do template WhatsApp
+## Corrigir URL duplicada no botao de opt-out do WhatsApp
 
-O template na Zion Talk/Meta se chama **`aviso_pro_confirma_3`** (com underscores separando as palavras), mas no codigo esta como `avisopro_confirma_3` (sem underscores).
+### Problema
+A URL do botao de opt-out esta ficando duplicada: `avisopro.com.br/optout?t=optout?t=test-demo`. Isso acontece porque o template na Meta ja inclui `https://avisopro.com.br/optout?t=` como parte fixa da URL do botao, e o parametro dinamico `{{1}}` e apenas o valor do token. Porem, o codigo esta enviando `optout?t=TOKEN` como parametro, causando a duplicacao.
 
-### Mudanca
+### Solucao
+Remover o prefixo `optout?t=` do valor enviado em `buttonUrlDynamicParams[1]`, passando apenas o token puro.
 
-Substituir `avisopro_confirma_3` por `aviso_pro_confirma_3` nos 3 arquivos:
+### Arquivos a alterar
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/lib/whatsapp-templates.ts` | `'avisopro_confirma_3'` -> `'aviso_pro_confirma_3'` |
-| `supabase/functions/send-whatsapp/index.ts` | `'avisopro_confirma_3'` -> `'aviso_pro_confirma_3'` |
-| `supabase/functions/test-whatsapp/index.ts` | `'avisopro_confirma_3'` -> `'aviso_pro_confirma_3'` |
+| `supabase/functions/send-whatsapp/index.ts` (linha 122) | `optout?t=${optoutToken}` -> `${optoutToken}` |
+| `supabase/functions/test-whatsapp/index.ts` (linha ~107) | `optout?t=test-demo` -> `test-demo` |
 
-Apos essa correcao, o envio de teste deve funcionar normalmente.
+### Detalhes tecnicos
+- Na `send-whatsapp`, linha 122: mudar `buttonUrlDynamicParams[1]` de `` `optout?t=${optoutToken}` `` para `` `${optoutToken}` ``
+- Na `test-whatsapp`, mudar `buttonUrlDynamicParams[1]` de `'optout?t=test-demo'` para `'test-demo'`
+- Nenhuma alteracao necessaria no frontend (`OptOutPage.tsx`) pois ele ja le o token corretamente via `searchParams.get("t")`

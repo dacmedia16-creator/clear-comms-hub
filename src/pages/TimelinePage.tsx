@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { getCategoriesForOrganization, getCategoryConfig } from "@/lib/category-config";
 import type { OrganizationType } from "@/lib/organization-types";
-import { linkifyText } from "@/lib/utils";
+import { linkifyText, linkifyTextWithButtons } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -388,7 +388,7 @@ export default function TimelinePage() {
                     <CollapsibleContent>
                       <CardContent className="pt-0 border-t border-border mt-2">
                         <div className="prose prose-sm max-w-none text-foreground pt-4 whitespace-pre-wrap">
-                          {linkifyText(announcement.content)}
+                          {linkifyTextWithButtons(announcement.content)}
                         </div>
 
                         {/* Attachments */}

@@ -213,10 +213,11 @@ export function useCondoMembers(condoId: string) {
       role: "admin" | "syndic" | "resident" | "collaborator";
     }>,
     onChunkProgress?: (processed: number, total: number) => void
-  ): Promise<{ success: number; failed: number }> => {
+  ): Promise<{ success: number; failed: number; skipped: number }> => {
     const CHUNK_SIZE = 500;
     let totalSuccess = 0;
     let totalFailed = 0;
+    let totalSkipped = 0;
 
     // Split into chunks of 500
     const chunks: typeof membersData[] = [];
@@ -238,6 +239,7 @@ export function useCondoMembers(condoId: string) {
 
         totalSuccess += data?.success || 0;
         totalFailed += data?.failed || 0;
+        totalSkipped += data?.skipped || 0;
       } catch (err: any) {
         console.error(`Error importing chunk ${i + 1}:`, err);
         totalFailed += chunks[i].length;
@@ -247,7 +249,7 @@ export function useCondoMembers(condoId: string) {
     }
 
     await fetchMembers();
-    return { success: totalSuccess, failed: totalFailed };
+    return { success: totalSuccess, failed: totalFailed, skipped: totalSkipped };
   };
 
   const updateMember = async (

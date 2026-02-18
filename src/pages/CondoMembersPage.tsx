@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
@@ -27,6 +27,17 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ImportMembersDialog, ParsedMember } from "@/components/ImportMembersDialog";
 import { useOrganizationBehavior } from "@/hooks/useOrganizationBehavior";
 import { getRoleLabel } from "@/lib/organization-types";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+
+const ITEMS_PER_PAGE = 20;
 
 const roleColors: Record<string, string> = {
   admin: "bg-primary/10 text-primary",
@@ -51,6 +62,17 @@ export default function CondoMembersPage() {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<CondoMember | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(members.length / ITEMS_PER_PAGE);
+  const paginatedMembers = useMemo(
+    () => members.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE),
+    [members, currentPage]
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [members.length]);
 
   // Nav items for syndic
   const syndicNavItems: MobileNavItem[] = condoId ? [
@@ -230,7 +252,7 @@ export default function CondoMembersPage() {
                   <Users className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <span className="font-display text-xl font-bold text-foreground">{terms.memberPlural}</span>
+                  <span className="font-display text-xl font-bold text-foreground">{terms.memberPlural} ({members.length})</span>
                   {condoName && (
                     <p className="text-sm text-muted-foreground">{condoName}</p>
                   )}
@@ -301,7 +323,7 @@ export default function CondoMembersPage() {
                 </div>
               </Card>
             ) : (
-              members.map((member) => {
+              paginatedMembers.map((member) => {
                 const displayName = getMemberDisplayName(member);
                 const email = getMemberEmail(member);
                 const phone = getMemberPhone(member);
@@ -402,7 +424,7 @@ export default function CondoMembersPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  members.map((member) => {
+                  paginatedMembers.map((member) => {
                     const displayName = getMemberDisplayName(member);
                     const email = getMemberEmail(member);
                     const phone = getMemberPhone(member);
@@ -482,6 +504,52 @@ export default function CondoMembersPage() {
               </TableBody>
             </Table>
           </Card>
+        )}
+
+        {totalPages > 1 && (
+          <Pagination className="mt-6">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                if (
+                  page === 1 ||
+                  page === totalPages ||
+                  (page >= currentPage - 1 && page <= currentPage + 1)
+                ) {
+                  return (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        isActive={page === currentPage}
+                        onClick={() => setCurrentPage(page)}
+                        className="cursor-pointer"
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                }
+                if (page === currentPage - 2 || page === currentPage + 2) {
+                  return (
+                    <PaginationItem key={page}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  );
+                }
+                return null;
+              })}
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         )}
       </main>
 

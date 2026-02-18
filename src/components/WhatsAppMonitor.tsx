@@ -41,21 +41,31 @@ export function WhatsAppMonitor({
   const [logs, setLogs] = useState<WhatsAppLog[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchLogs = async () => {
+    const { data, error } = await supabase
+      .from("whatsapp_logs")
+      .select("id, recipient_phone, recipient_name, status, error_message, sent_at")
+      .eq("announcement_id", announcementId)
+      .order("sent_at", { ascending: true });
+
+    if (!error && data) {
+      setLogs(data);
+    }
+    setLoading(false);
+  };
+
   // Initial fetch
   useEffect(() => {
-    async function fetchLogs() {
-      const { data, error } = await supabase
-        .from("whatsapp_logs")
-        .select("id, recipient_phone, recipient_name, status, error_message, sent_at")
-        .eq("announcement_id", announcementId)
-        .order("sent_at", { ascending: true });
-
-      if (!error && data) {
-        setLogs(data);
-      }
-      setLoading(false);
-    }
     fetchLogs();
+  }, [announcementId]);
+
+  // Polling fallback every 5s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchLogs();
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, [announcementId]);
 
   // Realtime subscription

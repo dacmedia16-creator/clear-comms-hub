@@ -43,7 +43,7 @@ export interface ParsedMember {
 interface ImportMembersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onImport: (members: ParsedMember[], onChunkProgress?: (processed: number, total: number) => void) => Promise<{ success: number; failed: number }>;
+  onImport: (members: ParsedMember[], onChunkProgress?: (processed: number, total: number) => void) => Promise<{ success: number; failed: number; skipped?: number }>;
   terms?: OrganizationTerms;
   behavior?: OrganizationBehavior;
 }
@@ -88,7 +88,7 @@ export function ImportMembersDialog({
   const [parsedMembers, setParsedMembers] = useState<ParsedMember[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(null);
+  const [importResult, setImportResult] = useState<{ success: number; failed: number; skipped?: number } | null>(null);
 
   const validCount = parsedMembers.filter((m) => m.isValid).length;
   const invalidCount = parsedMembers.filter((m) => !m.isValid).length;
@@ -413,6 +413,7 @@ export function ImportMembersDialog({
                 <p className="text-sm text-muted-foreground mt-2">
                   {importResult.success} {terms.member.toLowerCase()}(s) importado(s) com sucesso
                   {importResult.failed > 0 && `, ${importResult.failed} falha(s)`}
+                  {(importResult.skipped ?? 0) > 0 && `, ${importResult.skipped} duplicado(s) ignorado(s)`}
                 </p>
               </div>
             </div>

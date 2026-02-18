@@ -23,6 +23,43 @@ interface BatchRequest {
 const REQUIRES_LOCATION = ["condominium", "franchise"];
 const MAX_BATCH_SIZE = 500;
 
+async function getExistingPhones(
+  serviceClient: any,
+  condominiumId: string,
+  phones: string[]
+): Promise<Set<string>> {
+  const existing = new Set<string>();
+  if (phones.length === 0) return existing;
+
+  // Check condo_members phones
+  const { data: cmRows } = await serviceClient
+    .from("user_roles")
+    .select("condo_members!inner(phone)")
+    .eq("condominium_id", condominiumId)
+    .in("condo_members.phone", phones);
+
+  if (cmRows) {
+    for (const row of cmRows) {
+      if (row.condo_members?.phone) existing.add(row.condo_members.phone);
+    }
+  }
+
+  // Check profiles phones
+  const { data: pRows } = await serviceClient
+    .from("user_roles")
+    .select("profiles!inner(phone)")
+    .eq("condominium_id", condominiumId)
+    .in("profiles.phone", phones);
+
+  if (pRows) {
+    for (const row of pRows) {
+      if (row.profiles?.phone) existing.add(row.profiles.phone);
+    }
+  }
+
+  return existing;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -45,7 +82,6 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Verify authentication
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
@@ -58,7 +94,6 @@ Deno.serve(async (req) => {
     const userId = claimsData.claims.sub;
     console.log("Batch import by user:", userId);
 
-    // Parse body
     const body: BatchRequest = await req.json();
     const { condominiumId, members } = body;
 
@@ -71,7 +106,7 @@ Deno.serve(async (req) => {
 
     if (members.length === 0) {
       return new Response(
-        JSON.stringify({ success: 0, failed: 0 }),
+        JSON.stringify({ success: 0, failed: 0, skipped: 0 }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -83,7 +118,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check permission ONCE
+    // Check permission
     const { data: canManage, error: permError } = await userClient.rpc(
       "can_manage_condominium",
       { cond_id: condominiumId }
@@ -98,7 +133,7 @@ Deno.serve(async (req) => {
 
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get org type ONCE
+    // Get org type
     const { data: condoData, error: condoError } = await serviceClient
       .from("condominiums")
       .select("organization_type")
@@ -115,7 +150,7 @@ Deno.serve(async (req) => {
     const orgType = condoData?.organization_type || "condominium";
     const requiresLocation = REQUIRES_LOCATION.includes(orgType);
 
-    // Validate all members
+    // Validate members
     const validMembers: MemberInput[] = [];
     let failed = 0;
 
@@ -127,15 +162,58 @@ Deno.serve(async (req) => {
 
     if (validMembers.length === 0) {
       return new Response(
-        JSON.stringify({ success: 0, failed }),
+        JSON.stringify({ success: 0, failed, skipped: 0 }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Inserting ${validMembers.length} condo_members in batch...`);
+    // Deduplicate internally (keep first occurrence of each phone)
+    const seenPhones = new Set<string>();
+    const dedupedMembers: MemberInput[] = [];
+    let skippedInternal = 0;
+
+    for (const m of validMembers) {
+      if (m.phone) {
+        if (seenPhones.has(m.phone)) {
+          skippedInternal++;
+          continue;
+        }
+        seenPhones.add(m.phone);
+      }
+      dedupedMembers.push(m);
+    }
+
+    // Check existing phones in the organization
+    const phonesToCheck = dedupedMembers
+      .map((m) => m.phone)
+      .filter((p) => !!p);
+
+    const existingPhones = await getExistingPhones(serviceClient, condominiumId, phonesToCheck);
+
+    const newMembers: MemberInput[] = [];
+    let skippedExisting = 0;
+
+    for (const m of dedupedMembers) {
+      if (m.phone && existingPhones.has(m.phone)) {
+        skippedExisting++;
+        continue;
+      }
+      newMembers.push(m);
+    }
+
+    const totalSkipped = skippedInternal + skippedExisting;
+
+    if (newMembers.length === 0) {
+      return new Response(
+        JSON.stringify({ success: 0, failed, skipped: totalSkipped }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`Inserting ${newMembers.length} condo_members (skipped ${totalSkipped} duplicates)...`);
 
     // Batch insert condo_members
-    const condoMembersData = validMembers.map((m) => ({
+    const condoMembersData = newMembers.map((m) => ({
       full_name: m.fullName || m.phone || "Sem nome",
       email: m.email || null,
       phone: m.phone || null,
@@ -154,16 +232,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Inserted ${insertedMembers.length} condo_members, now creating user_roles...`);
-
     // Batch insert user_roles
     const userRolesData = insertedMembers.map((cm, i) => ({
       condominium_id: condominiumId,
       member_id: cm.id,
       user_id: null,
-      role: validMembers[i].role,
-      block: validMembers[i].block?.trim() || null,
-      unit: validMembers[i].unit?.trim() || null,
+      role: newMembers[i].role,
+      block: newMembers[i].block?.trim() || null,
+      unit: newMembers[i].unit?.trim() || null,
       is_approved: true,
     }));
 
@@ -173,7 +249,6 @@ Deno.serve(async (req) => {
 
     if (rolesError) {
       console.error("Batch user_roles insert error:", rolesError);
-      // Rollback: delete inserted condo_members
       const idsToDelete = insertedMembers.map((cm) => cm.id);
       await serviceClient.from("condo_members").delete().in("id", idsToDelete);
 
@@ -183,13 +258,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Batch import complete: ${insertedMembers.length} success, ${failed} failed`);
+    console.log(`Batch complete: ${insertedMembers.length} success, ${failed} failed, ${totalSkipped} skipped`);
 
     return new Response(
-      JSON.stringify({ success: insertedMembers.length, failed }),
+      JSON.stringify({ success: insertedMembers.length, failed, skipped: totalSkipped }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-
   } catch (error) {
     console.error("Unexpected error:", error);
     return new Response(

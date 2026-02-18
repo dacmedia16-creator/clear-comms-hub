@@ -64,6 +64,7 @@ import { getOrganizationBehavior } from "@/lib/organization-types";
 import { MemberSearchSelect } from "@/components/MemberSearchSelect";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { linkifyText } from "@/lib/utils";
+import { WhatsAppMonitor } from "@/components/WhatsAppMonitor";
 
 interface Announcement {
   id: string;
@@ -142,6 +143,10 @@ export default function AdminCondominiumPage() {
   // Mobile drawer for announcement actions
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
+
+  // WhatsApp monitor state
+  const [monitorAnnouncementId, setMonitorAnnouncementId] = useState<string | null>(null);
+  const [monitorTotal, setMonitorTotal] = useState<number | undefined>(undefined);
   
   const { sendToMembers: sendWhatsAppToMembers } = useSendWhatsApp();
   const { sendToMembers: sendSMSToMembers } = useSendSMS();
@@ -279,16 +284,18 @@ export default function AdminCondominiumPage() {
       if (sendWhatsApp && condominium.notification_whatsapp) {
         try {
           const result = await sendWhatsAppToMembers(
-            { ...data, id: data.id, target_blocks: targetBlocksArray, target_units: targetUnitsArray, target_member_ids: targetMemberIdsArray },
-            { ...condominium, id: condominium.id },
-            baseUrl
-          );
-          if (result.total > 0) {
-            toast({
-              title: "WhatsApp em envio",
-              description: `Enviando para ${result.total} moradores em segundo plano.`,
-            });
-          }
+              { ...data, id: data.id, target_blocks: targetBlocksArray, target_units: targetUnitsArray, target_member_ids: targetMemberIdsArray },
+              { ...condominium, id: condominium.id },
+              baseUrl
+            );
+            if (result.total > 0) {
+              toast({
+                title: "WhatsApp em envio",
+                description: `Enviando para ${result.total} moradores em segundo plano.`,
+              });
+              setMonitorAnnouncementId(data.id);
+              setMonitorTotal(result.total);
+            }
         } catch (whatsappError) {
           console.error("Error sending WhatsApp:", whatsappError);
         }
@@ -825,6 +832,19 @@ export default function AdminCondominiumPage() {
           </Dialog>
         </div>
 
+        {/* WhatsApp Monitor */}
+        {monitorAnnouncementId && condoId && (
+          <WhatsAppMonitor
+            announcementId={monitorAnnouncementId}
+            condominiumId={condoId}
+            totalExpected={monitorTotal}
+            onClose={() => {
+              setMonitorAnnouncementId(null);
+              setMonitorTotal(undefined);
+            }}
+          />
+        )}
+
         {/* Announcements List */}
         {announcements.length === 0 ? (
           <Card className="text-center py-12">
@@ -897,7 +917,22 @@ export default function AdminCondominiumPage() {
                           <SendWhatsAppButton
                             announcement={{ ...announcement, id: announcement.id }}
                             condominium={{ ...condominium, id: condominium.id }}
+                            onSendStarted={(annId, total) => {
+                              setMonitorAnnouncementId(annId);
+                              setMonitorTotal(total);
+                            }}
                           />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setMonitorAnnouncementId(announcement.id);
+                              setMonitorTotal(undefined);
+                            }}
+                            title="Ver envios WhatsApp"
+                          >
+                            <Clock className="w-4 h-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"

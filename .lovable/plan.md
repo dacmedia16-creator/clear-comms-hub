@@ -1,31 +1,43 @@
 
 
-## Segmento Genérico -- Implementação completa
+## Flexibilizar validação de importação de planilha
 
-### 1. Migração no banco de dados
+Atualmente a importação exige Nome, Telefone e Email como obrigatórios para todos os tipos de organização. A mudança tornará apenas o **Telefone** obrigatório, com Nome e Email opcionais -- especialmente útil para o segmento genérico.
 
-Adicionar o valor `generic` ao enum `organization_type`:
+---
 
-```text
-ALTER TYPE organization_type ADD VALUE IF NOT EXISTS 'generic';
-```
+### Mudanças
 
-### 2. Atualizar `src/lib/organization-types.ts`
+**Arquivo: `src/components/ImportMembersDialog.tsx`**
 
-- Adicionar `"generic"` ao tipo `OrganizationType`
-- Adicionar configuração completa no mapa `ORGANIZATION_TYPES` (label "Genérico", icon `Layers`, termos neutros, behavior sem localização)
-- Adicionar placeholder para `generic` em `getLocationPlaceholders`
-- Criar constante `PUBLIC_ORGANIZATION_TYPE_OPTIONS` que exclui `generic`
+1. Ajustar a função `validateMember` (linhas 120-122):
+   - **Nome**: Validar apenas se preenchido (se vazio, aceitar sem erro)
+   - **Telefone**: Continua obrigatório (único campo obrigatório)
+   - **Email**: Validar formato apenas se preenchido (se vazio, aceitar sem erro)
 
-### 3. Atualizar `src/pages/auth/SignupTypePage.tsx`
+2. Ajustar o template de download para indicar que Nome e Email são opcionais:
+   - Cabeçalhos: `Nome (opcional)`, `Email (opcional)` -- Telefone sem "(opcional)"
 
-- Trocar `ORGANIZATION_TYPE_OPTIONS` por `PUBLIC_ORGANIZATION_TYPE_OPTIONS` para ocultar o tipo genérico do cadastro público
+**Arquivo: `supabase/functions/create-member/index.ts`**
 
-### Resumo
+3. Ajustar validação no backend (linha 70):
+   - Trocar exigência de `fullName` para `phone` como campo obrigatório
+   - Permitir `fullName` vazio (usar telefone como fallback de identificação)
 
-| Arquivo | Ação |
+**Arquivo: `src/hooks/useCondoMembers.ts`**
+
+4. Ajustar helper `getMemberDisplayName`:
+   - Se nome vazio, retornar o telefone como fallback de exibição
+
+---
+
+### Regras de validação após a mudança
+
+| Campo | Regra |
 |---|---|
-| Migração SQL | Novo valor `generic` no enum |
-| `src/lib/organization-types.ts` | Tipo + config + constante pública filtrada |
-| `src/pages/auth/SignupTypePage.tsx` | Usar lista pública (sem generic) |
+| Nome | Opcional. Se preenchido, minimo 2 caracteres |
+| Telefone | **Obrigatório** |
+| Email | Opcional. Se preenchido, deve conter "@" |
+| Bloco/Unidade | Depende do tipo de organização (sem mudança) |
+| Função | Default "resident" se vazio (sem mudança) |
 

@@ -14,7 +14,8 @@ import {
 import { useCondoMembers, getMemberDisplayName, getMemberEmail, getMemberPhone, getMemberLocation, CondoMember } from "@/hooks/useCondoMembers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check, Bell, Settings, FileText, Upload, Pencil } from "lucide-react";
+import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check, Bell, Settings, FileText, Upload, Pencil, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { EditMemberDialog, UpdateMemberData } from "@/components/EditMemberDialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -63,16 +64,31 @@ export default function CondoMembersPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<CondoMember | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const totalPages = Math.ceil(members.length / ITEMS_PER_PAGE);
+  const filteredMembers = useMemo(
+    () => {
+      if (!searchQuery.trim()) return members;
+      const q = searchQuery.toLowerCase();
+      return members.filter((m) => {
+        const name = getMemberDisplayName(m).toLowerCase();
+        const email = (getMemberEmail(m) || "").toLowerCase();
+        const phone = (getMemberPhone(m) || "").toLowerCase();
+        return name.includes(q) || email.includes(q) || phone.includes(q);
+      });
+    },
+    [members, searchQuery]
+  );
+
+  const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
   const paginatedMembers = useMemo(
-    () => members.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE),
-    [members, currentPage]
+    () => filteredMembers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE),
+    [filteredMembers, currentPage]
   );
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [members.length]);
+  }, [members.length, searchQuery]);
 
   // Nav items for syndic
   const syndicNavItems: MobileNavItem[] = condoId ? [
@@ -307,6 +323,17 @@ export default function CondoMembersPage() {
 
       {/* Main Content */}
       <main className="container px-4 mx-auto py-8">
+        {!loading && members.length > 0 && (
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder={`Buscar ${terms.member.toLowerCase()} por nome, email ou telefone...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        )}
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />

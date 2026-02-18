@@ -6,6 +6,7 @@ import {
   Church,
   Store,
   GraduationCap,
+  Layers,
   LucideIcon,
 } from "lucide-react";
 
@@ -16,7 +17,8 @@ export type OrganizationType =
   | "community"
   | "church"
   | "franchise"
-  | "school";
+  | "school"
+  | "generic";
 
 export interface OrganizationTerms {
   organization: string;
@@ -216,6 +218,30 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
       showLocationTargeting: false,
     },
   },
+  generic: {
+    label: "Genérico",
+    description: "Organizações sem segmento específico",
+    examples: "Grupos diversos, projetos",
+    icon: Layers,
+    terms: {
+      organization: "Organização",
+      organizationPlural: "Organizações",
+      manager: "Gestor",
+      member: "Membro",
+      memberPlural: "Membros",
+      block: "Grupo",
+      blockPlural: "Grupos",
+      unit: "Categoria",
+      unitPlural: "Categorias",
+    },
+    behavior: {
+      requiresLocation: false,
+      blockValidation: "flexible",
+      unitValidation: "flexible",
+      showLocationInTimeline: false,
+      showLocationTargeting: false,
+    },
+  },
 };
 
 // Helper to get organization config with fallback
@@ -249,6 +275,11 @@ export const ORGANIZATION_TYPE_OPTIONS = Object.entries(ORGANIZATION_TYPES).map(
   examples: config.examples,
   icon: config.icon,
 }));
+
+// Lista pública (sem generic) para cadastro público
+export const PUBLIC_ORGANIZATION_TYPE_OPTIONS = ORGANIZATION_TYPE_OPTIONS.filter(
+  (opt) => opt.value !== "generic"
+);
 
 // Helper to get role label dynamically based on organization terms
 export function getRoleLabel(
@@ -287,6 +318,7 @@ export function getLocationPlaceholders(type?: OrganizationType | string | null)
     community: { block: "Diretoria, Esportes", unit: "Presidente, Sócio" },
     franchise: { block: "Sul, Norte", unit: "Loja 01, Loja 02" },
     school: { block: "1º Ano, 2º Ano", unit: "Turma A, Turma B" },
+    generic: { block: "Grupo 1, Grupo 2", unit: "Categoria A, Categoria B" },
   };
   
   const orgType = type && type in ORGANIZATION_TYPES ? type as OrganizationType : "condominium";

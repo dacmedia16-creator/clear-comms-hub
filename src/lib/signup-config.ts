@@ -87,6 +87,16 @@ const configMap: Record<OrganizationType, Partial<SignupFormConfig>> = {
     managerTitle: "Cadastro de Diretor",
     managerDescription: "Solicite acesso como diretor de uma escola existente",
   },
+  generic: {
+    memberTitle: "Cadastro de Membro",
+    memberDescription: "Entre com o código da sua organização para se cadastrar",
+    unitLabel: "Grupo e Categoria",
+    unitPlaceholder: "ex: Grupo 1, Categoria A",
+    codeLabel: "Código da Organização",
+    codeDescription: "Solicite ao gestor",
+    managerTitle: "Cadastro de Gestor",
+    managerDescription: "Solicite acesso como gestor de uma organização existente",
+  },
 };
 
 const defaultConfig: SignupFormConfig = {

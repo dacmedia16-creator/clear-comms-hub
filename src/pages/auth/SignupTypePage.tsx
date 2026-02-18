@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Bell, ArrowLeft } from "lucide-react";
-import { ORGANIZATION_TYPE_OPTIONS } from "@/lib/organization-types";
+import { PUBLIC_ORGANIZATION_TYPE_OPTIONS } from "@/lib/organization-types";
 
 export default function SignupTypePage() {
   return (
@@ -37,7 +37,7 @@ export default function SignupTypePage() {
 
           {/* Grid of organization types */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ORGANIZATION_TYPE_OPTIONS.map(({ value, label, icon: Icon, description, examples }) => (
+            {PUBLIC_ORGANIZATION_TYPE_OPTIONS.map(({ value, label, icon: Icon, description, examples }) => (
               <Link key={value} to={`/auth/signup/${value}`}>
                 <Card className="p-5 hover:border-primary hover:shadow-lg transition-all cursor-pointer group h-full">
                   <div className="flex items-start gap-4">

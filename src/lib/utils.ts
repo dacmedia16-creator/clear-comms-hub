@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import React from "react";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -90,4 +91,34 @@ export function getTrialStatus(trialEndsAt: string | null) {
     daysRemaining: Math.max(0, daysRemaining),
     endDate,
   };
+}
+
+// Detecta URLs no texto e retorna fragmentos React com links clicáveis
+export function linkifyText(text: string): React.ReactNode[] {
+  const urlRegex = /(https?:\/\/[^\s<]+)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = urlRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    parts.push(
+      React.createElement("a", {
+        key: match.index,
+        href: match[0],
+        target: "_blank",
+        rel: "noopener noreferrer",
+        className: "text-primary underline break-all",
+      }, match[0])
+    );
+    lastIndex = urlRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
 }

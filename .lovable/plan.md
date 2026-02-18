@@ -1,22 +1,22 @@
 
 
-## Adicionar total de membros e paginacao (20 por pagina)
+## Adicionar paginacao e total de membros na pagina do gestor (CondoMembersPage)
+
+Aplicar a mesma logica de paginacao ja implementada no SuperAdminCondoMembers.
 
 ### Mudancas
 
-**1. `src/pages/super-admin/SuperAdminCondoMembers.tsx`**
-- Exibir o total de membros no header (ex: "Membros (583)")
-- Adicionar estado de paginacao (`currentPage`)
-- Fatiar a lista `members` para mostrar apenas 20 por pagina
-- Adicionar componente de paginacao no rodape da tabela/cards (anterior, proxima, numeros de pagina)
-- Resetar para pagina 1 quando os membros forem recarregados
+**1. `src/pages/CondoMembersPage.tsx`**
+- Exibir total de membros no header ao lado do titulo: ex. "Moradores (583)"
+- Adicionar estado `currentPage` e constante `ITEMS_PER_PAGE = 20`
+- Criar `paginatedMembers` com `useMemo`: `members.slice((currentPage - 1) * 20, currentPage * 20)`
+- Resetar `currentPage` para 1 quando `members.length` mudar (via `useEffect`)
+- Substituir `members.map(...)` por `paginatedMembers.map(...)` tanto na versao mobile (cards) quanto desktop (tabela)
+- Adicionar componente `Pagination` no rodape do conteudo principal com navegacao anterior/proxima e numeros de pagina
+- Importar `Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis` de `@/components/ui/pagination`
 
-**2. Detalhes tecnicos**
-- Paginacao no lado do cliente (os dados ja estao carregados em memoria)
-- Usar o componente `Pagination` existente em `src/components/ui/pagination.tsx`
-- Constante `ITEMS_PER_PAGE = 20`
-- Calculo: `members.slice((page - 1) * 20, page * 20)`
-- Total de paginas: `Math.ceil(members.length / 20)`
-- O total de membros aparece ao lado do titulo no header, ex: "Membros (583)"
-- Funciona tanto na versao desktop (tabela) quanto mobile (cards)
+### Detalhes tecnicos
+- Mesma logica de paginacao do SuperAdminCondoMembers (client-side, `useMemo`, ellipsis para muitas paginas)
+- Paginacao so aparece quando `totalPages > 1`
+- O total aparece no header: `{terms.memberPlural} ({members.length})`
 

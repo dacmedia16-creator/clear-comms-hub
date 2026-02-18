@@ -238,7 +238,7 @@ serve(async (req) => {
       );
     }
 
-    let filteredRows = memberRows;
+    let filteredRows = (rolesData || []) as unknown as MemberRow[];
 
     // Apply target_member_ids filter at row level
     const hasTargetMemberIds = announcement.target_member_ids && announcement.target_member_ids.length > 0;

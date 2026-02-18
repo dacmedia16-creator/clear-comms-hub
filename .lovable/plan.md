@@ -1,25 +1,30 @@
 
+## Corrigir Monitor de WhatsApp que Nao Atualiza
 
-## Transformar Links em Botoes no Conteudo dos Avisos
+### Problema Identificado
+O envio foi realizado com sucesso (confirmado nos logs do servidor e no banco de dados), mas o monitor no frontend mostra "0 enviados" porque:
 
-### O que sera feito
-Atualizar a funcao `linkifyText` para renderizar URLs detectadas no conteudo dos avisos como **botoes estilizados** (com icone de link externo) em vez de links de texto simples sublinhados.
+1. **Sem polling**: O fetch inicial roda uma unica vez. Se o INSERT no banco ainda nao aconteceu naquele momento (o envio e assincrono em background), o monitor nunca mais busca os dados.
+2. **Realtime pode falhar silenciosamente**: A subscription Realtime com RLS pode nao entregar o evento INSERT para o cliente autenticado dependendo do timing de estabelecimento do canal.
 
-### Como vai ficar
-- URLs no conteudo aparecerao como botoes com fundo primario, icone de link externo e texto do dominio
-- Links curtos mostrarao a URL limpa (sem http/https)
-- Botoes abrirao em nova aba ao clicar
-- O resumo (summary) continuara com links inline simples para nao poluir visualmente
+### Solucao
+Adicionar um **polling periodico** como fallback alem do Realtime, garantindo que os dados aparecem mesmo se o Realtime falhar.
 
 ### Detalhes Tecnicos
 
-**1. Atualizar `src/lib/utils.ts`**
-- Criar nova funcao `linkifyTextWithButtons` que renderiza URLs como botoes usando o componente Button do shadcn (ou estilo equivalente via classes Tailwind)
-- Manter a funcao `linkifyText` original para uso no summary
-- O botao tera: icone `ExternalLink` do Lucide, texto com dominio limpo (ex: "forms.google.com/...")
+**Arquivo: `src/components/WhatsAppMonitor.tsx`**
 
-**2. Atualizar `src/pages/TimelinePage.tsx`**
-- Substituir `linkifyText(announcement.content)` por `linkifyTextWithButtons(announcement.content)` na area de conteudo expandido
+1. Adicionar um `setInterval` de **5 segundos** que refaz a query ao banco buscando os logs do announcement
+2. Manter a subscription Realtime como mecanismo primario (entrega instantanea quando funciona)
+3. O polling serve como fallback - se o Realtime entregou o dado, o polling simplesmente confirma o mesmo estado
+4. Parar o polling automaticamente quando `processed >= totalExpected` (envio concluido)
+5. Limpar o interval no cleanup do useEffect
 
-**3. Atualizar `src/pages/AdminCondominiumPage.tsx`**
-- Mesma substituicao na area de conteudo completo do painel admin
+Logica resumida:
+```
+useEffect -> setInterval(5000) -> fetchLogs()
+  - Se processed >= totalExpected: clearInterval
+  - Cleanup: clearInterval
+```
+
+Isso resolve o problema sem depender exclusivamente do Realtime, que pode falhar em cenarios de race condition ou problemas de RLS no canal.

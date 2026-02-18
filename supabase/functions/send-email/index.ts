@@ -17,6 +17,7 @@ interface Announcement {
   category: string;
   target_blocks?: string[] | null;
   target_units?: string[] | null;
+  target_member_ids?: string[] | null;
 }
 
 interface Condominium {
@@ -306,10 +307,20 @@ serve(async (req) => {
       );
     }
 
-    const memberRows = rolesData as unknown as MemberRow[];
+    let filteredRows = memberRows;
+
+    // Apply target_member_ids filter at row level
+    const hasTargetMemberIds = announcement.target_member_ids && announcement.target_member_ids.length > 0;
+    if (hasTargetMemberIds) {
+      console.log(`Filtering by target_member_ids: ${announcement.target_member_ids!.length} IDs`);
+      const targetIds = new Set(announcement.target_member_ids!);
+      filteredRows = filteredRows.filter(role => 
+        targetIds.has(role.user_id || '') || targetIds.has(role.member_id || '')
+      );
+    }
 
     // Unify members from both sources, filtering those with valid email addresses
-    let validMembers: UnifiedMember[] = memberRows
+    let validMembers: UnifiedMember[] = filteredRows
       .map(role => {
         const source = role.profiles || role.condo_members;
         if (!source || !source.email || source.email.trim() === '') return null;

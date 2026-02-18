@@ -1,0 +1,1 @@
+ALTER TABLE public.announcements ADD COLUMN target_member_ids text[] DEFAULT NULL;

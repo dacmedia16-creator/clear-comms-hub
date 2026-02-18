@@ -292,7 +292,10 @@ export function useCondoMembers(condoId: string) {
 // Helper function to get display name from a member (works for both profile and condo_member)
 export function getMemberDisplayName(member: CondoMember): string {
   if (member.profile?.full_name) return member.profile.full_name;
-  if (member.condo_member?.full_name) return member.condo_member.full_name;
+  if (member.condo_member?.full_name && member.condo_member.full_name !== "Sem nome") return member.condo_member.full_name;
+  // Fallback to phone
+  const phone = getMemberPhone(member);
+  if (phone) return phone;
   return "—";
 }
 

@@ -117,9 +117,9 @@ export function ImportMembersDialog({
     const rawUnit = (row[4] || "").toString().trim();
     const roleStr = (row[5] || "").toString().trim();
     
-    if (fullName.length < 2) errors.push("Nome inválido");
+    if (fullName && fullName.length < 2) errors.push("Nome inválido (mín. 2 caracteres)");
     if (!phone) errors.push("Telefone obrigatório");
-    if (!email.includes("@")) errors.push("Email inválido");
+    if (email && !email.includes("@")) errors.push("Email inválido");
     
     // Validar campos de localização usando a função unificada
     const blockValid = validateLocationOptional(
@@ -220,7 +220,7 @@ export function ImportMembersDialog({
       : `${terms.unit} (opcional)`;
 
     const ws = XLSX.utils.aoa_to_sheet([
-      ["Nome Completo", "Telefone", "Email", blockHeader, unitHeader, "Função"],
+      ["Nome (opcional)", "Telefone", "Email (opcional)", blockHeader, unitHeader, "Função"],
       ["João da Silva", "11999999999", "joao@email.com", "A", "101", getRoleLabel("resident", terms).toLowerCase()],
       ["Maria Santos", "11988888888", "maria@email.com", "B", "202", getRoleLabel("resident", terms).toLowerCase()],
     ]);
@@ -366,13 +366,13 @@ export function ImportMembersDialog({
                           )}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {member.fullName || <span className="text-destructive">—</span>}
+                          {member.fullName || <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell>
                           {member.phone || <span className="text-destructive">—</span>}
                         </TableCell>
                         <TableCell>
-                          {member.email || <span className="text-destructive">—</span>}
+                          {member.email || <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell>
                           {member.block || <span className="text-muted-foreground">—</span>}

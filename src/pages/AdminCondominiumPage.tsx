@@ -63,7 +63,7 @@ import { useOrganizationBehavior } from "@/hooks/useOrganizationBehavior";
 import { getOrganizationBehavior } from "@/lib/organization-types";
 import { MemberSearchSelect } from "@/components/MemberSearchSelect";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { linkifyText } from "@/lib/utils";
+import { linkifyText, linkifyTextWithButtons } from "@/lib/utils";
 import { WhatsAppMonitor } from "@/components/WhatsAppMonitor";
 
 interface Announcement {
@@ -972,7 +972,7 @@ export default function AdminCondominiumPage() {
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <div className="mt-2 p-3 rounded-md bg-muted/50 text-sm whitespace-pre-wrap">
-                          {linkifyText(announcement.content)}
+                          {linkifyTextWithButtons(announcement.content)}
                         </div>
                       </CollapsibleContent>
                     </Collapsible>

@@ -122,3 +122,58 @@ export function linkifyText(text: string): React.ReactNode[] {
 
   return parts.length > 0 ? parts : [text];
 }
+
+// Limpa URL para exibição amigável
+function cleanUrl(url: string): string {
+  return url.replace(/^https?:\/\//, "").replace(/^www\./, "");
+}
+
+// Detecta URLs no texto e renderiza como botões estilizados
+export function linkifyTextWithButtons(text: string): React.ReactNode[] {
+  const urlRegex = /(https?:\/\/[^\s<]+)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = urlRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const cleaned = cleanUrl(match[0]);
+    const displayText = cleaned.length > 40 ? cleaned.slice(0, 37) + "..." : cleaned;
+    parts.push(
+      React.createElement("a", {
+        key: match.index,
+        href: match[0],
+        target: "_blank",
+        rel: "noopener noreferrer",
+        className: "inline-flex items-center gap-2 px-4 py-2 my-1 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors break-all no-underline",
+      }, [
+        React.createElement("svg", {
+          key: "icon",
+          xmlns: "http://www.w3.org/2000/svg",
+          width: 16,
+          height: 16,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: "currentColor",
+          strokeWidth: 2,
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+        }, [
+          React.createElement("path", { key: "p1", d: "M15 3h6v6" }),
+          React.createElement("path", { key: "p2", d: "M10 14 21 3" }),
+          React.createElement("path", { key: "p3", d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" }),
+        ]),
+        displayText,
+      ])
+    );
+    lastIndex = urlRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
+}

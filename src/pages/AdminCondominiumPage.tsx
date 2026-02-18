@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,8 @@ import {
   ExternalLink,
   AlertTriangle,
   Clock,
+  ChevronDown,
+  ChevronUp,
   CheckCircle,
   MessageCircle,
   Mail,
@@ -60,6 +62,8 @@ import { Badge } from "@/components/ui/badge";
 import { useOrganizationBehavior } from "@/hooks/useOrganizationBehavior";
 import { getOrganizationBehavior } from "@/lib/organization-types";
 import { MemberSearchSelect } from "@/components/MemberSearchSelect";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { linkifyText } from "@/lib/utils";
 
 interface Announcement {
   id: string;
@@ -132,6 +136,9 @@ export default function AdminCondominiumPage() {
   const [sendSMS, setSendSMS] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
   
+  // Expanded announcement content
+  const [expandedAnnouncementId, setExpandedAnnouncementId] = useState<string | null>(null);
+
   // Mobile drawer for announcement actions
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
@@ -911,11 +918,30 @@ export default function AdminCondominiumPage() {
                       )}
                     </div>
                   </CardHeader>
-                  {announcement.summary && (
-                    <CardContent className="pt-0">
-                      <p className="text-muted-foreground">{announcement.summary}</p>
-                    </CardContent>
-                  )}
+                  <CardContent className="pt-0 space-y-2">
+                    {announcement.summary && (
+                      <p className="text-muted-foreground">{linkifyText(announcement.summary)}</p>
+                    )}
+                    <Collapsible
+                      open={expandedAnnouncementId === announcement.id}
+                      onOpenChange={(open) => setExpandedAnnouncementId(open ? announcement.id : null)}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+                          {expandedAnnouncementId === announcement.id ? (
+                            <><ChevronUp className="w-3.5 h-3.5 mr-1" /> Recolher</>
+                          ) : (
+                            <><ChevronDown className="w-3.5 h-3.5 mr-1" /> Ver conteúdo completo</>
+                          )}
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2 p-3 rounded-md bg-muted/50 text-sm whitespace-pre-wrap">
+                          {linkifyText(announcement.content)}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </CardContent>
                 </Card>
               );
             })}

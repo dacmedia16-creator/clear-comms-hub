@@ -67,9 +67,16 @@ Deno.serve(async (req) => {
     console.log("Create member request:", { condominiumId, fullName, email, block, unit, role });
 
     // Validate required fields (base validation)
-    if (!condominiumId || !fullName || !role) {
+    if (!condominiumId || !role) {
       return new Response(
-        JSON.stringify({ error: "Campos obrigatórios: condominiumId, fullName, role" }),
+        JSON.stringify({ error: "Campos obrigatórios: condominiumId, role" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!phone && !fullName) {
+      return new Response(
+        JSON.stringify({ error: "Telefone é obrigatório" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -133,7 +140,7 @@ Deno.serve(async (req) => {
     const { data: memberData, error: memberError } = await serviceClient
       .from("condo_members")
       .insert({
-        full_name: fullName,
+        full_name: fullName || phone || "Sem nome",
         email: email || null,
         phone: phone || null,
       })

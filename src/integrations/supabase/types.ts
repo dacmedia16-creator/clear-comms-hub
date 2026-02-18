@@ -27,6 +27,7 @@ export type Database = {
           published_at: string
           summary: string | null
           target_blocks: string[] | null
+          target_member_ids: string[] | null
           target_units: string[] | null
           title: string
           updated_at: string
@@ -43,6 +44,7 @@ export type Database = {
           published_at?: string
           summary?: string | null
           target_blocks?: string[] | null
+          target_member_ids?: string[] | null
           target_units?: string[] | null
           title: string
           updated_at?: string
@@ -59,6 +61,7 @@ export type Database = {
           published_at?: string
           summary?: string | null
           target_blocks?: string[] | null
+          target_member_ids?: string[] | null
           target_units?: string[] | null
           title?: string
           updated_at?: string

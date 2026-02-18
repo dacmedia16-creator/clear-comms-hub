@@ -59,6 +59,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { useOrganizationBehavior } from "@/hooks/useOrganizationBehavior";
 import { getOrganizationBehavior } from "@/lib/organization-types";
+import { MemberSearchSelect } from "@/components/MemberSearchSelect";
 
 interface Announcement {
   id: string;
@@ -118,9 +119,10 @@ export default function AdminCondominiumPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // Recipient targeting
-  const [recipientType, setRecipientType] = useState<"all" | "blocks" | "units">("all");
+  const [recipientType, setRecipientType] = useState<"all" | "blocks" | "units" | "specific">("all");
   const [selectedBlocks, setSelectedBlocks] = useState<string[]>([]);
   const [targetUnits, setTargetUnits] = useState("");
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
   // Fetch available blocks for targeting
   const { blocks } = useCondoBlocks(condoId || "");
@@ -207,6 +209,9 @@ export default function AdminCondominiumPage() {
       const targetUnitsArray = recipientType === "units" && targetUnits.trim()
         ? targetUnits.split(",").map(u => u.trim()).filter(Boolean)
         : null;
+      const targetMemberIdsArray = recipientType === "specific" && selectedMemberIds.length > 0
+        ? selectedMemberIds
+        : null;
 
       // Create announcement
       const { data, error } = await supabase
@@ -222,6 +227,7 @@ export default function AdminCondominiumPage() {
           created_by: profile.id,
           target_blocks: targetBlocksArray,
           target_units: targetUnitsArray,
+          target_member_ids: targetMemberIdsArray,
         })
         .select()
         .single();
@@ -266,7 +272,7 @@ export default function AdminCondominiumPage() {
       if (sendWhatsApp && condominium.notification_whatsapp) {
         try {
           const result = await sendWhatsAppToMembers(
-            { ...data, id: data.id, target_blocks: targetBlocksArray, target_units: targetUnitsArray },
+            { ...data, id: data.id, target_blocks: targetBlocksArray, target_units: targetUnitsArray, target_member_ids: targetMemberIdsArray },
             { ...condominium, id: condominium.id },
             baseUrl
           );
@@ -284,7 +290,7 @@ export default function AdminCondominiumPage() {
       if (sendSMS && condominium.notification_sms) {
         try {
           const result = await sendSMSToMembers(
-            { ...data, id: data.id, target_blocks: targetBlocksArray, target_units: targetUnitsArray },
+            { ...data, id: data.id, target_blocks: targetBlocksArray, target_units: targetUnitsArray, target_member_ids: targetMemberIdsArray },
             { ...condominium, id: condominium.id },
             baseUrl
           );
@@ -302,7 +308,7 @@ export default function AdminCondominiumPage() {
       if (sendEmail && condominium.notification_email) {
         try {
           const result = await sendEmailToMembers(
-            { ...data, id: data.id, target_blocks: targetBlocksArray, target_units: targetUnitsArray },
+            { ...data, id: data.id, target_blocks: targetBlocksArray, target_units: targetUnitsArray, target_member_ids: targetMemberIdsArray },
             { ...condominium, id: condominium.id },
             baseUrl
           );
@@ -329,6 +335,7 @@ export default function AdminCondominiumPage() {
       setRecipientType("all");
       setSelectedBlocks([]);
       setTargetUnits("");
+      setSelectedMemberIds([]);
       setSendWhatsApp(false);
       setSendSMS(false);
       setSendEmail(false);
@@ -688,10 +695,40 @@ export default function AdminCondominiumPage() {
                 {/* Message for orgs without location targeting */}
                 {!behavior.showLocationTargeting && (
                   <div className="border-t pt-4 mt-2">
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Label className="text-sm font-medium mb-3 flex items-center gap-2">
                       <Users className="w-4 h-4" />
-                      Este aviso será enviado para todos os {terms.memberPlural.toLowerCase()}.
-                    </p>
+                      Destinatários
+                    </Label>
+                    <RadioGroup
+                      value={recipientType === "all" || recipientType === "specific" ? recipientType : "all"}
+                      onValueChange={(v) => {
+                        setRecipientType(v as "all" | "specific");
+                        if (v === "all") setSelectedMemberIds([]);
+                      }}
+                      className="space-y-3"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="all" id="recipient-all-generic" />
+                        <Label htmlFor="recipient-all-generic" className="cursor-pointer font-normal">
+                          Todos os {terms.memberPlural.toLowerCase()}
+                        </Label>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <RadioGroupItem value="specific" id="recipient-specific" className="mt-1" />
+                        <div className="flex-1">
+                          <Label htmlFor="recipient-specific" className="cursor-pointer font-normal">
+                            Membros específicos
+                          </Label>
+                          {recipientType === "specific" && condoId && (
+                            <MemberSearchSelect
+                              condominiumId={condoId}
+                              selectedIds={selectedMemberIds}
+                              onSelectionChange={setSelectedMemberIds}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </RadioGroup>
                   </div>
                 )}
 

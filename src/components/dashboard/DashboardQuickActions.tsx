@@ -64,6 +64,12 @@ const actionsByType: Record<OrganizationType, QuickAction[]> = {
     { icon: Bell, label: "Comunicado", description: "Aviso da diretoria", color: "text-blue-600" },
     { icon: DollarSign, label: "Financeiro", description: "Matrículas e taxas", color: "text-emerald-600" },
   ],
+  generic: [
+    { icon: Bell, label: "Comunicado", description: "Comunicado geral", color: "text-blue-600" },
+    { icon: Calendar, label: "Evento", description: "Agendar evento", color: "text-indigo-600" },
+    { icon: Users, label: "Membros", description: "Aviso aos membros", color: "text-purple-600" },
+    { icon: DollarSign, label: "Financeiro", description: "Aviso financeiro", color: "text-emerald-600" },
+  ],
 };
 
 interface DashboardQuickActionsProps {

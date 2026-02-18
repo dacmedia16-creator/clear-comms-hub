@@ -563,6 +563,27 @@ Diretoria`,
       isUrgent: false,
     },
   ],
+  generic: [
+    {
+      id: "generic-general",
+      name: "Comunicado Geral",
+      title: "Comunicado Geral",
+      summary: "Comunicado para todos os membros da organização.",
+      content: `Prezados membros,
+
+Informamos que [ASSUNTO].
+
+Detalhes:
+[DESCRIÇÃO]
+
+Dúvidas: [CONTATO]
+
+Atenciosamente,
+Gestão`,
+      category: "informativo",
+      isUrgent: false,
+    },
+  ],
 };
 
 // Templates universais disponíveis para todos

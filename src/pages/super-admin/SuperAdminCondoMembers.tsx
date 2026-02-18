@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { SuperAdminGuard } from "@/components/SuperAdminGuard";
 import { Card } from "@/components/ui/card";
@@ -26,6 +26,17 @@ import { MobileCardItem } from "@/components/mobile/MobileCardItem";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useOrganizationTerms } from "@/hooks/useOrganizationTerms";
 import { getRoleLabel } from "@/lib/organization-types";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+
+const ITEMS_PER_PAGE = 20;
 
 const superAdminNavItems: MobileNavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/super-admin" },
@@ -54,6 +65,18 @@ export default function SuperAdminCondoMembers() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<CondoMember | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(members.length / ITEMS_PER_PAGE);
+  const paginatedMembers = useMemo(
+    () => members.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE),
+    [members, currentPage]
+  );
+
+  // Reset to page 1 when members change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [members.length]);
 
   // Get condominium info
   useEffect(() => {
@@ -162,7 +185,12 @@ export default function SuperAdminCondoMembers() {
                     <Users className="w-5 h-5 text-primary-foreground" />
                   </div>
                   <div>
-                    <span className="font-display text-xl font-bold text-foreground">{terms.memberPlural}</span>
+                    <span className="font-display text-xl font-bold text-foreground">
+                      {terms.memberPlural}
+                      {!loading && members.length > 0 && (
+                        <span className="text-muted-foreground font-normal text-base ml-2">({members.length})</span>
+                      )}
+                    </span>
                     {condoName && (
                       <p className="text-sm text-muted-foreground">{condoName}</p>
                     )}
@@ -218,7 +246,7 @@ export default function SuperAdminCondoMembers() {
                   </div>
                 </Card>
               ) : (
-                members.map((member) => {
+                paginatedMembers.map((member) => {
                   const displayName = getMemberDisplayName(member);
                   const email = getMemberEmail(member);
                   const phone = getMemberPhone(member);
@@ -301,7 +329,7 @@ export default function SuperAdminCondoMembers() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    members.map((member) => {
+                    paginatedMembers.map((member) => {
                       const displayName = getMemberDisplayName(member);
                       const email = getMemberEmail(member);
                       const phone = getMemberPhone(member);
@@ -360,6 +388,57 @@ export default function SuperAdminCondoMembers() {
                 </TableBody>
               </Table>
             </Card>
+          )}
+
+          {/* Pagination */}
+          {!loading && totalPages > 1 && (
+            <Pagination className="mt-6">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((page) => {
+                    if (totalPages <= 7) return true;
+                    if (page === 1 || page === totalPages) return true;
+                    if (Math.abs(page - currentPage) <= 1) return true;
+                    return false;
+                  })
+                  .reduce<(number | "ellipsis")[]>((acc, page, idx, arr) => {
+                    if (idx > 0 && page - (arr[idx - 1] as number) > 1) acc.push("ellipsis");
+                    acc.push(page);
+                    return acc;
+                  }, [])
+                  .map((item, idx) =>
+                    item === "ellipsis" ? (
+                      <PaginationItem key={`ellipsis-${idx}`}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    ) : (
+                      <PaginationItem key={item}>
+                        <PaginationLink
+                          isActive={currentPage === item}
+                          onClick={() => setCurrentPage(item as number)}
+                          className="cursor-pointer"
+                        >
+                          {item}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )
+                  )}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           )}
         </main>
 

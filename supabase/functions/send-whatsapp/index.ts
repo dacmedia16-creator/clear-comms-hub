@@ -13,6 +13,7 @@ const corsHeaders = {
 
 const TEMPLATE_IDENTIFIER = 'aviso_pro_confirma_3';
 const TEMPLATE_LANGUAGE = 'pt_BR';
+const BATCH_SIZE = 10;
 
 interface Announcement {
   id: string;
@@ -30,10 +31,21 @@ interface Condominium {
   slug: string;
 }
 
+interface UnifiedMember {
+  phone: string;
+  full_name: string | null;
+  block: string | null;
+  unit: string | null;
+}
+
 interface RequestBody {
   announcement: Announcement;
   condominium: Condominium;
-  baseUrl: string;
+  baseUrl?: string;
+  // Batch params (used in self-invocation)
+  batchOffset?: number;
+  membersPayload?: UnifiedMember[];
+  authHeader?: string;
 }
 
 interface ContactInfo {
@@ -50,13 +62,6 @@ interface MemberRow {
   unit: string | null;
   profiles: ContactInfo | null;
   condo_members: ContactInfo | null;
-}
-
-interface UnifiedMember {
-  phone: string;
-  full_name: string | null;
-  block: string | null;
-  unit: string | null;
 }
 
 function normalizePhone(phone: string): string {
@@ -79,30 +84,128 @@ function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function sendMessagesInBackground(
+async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader: string; senderPhone: string } | null> {
+  let apiKey = Deno.env.get('ZIONTALK_API_KEY');
+  let senderPhone = 'ENV_DEFAULT';
+
+  const { data: senders, error: sendersError } = await supabase
+    .from('whatsapp_senders')
+    .select('*')
+    .eq('is_active', true)
+    .order('is_default', { ascending: false })
+    .limit(1);
+
+  if (sendersError) {
+    console.error("Error fetching whatsapp_senders:", sendersError);
+  } else if (senders && senders.length > 0) {
+    const sender = senders[0];
+    apiKey = sender.api_key;
+    senderPhone = sender.phone;
+    console.log(`Using sender: ${sender.name} (${senderPhone})`);
+  } else {
+    console.log("No active senders found, using ENV fallback");
+  }
+
+  if (!apiKey) return null;
+  return { authHeader: 'Basic ' + encode(`${apiKey}:`), senderPhone };
+}
+
+async function fetchAndFilterMembers(
+  supabase: SupabaseClient,
+  announcement: Announcement,
+  condominium: Condominium
+): Promise<UnifiedMember[]> {
+  const { data: rolesData, error: membersError } = await supabase
+    .from('user_roles')
+    .select(`
+      user_id, member_id, block, unit,
+      profiles:user_id (id, phone, full_name, email),
+      condo_members:member_id (id, phone, full_name, email)
+    `)
+    .eq('condominium_id', condominium.id)
+    .eq('is_approved', true);
+
+  if (membersError) {
+    throw new Error(`Erro ao buscar membros: ${membersError.message}`);
+  }
+
+  let filteredRows = (rolesData || []) as unknown as MemberRow[];
+
+  const hasTargetMemberIds = announcement.target_member_ids && announcement.target_member_ids.length > 0;
+  if (hasTargetMemberIds) {
+    console.log(`Filtering by target_member_ids: ${announcement.target_member_ids!.length} IDs`);
+    const targetIds = new Set(announcement.target_member_ids!);
+    filteredRows = filteredRows.filter(role =>
+      targetIds.has(role.user_id || '') || targetIds.has(role.member_id || '')
+    );
+  }
+
+  let members: UnifiedMember[] = filteredRows
+    .map(role => {
+      const source = role.profiles || role.condo_members;
+      if (!source || !source.phone) return null;
+      return {
+        phone: normalizePhone(source.phone),
+        full_name: source.full_name,
+        block: role.block,
+        unit: role.unit,
+      };
+    })
+    .filter((m): m is UnifiedMember => m !== null);
+
+  const hasBlockFilter = announcement.target_blocks && announcement.target_blocks.length > 0;
+  const hasUnitFilter = announcement.target_units && announcement.target_units.length > 0;
+
+  if (hasBlockFilter) {
+    members = members.filter(m => m.block && announcement.target_blocks!.includes(m.block));
+  }
+  if (hasUnitFilter) {
+    members = members.filter(m => m.unit && announcement.target_units!.includes(m.unit));
+  }
+
+  // Filter out opted-out phones
+  const { data: optouts } = await supabase
+    .from('whatsapp_optouts')
+    .select('phone')
+    .not('opted_out_at', 'is', null);
+
+  if (optouts && optouts.length > 0) {
+    const optedOutPhones = new Set(optouts.map(o => o.phone));
+    const beforeCount = members.length;
+    members = members.filter(m => !optedOutPhones.has(m.phone));
+    const filtered = beforeCount - members.length;
+    if (filtered > 0) console.log(`Filtered out ${filtered} opted-out phone(s)`);
+  }
+
+  return members;
+}
+
+async function processBatch(
   members: UnifiedMember[],
+  offset: number,
   authHeader: string,
   announcement: Announcement,
   condominium: Condominium,
   supabase: SupabaseClient
 ) {
-  console.log(`[Background] Iniciando envio para ${members.length} membros com delays...`);
-
+  const batch = members.slice(offset, offset + BATCH_SIZE);
   const lembrete = announcement.summary || "Acesse o link para mais detalhes.";
 
-  for (let i = 0; i < members.length; i++) {
-    const member = members[i];
+  console.log(`[Batch] Processing offset=${offset}, batch size=${batch.length}, total=${members.length}`);
+
+  for (let i = 0; i < batch.length; i++) {
+    const member = batch[i];
 
     if (i > 0) {
       const delaySeconds = Math.floor(Math.random() * 16) + 15;
-      console.log(`[Background] Aguardando ${delaySeconds}s antes do próximo envio...`);
+      console.log(`[Batch] Waiting ${delaySeconds}s before next send...`);
       await randomDelay(15, 30);
     }
 
-    console.log(`[Background] Enviando para membro ${i + 1} de ${members.length}: ${member.phone} (${member.full_name || 'Unknown'})`);
+    const globalIndex = offset + i + 1;
+    console.log(`[Batch] Sending ${globalIndex}/${members.length}: ${member.phone} (${member.full_name || 'Unknown'})`);
 
     try {
-      // Generate opt-out token and save to DB
       const optoutToken = generateShortToken();
       await supabase.from('whatsapp_optouts').insert({
         phone: member.phone,
@@ -124,27 +227,15 @@ async function sendMessagesInBackground(
 
       const response = await fetch(
         'https://app.ziontalk.com/api/send_template_message/',
-        {
-          method: 'POST',
-          headers: { 'Authorization': authHeader },
-          body: formData,
-        }
+        { method: 'POST', headers: { 'Authorization': authHeader }, body: formData }
       );
 
       const responseBody = await response.text();
       const responseHeaders: Record<string, string> = {};
       response.headers.forEach((value, key) => { responseHeaders[key] = value; });
-      console.log(`[Background] Zion Talk response for ${member.phone}: status=${response.status} headers=${JSON.stringify(responseHeaders)} body=${responseBody}`);
+      console.log(`[Batch] Zion Talk response for ${member.phone}: status=${response.status} body=${responseBody}`);
 
       const success = response.status === 201;
-      let errorMessage: string | undefined;
-
-      if (!success) {
-        errorMessage = responseBody;
-        console.error(`[Background] Falha ao enviar para ${member.phone}: ${response.status} - ${responseBody}`);
-      } else {
-        console.log(`[Background] ✓ Enviado com sucesso para ${member.phone}`);
-      }
 
       await supabase.from('whatsapp_logs').insert({
         announcement_id: announcement.id,
@@ -152,12 +243,16 @@ async function sendMessagesInBackground(
         recipient_phone: member.phone,
         recipient_name: member.full_name,
         status: success ? 'sent' : 'failed',
-        error_message: errorMessage || null,
+        error_message: success ? null : responseBody,
       });
 
+      if (success) {
+        console.log(`[Batch] ✓ Sent to ${member.phone}`);
+      } else {
+        console.error(`[Batch] ✗ Failed ${member.phone}: ${response.status}`);
+      }
     } catch (sendError) {
-      console.error(`[Background] Exceção ao enviar para ${member.phone}:`, sendError);
-
+      console.error(`[Batch] Exception for ${member.phone}:`, sendError);
       await supabase.from('whatsapp_logs').insert({
         announcement_id: announcement.id,
         condominium_id: condominium.id,
@@ -169,7 +264,36 @@ async function sendMessagesInBackground(
     }
   }
 
-  console.log(`[Background] ✓ Processamento concluído para ${members.length} membros`);
+  // Self-invoke for next batch if there are more members
+  const nextOffset = offset + BATCH_SIZE;
+  if (nextOffset < members.length) {
+    console.log(`[Batch] Invoking next batch: offset=${nextOffset}, remaining=${members.length - nextOffset}`);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${serviceRoleKey}`,
+        },
+        body: JSON.stringify({
+          announcement,
+          condominium,
+          batchOffset: nextOffset,
+          membersPayload: members,
+          authHeader,
+        }),
+      });
+      const resText = await res.text();
+      console.log(`[Batch] Self-invoke response: status=${res.status} body=${resText}`);
+    } catch (err) {
+      console.error(`[Batch] Self-invoke failed:`, err);
+    }
+  } else {
+    console.log(`[Batch] ✓ All ${members.length} members processed!`);
+  }
 }
 
 serve(async (req) => {
@@ -178,143 +302,68 @@ serve(async (req) => {
   }
 
   try {
-    const { announcement, condominium }: RequestBody = await req.json();
-
-    console.log(`Processing WhatsApp send for announcement ${announcement.id} in condominium ${condominium.id}`);
+    const body: RequestBody = await req.json();
+    const { announcement, condominium, batchOffset = 0, membersPayload, authHeader: passedAuthHeader } = body;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Fetch sender (DB first, ENV fallback)
-    let apiKey = Deno.env.get('ZIONTALK_API_KEY');
-    let senderPhone = 'ENV_DEFAULT';
+    // Continuation batch (self-invoked)
+    if (membersPayload && passedAuthHeader && batchOffset > 0) {
+      console.log(`[Continuation] Batch offset=${batchOffset}, members=${membersPayload.length}`);
 
-    const { data: senders, error: sendersError } = await supabase
-      .from('whatsapp_senders')
-      .select('*')
-      .eq('is_active', true)
-      .order('is_default', { ascending: false })
-      .limit(1);
+      EdgeRuntime.waitUntil(
+        processBatch(membersPayload, batchOffset, passedAuthHeader, announcement, condominium, supabase)
+      );
 
-    if (sendersError) {
-      console.error("Error fetching whatsapp_senders:", sendersError);
-    } else if (senders && senders.length > 0) {
-      const sender = senders[0];
-      apiKey = sender.api_key;
-      senderPhone = sender.phone;
-      console.log(`Using sender: ${sender.name} (${senderPhone})`);
-    } else {
-      console.log("No active senders found, using ENV fallback");
+      return new Response(
+        JSON.stringify({ status: 'batch_processing', batchOffset, total: membersPayload.length }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    if (!apiKey) {
-      console.error("No API key available (no senders and ZIONTALK_API_KEY not configured)");
+    // First invocation: resolve sender, fetch members, return immediate response
+    console.log(`[Initial] Processing announcement ${announcement.id} in condominium ${condominium.id}`);
+
+    const senderInfo = await resolveAuthHeader(supabase);
+    if (!senderInfo) {
       return new Response(
         JSON.stringify({ error: "API key não configurada. Cadastre um número de WhatsApp na Central de Notificações." }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const authHeader = 'Basic ' + encode(`${apiKey}:`);
-
-    // Fetch members from BOTH sources
-    const { data: rolesData, error: membersError } = await supabase
-      .from('user_roles')
-      .select(`
-        user_id, member_id, block, unit,
-        profiles:user_id (id, phone, full_name, email),
-        condo_members:member_id (id, phone, full_name, email)
-      `)
-      .eq('condominium_id', condominium.id)
-      .eq('is_approved', true);
-
-    if (membersError) {
-      console.error("Error fetching members:", membersError);
+    let members: UnifiedMember[];
+    try {
+      members = await fetchAndFilterMembers(supabase, announcement, condominium);
+    } catch (err) {
       return new Response(
-        JSON.stringify({ error: "Erro ao buscar membros", details: membersError.message }),
+        JSON.stringify({ error: err instanceof Error ? err.message : 'Erro ao buscar membros' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    let filteredRows = (rolesData || []) as unknown as MemberRow[];
-
-    // Apply target_member_ids filter at row level
-    const hasTargetMemberIds = announcement.target_member_ids && announcement.target_member_ids.length > 0;
-    if (hasTargetMemberIds) {
-      console.log(`Filtering by target_member_ids: ${announcement.target_member_ids!.length} IDs`);
-      const targetIds = new Set(announcement.target_member_ids!);
-      filteredRows = filteredRows.filter(role => 
-        targetIds.has(role.user_id || '') || targetIds.has(role.member_id || '')
-      );
-    }
-
-    let members: UnifiedMember[] = filteredRows
-      .map(role => {
-        const source = role.profiles || role.condo_members;
-        if (!source || !source.phone) return null;
-        return {
-          phone: normalizePhone(source.phone),
-          full_name: source.full_name,
-          block: role.block,
-          unit: role.unit,
-        };
-      })
-      .filter((m): m is UnifiedMember => m !== null);
-
-    // Apply targeting filters
-    const hasBlockFilter = announcement.target_blocks && announcement.target_blocks.length > 0;
-    const hasUnitFilter = announcement.target_units && announcement.target_units.length > 0;
-
-    if (hasBlockFilter) {
-      console.log(`Filtering by blocks: ${announcement.target_blocks!.join(', ')}`);
-      members = members.filter(m => m.block && announcement.target_blocks!.includes(m.block));
-    }
-
-    if (hasUnitFilter) {
-      console.log(`Filtering by units: ${announcement.target_units!.join(', ')}`);
-      members = members.filter(m => m.unit && announcement.target_units!.includes(m.unit));
-    }
-
-    // Filter out opted-out phones
-    const { data: optouts } = await supabase
-      .from('whatsapp_optouts')
-      .select('phone')
-      .not('opted_out_at', 'is', null);
-
-    if (optouts && optouts.length > 0) {
-      const optedOutPhones = new Set(optouts.map(o => o.phone));
-      const beforeCount = members.length;
-      members = members.filter(m => !optedOutPhones.has(m.phone));
-      const filtered = beforeCount - members.length;
-      if (filtered > 0) {
-        console.log(`Filtered out ${filtered} opted-out phone(s)`);
-      }
-    }
-
     if (members.length === 0) {
-      console.log("No members with phone numbers found after filtering");
       return new Response(
         JSON.stringify({ total: 0, sent: 0, failed: 0, results: [], message: "Nenhum membro encontrado com os critérios selecionados" }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Found ${members.length} members with phone numbers after filtering`);
+    console.log(`[Initial] Found ${members.length} members. Starting batch processing with size=${BATCH_SIZE}`);
 
-    // Start background processing
+    // Start first batch in background
     EdgeRuntime.waitUntil(
-      sendMessagesInBackground(members, authHeader, announcement, condominium, supabase)
+      processBatch(members, 0, senderInfo.authHeader, announcement, condominium, supabase)
     );
 
-    console.log(`Returning immediate response, ${members.length} messages will be sent in background with 15-30s delays`);
-
     return new Response(
-      JSON.stringify({ 
-        total: members.length, 
+      JSON.stringify({
+        total: members.length,
         status: 'processing',
-        message: `Enviando mensagens para ${members.length} moradores em segundo plano. Cada envio terá um intervalo de 15-30 segundos.`
+        message: `Enviando mensagens para ${members.length} moradores em lotes de ${BATCH_SIZE}. Cada envio terá um intervalo de 15-30 segundos.`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

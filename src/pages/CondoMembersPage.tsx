@@ -164,8 +164,8 @@ export default function CondoMembersPage() {
     }
   };
 
-  const handleImportMembers = async (members: ParsedMember[]) => {
-    const result = await importMembers(members);
+  const handleImportMembers = async (members: ParsedMember[], onChunkProgress?: (processed: number, total: number) => void) => {
+    const result = await importMembers(members, onChunkProgress);
     if (result.success > 0) {
       toast({
         title: "Importação concluída!",

@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.whatsapp-optout]
 verify_jwt = false
+
+[functions.create-members-batch]
+verify_jwt = false

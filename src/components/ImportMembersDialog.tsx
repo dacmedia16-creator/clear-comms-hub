@@ -43,7 +43,7 @@ export interface ParsedMember {
 interface ImportMembersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onImport: (members: ParsedMember[]) => Promise<{ success: number; failed: number }>;
+  onImport: (members: ParsedMember[], onChunkProgress?: (processed: number, total: number) => void) => Promise<{ success: number; failed: number }>;
   terms?: OrganizationTerms;
   behavior?: OrganizationBehavior;
 }
@@ -235,21 +235,17 @@ export function ImportMembersDialog({
     if (validMembers.length === 0) return;
 
     setStep("importing");
-    setProgress(0);
-
-    // Simulate progress updates during import
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => Math.min(prev + 5, 90));
-    }, 200);
+    setProgress(10);
 
     try {
-      const result = await onImport(validMembers);
-      clearInterval(progressInterval);
+      const result = await onImport(validMembers, (processed, total) => {
+        const pct = Math.round(10 + (processed / total) * 80);
+        setProgress(pct);
+      });
       setProgress(100);
       setImportResult(result);
       setStep("done");
     } catch (error) {
-      clearInterval(progressInterval);
       console.error("Import error:", error);
       setImportResult({ success: 0, failed: validMembers.length });
       setStep("done");

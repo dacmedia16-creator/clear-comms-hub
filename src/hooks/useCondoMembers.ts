@@ -211,22 +211,43 @@ export function useCondoMembers(condoId: string) {
       block: string;
       unit: string;
       role: "admin" | "syndic" | "resident" | "collaborator";
-    }>
+    }>,
+    onChunkProgress?: (processed: number, total: number) => void
   ): Promise<{ success: number; failed: number }> => {
-    let success = 0;
-    let failed = 0;
+    const CHUNK_SIZE = 500;
+    let totalSuccess = 0;
+    let totalFailed = 0;
 
-    for (const memberData of membersData) {
-      const result = await createMember(memberData);
-      if (result.success) {
-        success++;
-      } else {
-        failed++;
+    // Split into chunks of 500
+    const chunks: typeof membersData[] = [];
+    for (let i = 0; i < membersData.length; i += CHUNK_SIZE) {
+      chunks.push(membersData.slice(i, i + CHUNK_SIZE));
+    }
+
+    for (let i = 0; i < chunks.length; i++) {
+      try {
+        const { data, error } = await supabase.functions.invoke('create-members-batch', {
+          body: {
+            condominiumId: condoId,
+            members: chunks[i],
+          }
+        });
+
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+
+        totalSuccess += data?.success || 0;
+        totalFailed += data?.failed || 0;
+      } catch (err: any) {
+        console.error(`Error importing chunk ${i + 1}:`, err);
+        totalFailed += chunks[i].length;
       }
+
+      onChunkProgress?.(i + 1, chunks.length);
     }
 
     await fetchMembers();
-    return { success, failed };
+    return { success: totalSuccess, failed: totalFailed };
   };
 
   const updateMember = async (

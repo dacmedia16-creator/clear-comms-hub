@@ -177,6 +177,21 @@ async function fetchAndFilterMembers(
     if (filtered > 0) console.log(`Filtered out ${filtered} opted-out phone(s)`);
   }
 
+  // Deduplicate: skip phones that already received this announcement successfully
+  const { data: sentLogs } = await supabase
+    .from('whatsapp_logs')
+    .select('recipient_phone')
+    .eq('announcement_id', announcement.id)
+    .eq('status', 'sent');
+
+  if (sentLogs && sentLogs.length > 0) {
+    const alreadySent = new Set(sentLogs.map(l => l.recipient_phone));
+    const beforeDedup = members.length;
+    members = members.filter(m => !alreadySent.has(m.phone));
+    const skipped = beforeDedup - members.length;
+    if (skipped > 0) console.log(`Skipped ${skipped} already-sent phone(s) for announcement ${announcement.id}`);
+  }
+
   return members;
 }
 

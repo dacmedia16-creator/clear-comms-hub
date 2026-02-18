@@ -1,38 +1,25 @@
 
 
-## Painel de Monitoramento de Envios WhatsApp em Tempo Real
+## Transformar Links em Botoes no Conteudo dos Avisos
 
 ### O que sera feito
-Criar um painel que mostra em tempo real o progresso dos envios de WhatsApp (enviados, falhados, pendentes) com atualizacao automatica.
+Atualizar a funcao `linkifyText` para renderizar URLs detectadas no conteudo dos avisos como **botoes estilizados** (com icone de link externo) em vez de links de texto simples sublinhados.
 
-### Como vai funcionar
-1. Apos clicar em "Enviar WhatsApp", um painel aparece mostrando o progresso
-2. Contadores ao vivo: Enviados / Falhados / Total
-3. Lista de destinatarios com status individual
-4. Atualizacao automatica a cada mensagem processada (15-30s)
-5. Botao "Ver envios" em cada aviso para abrir o historico
+### Como vai ficar
+- URLs no conteudo aparecerao como botoes com fundo primario, icone de link externo e texto do dominio
+- Links curtos mostrarao a URL limpa (sem http/https)
+- Botoes abrirao em nova aba ao clicar
+- O resumo (summary) continuara com links inline simples para nao poluir visualmente
 
 ### Detalhes Tecnicos
 
-**1. Migracao SQL**
-Habilitar Realtime na tabela `whatsapp_logs` para receber atualizacoes em tempo real:
-```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE public.whatsapp_logs;
-```
+**1. Atualizar `src/lib/utils.ts`**
+- Criar nova funcao `linkifyTextWithButtons` que renderiza URLs como botoes usando o componente Button do shadcn (ou estilo equivalente via classes Tailwind)
+- Manter a funcao `linkifyText` original para uso no summary
+- O botao tera: icone `ExternalLink` do Lucide, texto com dominio limpo (ex: "forms.google.com/...")
 
-**2. Novo componente `src/components/WhatsAppMonitor.tsx`**
-- Recebe `announcementId`, `totalExpected` e `onClose` como props
-- Busca logs existentes do announcement via query inicial
-- Escuta novos INSERTs via Supabase Realtime filtrado por `announcement_id`
-- Exibe barra de progresso, contadores com badges coloridos e tabela de destinatarios
+**2. Atualizar `src/pages/TimelinePage.tsx`**
+- Substituir `linkifyText(announcement.content)` por `linkifyTextWithButtons(announcement.content)` na area de conteudo expandido
 
-**3. Alteracao em `src/components/SendWhatsAppButton.tsx`**
-- Adicionar prop `onSendStarted(announcementId, totalExpected)` 
-- Chamar o callback apos o envio iniciar com sucesso
-
-**4. Alteracao em `src/pages/AdminCondominiumPage.tsx`**
-- Estado `monitorAnnouncementId` e `monitorTotal` para controlar o painel
-- Renderizar `WhatsAppMonitor` quando ativo
-- Botao "Ver envios" em cada card de aviso
-- Abrir monitor automaticamente apos disparo
-
+**3. Atualizar `src/pages/AdminCondominiumPage.tsx`**
+- Mesma substituicao na area de conteudo completo do painel admin

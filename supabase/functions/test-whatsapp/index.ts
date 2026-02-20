@@ -109,16 +109,16 @@ serve(async (req) => {
     formData.append('template_identifier', templateToUse);
     formData.append('language', TEMPLATE_LANGUAGE);
 
+    // Sempre usa bodyParams nomeados
+    formData.append('bodyParams[nome]', 'Teste');
+    formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
+    formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
+
     if (templateToUse === VISITA_TEMPLATE_IDENTIFIER) {
-      // Parâmetros posicionais ({{1}}, {{2}}, {{3}}) para visita_prova_envio
-      formData.append('buttonUrlDynamicParams[1]', 'Teste');
-      formData.append('buttonUrlDynamicParams[2]', 'Mensagem de teste do sistema');
-      formData.append('buttonUrlDynamicParams[3]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
+      // 1 botão dinâmico apenas (optout token)
+      formData.append('buttonUrlDynamicParams[0]', 'test-demo');
     } else {
-      // Parâmetros nomeados para aviso_pro_confirma_3
-      formData.append('bodyParams[nome]', 'Teste');
-      formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
-      formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
+      // 2 botões dinâmicos: slug do condo + optout token
       formData.append('buttonUrlDynamicParams[0]', 'c/demo');
       formData.append('buttonUrlDynamicParams[1]', 'test-demo');
     }

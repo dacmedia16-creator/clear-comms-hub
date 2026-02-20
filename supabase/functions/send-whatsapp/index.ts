@@ -243,7 +243,11 @@ async function processBatch(
       formData.append('bodyParams[nome]', member.full_name || 'morador(a)');
       formData.append('bodyParams[aviso]', announcement.title);
       formData.append('bodyParams[lembrete]', lembrete);
-      if (templateIdentifier !== 'visita_prova_envio') {
+      if (templateIdentifier === 'visita_prova_envio') {
+        // 1 botão dinâmico apenas (optout token)
+        formData.append('buttonUrlDynamicParams[0]', `${optoutToken}`);
+      } else {
+        // 2 botões dinâmicos: slug do condo + optout token
         formData.append('buttonUrlDynamicParams[0]', `c/${condominium.slug}`);
         formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
       }

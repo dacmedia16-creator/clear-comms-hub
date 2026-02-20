@@ -13,6 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { WhatsAppSender, CreateWhatsAppSender } from "@/hooks/useWhatsAppSenders";
 
 interface EditWhatsAppSenderDialogProps {
@@ -38,6 +45,7 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
   const [isActive, setIsActive] = useState(true);
   const [isDefault, setIsDefault] = useState(false);
   const [templateIdentifier, setTemplateIdentifier] = useState("");
+  const [paramStyle, setParamStyle] = useState<'named' | 'numeric'>("named");
 
   useEffect(() => {
     if (sender) {
@@ -47,6 +55,7 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
       setIsActive(sender.is_active);
       setIsDefault(sender.is_default);
       setTemplateIdentifier(sender.template_identifier ?? "");
+      setParamStyle(sender.param_style ?? "named");
     }
   }, [sender]);
 
@@ -63,6 +72,7 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
       is_active: isActive,
       is_default: isDefault,
       template_identifier: templateIdentifier.trim() || null,
+      param_style: paramStyle,
     };
 
     // Only update API key if provided
@@ -136,6 +146,22 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
               />
               <p className="text-xs text-muted-foreground">
                 Copie o identificador exato do template no painel Zion Talk. Vazio = template padrão.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="editParamStyle">Estilo de Parâmetros</Label>
+              <Select value={paramStyle} onValueChange={(v) => setParamStyle(v as 'named' | 'numeric')}>
+                <SelectTrigger id="editParamStyle">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="named">Nomeados — bodyParams[nome], bodyParams[aviso]...</SelectItem>
+                  <SelectItem value="numeric">Posicionais — bodyParams[1], bodyParams[2], bodyParams[3]</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Defina conforme o template cadastrado na Meta/Zion Talk.
               </p>
             </div>
 

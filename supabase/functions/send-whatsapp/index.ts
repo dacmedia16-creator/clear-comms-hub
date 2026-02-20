@@ -47,6 +47,7 @@ interface RequestBody {
   membersPayload?: UnifiedMember[];
   authHeader?: string;
   templateIdentifier?: string;
+  paramStyle?: 'named' | 'numeric';
 }
 
 interface ContactInfo {
@@ -85,11 +86,12 @@ function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader: string; senderPhone: string; senderName: string; templateIdentifier: string | null } | null> {
+async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader: string; senderPhone: string; senderName: string; templateIdentifier: string | null; paramStyle: 'named' | 'numeric' } | null> {
   let apiKey = Deno.env.get('ZIONTALK_API_KEY');
   let senderPhone = 'ENV_DEFAULT';
   let senderName = 'ENV_DEFAULT';
   let templateIdentifier: string | null = null;
+  let paramStyle: 'named' | 'numeric' = 'named';
 
   const { data: senders, error: sendersError } = await supabase
     .from('whatsapp_senders')
@@ -106,13 +108,14 @@ async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader
     senderPhone = sender.phone;
     senderName = sender.name;
     templateIdentifier = sender.template_identifier ?? null;
-    console.log(`Using sender: ${sender.name} (${senderPhone}), template_identifier: ${templateIdentifier ?? 'default'}`);
+    paramStyle = sender.param_style ?? 'named';
+    console.log(`Using sender: ${sender.name} (${senderPhone}), template_identifier: ${templateIdentifier ?? 'default'}, param_style: ${paramStyle}`);
   } else {
     console.log("No active senders found, using ENV fallback");
   }
 
   if (!apiKey) return null;
-  return { authHeader: 'Basic ' + encode(`${apiKey}:`), senderPhone, senderName, templateIdentifier };
+  return { authHeader: 'Basic ' + encode(`${apiKey}:`), senderPhone, senderName, templateIdentifier, paramStyle };
 }
 
 async function fetchAndFilterMembers(
@@ -207,7 +210,8 @@ async function processBatch(
   announcement: Announcement,
   condominium: Condominium,
   supabase: SupabaseClient,
-  templateIdentifier: string
+  templateIdentifier: string,
+  paramStyle: 'named' | 'numeric' = 'named'
 ) {
   const batch = members.slice(offset, offset + BATCH_SIZE);
   const lembrete = announcement.summary || "Acesse o link para mais detalhes.";
@@ -240,10 +244,17 @@ async function processBatch(
       formData.append('mobile_phone', member.phone);
       formData.append('template_identifier', templateIdentifier);
       formData.append('language', TEMPLATE_LANGUAGE);
-      formData.append('bodyParams[nome]', member.full_name || 'morador(a)');
-      formData.append('bodyParams[aviso]', announcement.title);
-      formData.append('bodyParams[lembrete]', lembrete);
-      if (templateIdentifier !== 'visita_prova_envio') {
+
+      if (paramStyle === 'numeric') {
+        // Parâmetros posicionais ({{1}}, {{2}}, {{3}})
+        formData.append('bodyParams[1]', member.full_name || 'morador(a)');
+        formData.append('bodyParams[2]', announcement.title);
+        formData.append('bodyParams[3]', lembrete);
+      } else {
+        // Parâmetros nomeados + botões dinâmicos
+        formData.append('bodyParams[nome]', member.full_name || 'morador(a)');
+        formData.append('bodyParams[aviso]', announcement.title);
+        formData.append('bodyParams[lembrete]', lembrete);
         formData.append('buttonUrlDynamicParams[0]', `c/${condominium.slug}`);
         formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
       }
@@ -308,6 +319,7 @@ async function processBatch(
           membersPayload: members,
           authHeader,
           templateIdentifier,
+          paramStyle,
         }),
       });
       const resText = await res.text();
@@ -327,7 +339,7 @@ serve(async (req) => {
 
   try {
     const body: RequestBody = await req.json();
-    const { announcement, condominium, batchOffset = 0, membersPayload, authHeader: passedAuthHeader, templateIdentifier: passedTemplateIdentifier } = body;
+    const { announcement, condominium, batchOffset = 0, membersPayload, authHeader: passedAuthHeader, templateIdentifier: passedTemplateIdentifier, paramStyle: passedParamStyle } = body;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -339,7 +351,7 @@ serve(async (req) => {
       console.log(`[Continuation] Batch offset=${batchOffset}, members=${membersPayload.length}`);
 
       EdgeRuntime.waitUntil(
-        processBatch(membersPayload, batchOffset, passedAuthHeader, announcement, condominium, supabase, passedTemplateIdentifier ?? TEMPLATE_IDENTIFIER)
+        processBatch(membersPayload, batchOffset, passedAuthHeader, announcement, condominium, supabase, passedTemplateIdentifier ?? TEMPLATE_IDENTIFIER, passedParamStyle ?? 'named')
       );
 
       return new Response(
@@ -360,31 +372,13 @@ serve(async (req) => {
     }
 
     const templateIdentifier = senderInfo.templateIdentifier ?? TEMPLATE_IDENTIFIER;
+    const paramStyle = senderInfo.paramStyle ?? 'named';
 
-    console.log(`[Initial] Sender="${senderInfo.senderName}", template="${templateIdentifier}"`);
-
-    let members: UnifiedMember[];
-    try {
-      members = await fetchAndFilterMembers(supabase, announcement, condominium);
-    } catch (err) {
-      return new Response(
-        JSON.stringify({ error: err instanceof Error ? err.message : 'Erro ao buscar membros' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (members.length === 0) {
-      return new Response(
-        JSON.stringify({ total: 0, sent: 0, failed: 0, results: [], message: "Nenhum membro encontrado com os critérios selecionados" }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`[Initial] Found ${members.length} members. Starting batch processing with size=${BATCH_SIZE}`);
+    console.log(`[Initial] Sender="${senderInfo.senderName}", template="${templateIdentifier}", param_style="${paramStyle}"`);
 
     // Start first batch in background
     EdgeRuntime.waitUntil(
-      processBatch(members, 0, senderInfo.authHeader, announcement, condominium, supabase, templateIdentifier)
+      processBatch(members, 0, senderInfo.authHeader, announcement, condominium, supabase, templateIdentifier, paramStyle)
     );
 
     return new Response(

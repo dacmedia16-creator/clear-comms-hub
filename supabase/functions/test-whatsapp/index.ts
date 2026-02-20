@@ -107,13 +107,28 @@ serve(async (req) => {
     formData.append('mobile_phone', formattedPhone);
     formData.append('template_identifier', templateToUse);
     formData.append('language', TEMPLATE_LANGUAGE);
-    formData.append('bodyParams[nome]', 'Teste');
-    formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
-    formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
-    if (templateToUse !== VISITA_TEMPLATE_IDENTIFIER) {
+
+    if (templateToUse === VISITA_TEMPLATE_IDENTIFIER) {
+      // Parâmetros posicionais ({{1}}, {{2}}, {{3}}) para visita_prova_envio
+      formData.append('bodyParams[1]', 'Teste');
+      formData.append('bodyParams[2]', 'Mensagem de teste do sistema');
+      formData.append('bodyParams[3]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
+    } else {
+      // Parâmetros nomeados para aviso_pro_confirma_3
+      formData.append('bodyParams[nome]', 'Teste');
+      formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
+      formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
       formData.append('buttonUrlDynamicParams[0]', 'c/demo');
       formData.append('buttonUrlDynamicParams[1]', 'test-demo');
     }
+
+    // Logar payload exato enviado para Zion Talk
+    const formDataLog: Record<string, string> = {};
+    for (const [key, value] of formData.entries()) {
+      formDataLog[key] = value as string;
+    }
+    console.log(`[Test] Sender: ${senderName} | API Key: ${apiKey?.substring(0, 8)}... | Template: ${templateToUse}`);
+    console.log(`[Test] Payload enviado para Zion Talk:`, JSON.stringify(formDataLog));
 
     const response = await fetch(
       'https://app.ziontalk.com/api/send_template_message/',

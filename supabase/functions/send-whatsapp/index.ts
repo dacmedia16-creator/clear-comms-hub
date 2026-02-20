@@ -355,7 +355,9 @@ serve(async (req) => {
       );
     }
 
-    const templateIdentifier = TEMPLATE_IDENTIFIER;
+    const templateIdentifier = senderInfo.senderName.toLowerCase().includes('visita')
+      ? 'visita_prova_envio'
+      : TEMPLATE_IDENTIFIER;
 
     console.log(`[Initial] Sender="${senderInfo.senderName}", template="${templateIdentifier}"`);
 

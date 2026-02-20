@@ -46,6 +46,7 @@ interface RequestBody {
   batchOffset?: number;
   membersPayload?: UnifiedMember[];
   authHeader?: string;
+  templateIdentifier?: string;
 }
 
 interface ContactInfo {
@@ -84,9 +85,10 @@ function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader: string; senderPhone: string } | null> {
+async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader: string; senderPhone: string; senderName: string } | null> {
   let apiKey = Deno.env.get('ZIONTALK_API_KEY');
   let senderPhone = 'ENV_DEFAULT';
+  let senderName = 'ENV_DEFAULT';
 
   const { data: senders, error: sendersError } = await supabase
     .from('whatsapp_senders')
@@ -101,13 +103,14 @@ async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader
     const sender = senders[0];
     apiKey = sender.api_key;
     senderPhone = sender.phone;
+    senderName = sender.name;
     console.log(`Using sender: ${sender.name} (${senderPhone})`);
   } else {
     console.log("No active senders found, using ENV fallback");
   }
 
   if (!apiKey) return null;
-  return { authHeader: 'Basic ' + encode(`${apiKey}:`), senderPhone };
+  return { authHeader: 'Basic ' + encode(`${apiKey}:`), senderPhone, senderName };
 }
 
 async function fetchAndFilterMembers(
@@ -201,12 +204,13 @@ async function processBatch(
   authHeader: string,
   announcement: Announcement,
   condominium: Condominium,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  templateIdentifier: string
 ) {
   const batch = members.slice(offset, offset + BATCH_SIZE);
   const lembrete = announcement.summary || "Acesse o link para mais detalhes.";
 
-  console.log(`[Batch] Processing offset=${offset}, batch size=${batch.length}, total=${members.length}`);
+  console.log(`[Batch] Processing offset=${offset}, batch size=${batch.length}, total=${members.length}, template=${templateIdentifier}`);
 
   for (let i = 0; i < batch.length; i++) {
     const member = batch[i];
@@ -232,7 +236,7 @@ async function processBatch(
 
       const formData = new FormData();
       formData.append('mobile_phone', member.phone);
-      formData.append('template_identifier', TEMPLATE_IDENTIFIER);
+      formData.append('template_identifier', templateIdentifier);
       formData.append('language', TEMPLATE_LANGUAGE);
       formData.append('bodyParams[nome]', member.full_name || 'morador(a)');
       formData.append('bodyParams[aviso]', announcement.title);
@@ -299,6 +303,7 @@ async function processBatch(
           batchOffset: nextOffset,
           membersPayload: members,
           authHeader,
+          templateIdentifier,
         }),
       });
       const resText = await res.text();
@@ -318,7 +323,7 @@ serve(async (req) => {
 
   try {
     const body: RequestBody = await req.json();
-    const { announcement, condominium, batchOffset = 0, membersPayload, authHeader: passedAuthHeader } = body;
+    const { announcement, condominium, batchOffset = 0, membersPayload, authHeader: passedAuthHeader, templateIdentifier: passedTemplateIdentifier } = body;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -330,7 +335,7 @@ serve(async (req) => {
       console.log(`[Continuation] Batch offset=${batchOffset}, members=${membersPayload.length}`);
 
       EdgeRuntime.waitUntil(
-        processBatch(membersPayload, batchOffset, passedAuthHeader, announcement, condominium, supabase)
+        processBatch(membersPayload, batchOffset, passedAuthHeader, announcement, condominium, supabase, passedTemplateIdentifier ?? TEMPLATE_IDENTIFIER)
       );
 
       return new Response(
@@ -349,6 +354,12 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const templateIdentifier = senderInfo.senderName.toLowerCase().includes('visita')
+      ? 'visita_prova_envio'
+      : TEMPLATE_IDENTIFIER;
+
+    console.log(`[Initial] Sender="${senderInfo.senderName}", template="${templateIdentifier}"`);
 
     let members: UnifiedMember[];
     try {
@@ -371,7 +382,7 @@ serve(async (req) => {
 
     // Start first batch in background
     EdgeRuntime.waitUntil(
-      processBatch(members, 0, senderInfo.authHeader, announcement, condominium, supabase)
+      processBatch(members, 0, senderInfo.authHeader, announcement, condominium, supabase, templateIdentifier)
     );
 
     return new Response(

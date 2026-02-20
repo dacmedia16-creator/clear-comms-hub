@@ -1,62 +1,70 @@
 
-## Diagnóstico
+## Problema raiz identificado
 
-A API Zion Talk retorna `201` mesmo quando as variáveis do body não correspondem ao template. A hipótese principal agora é que o template `visita_prova_envio` usa **nomes de variáveis diferentes** de `bodyParams[nome]`, `bodyParams[aviso]`, `bodyParams[lembrete]`.
+O código atual detecta qual template usar com base no nome do sender:
+```typescript
+const templateIdentifier = senderInfo.senderName.toLowerCase().includes('visita')
+  ? 'visita_prova_envio'
+  : TEMPLATE_IDENTIFIER;
+```
 
-O template que funcionou diretamente no Zion Talk era "Aviso informativo para Corretor" — provavelmente diferente do `visita_prova_envio`. O que confirma que o número e a API Key funcionam, mas algo no payload do `visita_prova_envio` está incorreto.
+Isso é frágil e não permite corrigir o identificador sem alterar o código. Se o template no Zion Talk tiver um nome diferente do que está hardcoded (`visita_prova_envio`), a mensagem pode ser aceita com `201` mas nunca entregue.
+
+A solução é deixar o Super Admin configurar o `template_identifier` exato para cada número diretamente no painel.
 
 ## O que será feito
 
-### Estratégia: logar payload completo + testar com parâmetros numéricos
+### 1. Migração de banco de dados
 
-Muitos templates da Meta usam variáveis posicionais (`{{1}}`, `{{2}}`, `{{3}}`), que na Zion Talk são enviadas como `bodyParams[1]`, `bodyParams[2]`, `bodyParams[3]` — e não como chaves nomeadas.
+Adicionar coluna `template_identifier` na tabela `whatsapp_senders`:
 
-Vamos alterar o `test-whatsapp` para:
-
-1. **Logar o payload exato** antes do fetch (para comparar com o que funciona)
-2. **Usar parâmetros numéricos** para o `visita_prova_envio`:
-   - `bodyParams[1]` → nome
-   - `bodyParams[2]` → aviso
-   - `bodyParams[3]` → lembrete
-
-### Arquivo: `supabase/functions/test-whatsapp/index.ts`
-
-Alterar a montagem do FormData para distinguir entre os dois templates:
-
-```typescript
-// Para visita_prova_envio: usar índices numéricos ({{1}}, {{2}}, {{3}})
-if (templateToUse === VISITA_TEMPLATE_IDENTIFIER) {
-  formData.append('bodyParams[1]', 'Teste');
-  formData.append('bodyParams[2]', 'Mensagem de teste do sistema');
-  formData.append('bodyParams[3]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
-} else {
-  formData.append('bodyParams[nome]', 'Teste');
-  formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
-  formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
-  formData.append('buttonUrlDynamicParams[0]', 'c/demo');
-  formData.append('buttonUrlDynamicParams[1]', 'test-demo');
-}
+```sql
+ALTER TABLE whatsapp_senders 
+ADD COLUMN template_identifier text;
 ```
 
-E adicionar log do payload:
+Valor `NULL` significa: usar o template padrão (`aviso_pro_confirma_3`).
+
+### 2. Hook `useWhatsAppSenders.ts`
+
+Adicionar `template_identifier` nas interfaces `WhatsAppSender` e `CreateWhatsAppSender`.
+
+### 3. Dialogs de Add e Edit
+
+Adicionar campo opcional "Identificador do Template" nos dois dialogs, com placeholder `aviso_pro_confirma_3` e texto de ajuda explicando que deve ser copiado do painel Zion Talk.
+
+### 4. `supabase/functions/send-whatsapp/index.ts`
+
+Substituir a detecção por nome pelo campo do banco:
 
 ```typescript
-const formDataLog: Record<string, string> = {};
-for (const [key, value] of formData.entries()) {
-  formDataLog[key] = value as string;
-}
-console.log(`[Test] Payload enviado para Zion Talk:`, JSON.stringify(formDataLog));
+// ANTES (frágil):
+const templateIdentifier = senderInfo.senderName.toLowerCase().includes('visita')
+  ? 'visita_prova_envio'
+  : TEMPLATE_IDENTIFIER;
+
+// DEPOIS (configurável):
+const templateIdentifier = senderInfo.templateIdentifier ?? TEMPLATE_IDENTIFIER;
 ```
 
-## Por que isso pode resolver
+A lógica de `buttonUrlDynamicParams` continua: só envia se o template for `aviso_pro_confirma_3` (ou seja, se não for o padrão). Mas ficará mais flexível: o botão só é adicionado se o template for igual ao `TEMPLATE_IDENTIFIER`.
 
-Templates na Meta Business Suite podem ter variáveis nomeadas (`{{nome}}`) ou posicionais (`{{1}}`). Se o `visita_prova_envio` foi criado com variáveis posicionais e a gente envia `bodyParams[nome]`, a Zion Talk provavelmente ignora os valores — entregando o template com as variáveis em branco ou rejeitando na Meta silenciosamente.
+### 5. `supabase/functions/test-whatsapp/index.ts`
 
-## Próximo passo após o teste
+Mesma substituição — usar `sender.template_identifier` quando disponível.
 
-- Se chegar com os parâmetros numéricos: atualizar o `send-whatsapp` para usar a mesma lógica em produção
-- Se não chegar: o log exato do payload vai revelar o que está diferente em relação ao envio que funcionou diretamente no Zion Talk
+A lógica dos parâmetros numéricos vs. nomeados **mantém o comportamento atual**: o `aviso_pro_confirma_3` usa nomes, qualquer outro template usa índices numéricos posicionais.
 
 ## Arquivos modificados
 
-- `supabase/functions/test-whatsapp/index.ts` — usar parâmetros numéricos para `visita_prova_envio` e logar payload completo
+- Migração SQL: adicionar coluna `template_identifier` em `whatsapp_senders`
+- `src/hooks/useWhatsAppSenders.ts` — adicionar campo na interface
+- `src/components/super-admin/AddWhatsAppSenderDialog.tsx` — campo template_identifier
+- `src/components/super-admin/EditWhatsAppSenderDialog.tsx` — campo template_identifier
+- `src/components/super-admin/WhatsAppSendersCard.tsx` — exibir o template na tabela
+- `supabase/functions/send-whatsapp/index.ts` — usar template do banco
+- `supabase/functions/test-whatsapp/index.ts` — usar template do banco
+
+## Resultado
+
+O Super Admin poderá editar o sender "Visita Prova" e preencher o campo com o identificador exato copiado do Zion Talk (ex: `visita_prova_envio` ou o nome correto). Sem necessidade de alterar código para corrigir.

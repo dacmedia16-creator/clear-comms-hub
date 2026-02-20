@@ -1,49 +1,62 @@
 
-## Objetivo
-
-Remover os parâmetros de botão dinâmico (`buttonUrlDynamicParams`) do payload quando o template `visita_prova_envio` é usado, já que este template tem URL fixa configurada na Meta e não aceita parâmetros dinâmicos.
-
 ## Diagnóstico
 
-O template `aviso_pro_confirma_3` usa dois botões com URLs dinâmicas (slug do condomínio + token de opt-out). Quando o código envia `buttonUrlDynamicParams[0]` e `buttonUrlDynamicParams[1]` para um template com URL fixa, a Meta pode rejeitar ou ignorar a mensagem silenciosamente — mesmo que a API Zion Talk retorne `201`.
+A API Zion Talk retorna `201` mesmo quando as variáveis do body não correspondem ao template. A hipótese principal agora é que o template `visita_prova_envio` usa **nomes de variáveis diferentes** de `bodyParams[nome]`, `bodyParams[aviso]`, `bodyParams[lembrete]`.
 
-A solução é não enviar esses campos quando o template `visita_prova_envio` está sendo usado.
+O template que funcionou diretamente no Zion Talk era "Aviso informativo para Corretor" — provavelmente diferente do `visita_prova_envio`. O que confirma que o número e a API Key funcionam, mas algo no payload do `visita_prova_envio` está incorreto.
 
-## O que será alterado
+## O que será feito
 
-### `supabase/functions/send-whatsapp/index.ts` — função `processBatch`
+### Estratégia: logar payload completo + testar com parâmetros numéricos
 
-Na montagem do FormData, adicionar uma condição: só appenda `buttonUrlDynamicParams` se o template **não** for `visita_prova_envio`:
+Muitos templates da Meta usam variáveis posicionais (`{{1}}`, `{{2}}`, `{{3}}`), que na Zion Talk são enviadas como `bodyParams[1]`, `bodyParams[2]`, `bodyParams[3]` — e não como chaves nomeadas.
 
-```typescript
-formData.append('mobile_phone', member.phone);
-formData.append('template_identifier', templateIdentifier);
-formData.append('language', TEMPLATE_LANGUAGE);
-formData.append('bodyParams[nome]', member.full_name || 'morador(a)');
-formData.append('bodyParams[aviso]', announcement.title);
-formData.append('bodyParams[lembrete]', lembrete);
+Vamos alterar o `test-whatsapp` para:
 
-// Só envia params dinâmicos para templates que usam URL dinâmica
-if (templateIdentifier !== 'visita_prova_envio') {
-  formData.append('buttonUrlDynamicParams[0]', `c/${condominium.slug}`);
-  formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
-}
-```
+1. **Logar o payload exato** antes do fetch (para comparar com o que funciona)
+2. **Usar parâmetros numéricos** para o `visita_prova_envio`:
+   - `bodyParams[1]` → nome
+   - `bodyParams[2]` → aviso
+   - `bodyParams[3]` → lembrete
 
-### `supabase/functions/test-whatsapp/index.ts` — disparo de teste
+### Arquivo: `supabase/functions/test-whatsapp/index.ts`
 
-Da mesma forma, só envia `buttonUrlDynamicParams` se o template não for `visita_prova_envio`:
+Alterar a montagem do FormData para distinguir entre os dois templates:
 
 ```typescript
-if (templateToUse !== VISITA_TEMPLATE_IDENTIFIER) {
+// Para visita_prova_envio: usar índices numéricos ({{1}}, {{2}}, {{3}})
+if (templateToUse === VISITA_TEMPLATE_IDENTIFIER) {
+  formData.append('bodyParams[1]', 'Teste');
+  formData.append('bodyParams[2]', 'Mensagem de teste do sistema');
+  formData.append('bodyParams[3]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
+} else {
+  formData.append('bodyParams[nome]', 'Teste');
+  formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
+  formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
   formData.append('buttonUrlDynamicParams[0]', 'c/demo');
   formData.append('buttonUrlDynamicParams[1]', 'test-demo');
 }
 ```
 
+E adicionar log do payload:
+
+```typescript
+const formDataLog: Record<string, string> = {};
+for (const [key, value] of formData.entries()) {
+  formDataLog[key] = value as string;
+}
+console.log(`[Test] Payload enviado para Zion Talk:`, JSON.stringify(formDataLog));
+```
+
+## Por que isso pode resolver
+
+Templates na Meta Business Suite podem ter variáveis nomeadas (`{{nome}}`) ou posicionais (`{{1}}`). Se o `visita_prova_envio` foi criado com variáveis posicionais e a gente envia `bodyParams[nome]`, a Zion Talk provavelmente ignora os valores — entregando o template com as variáveis em branco ou rejeitando na Meta silenciosamente.
+
+## Próximo passo após o teste
+
+- Se chegar com os parâmetros numéricos: atualizar o `send-whatsapp` para usar a mesma lógica em produção
+- Se não chegar: o log exato do payload vai revelar o que está diferente em relação ao envio que funcionou diretamente no Zion Talk
+
 ## Arquivos modificados
 
-- `supabase/functions/send-whatsapp/index.ts` — condicionar `buttonUrlDynamicParams` ao template
-- `supabase/functions/test-whatsapp/index.ts` — condicionar `buttonUrlDynamicParams` ao template
-
-Após o deploy, o número Visita Prova enviará o payload sem parâmetros de botão dinâmico, compatível com um template de URL fixa configurado na Meta.
+- `supabase/functions/test-whatsapp/index.ts` — usar parâmetros numéricos para `visita_prova_envio` e logar payload completo

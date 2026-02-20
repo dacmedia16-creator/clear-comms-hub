@@ -1,87 +1,61 @@
 
-## Usar template diferente para o sender "Visita Prova"
+## Problema identificado
 
-### O que precisa mudar
+O `test-whatsapp` tem o template `aviso_pro_confirma_3` **hardcoded** nas linhas 10 e 100 do arquivo `supabase/functions/test-whatsapp/index.ts`. Mesmo que o sender "Visita Prova" esteja ativo, o teste sempre envia com o template errado.
 
-O sender "Visita Prova" (telefone (15) 99845-9830) está cadastrado na tabela `whatsapp_senders`. Atualmente, a função `resolveAuthHeader` já busca o sender ativo e retorna o `authHeader`, mas não retorna o nome do sender. A mudança é passar o nome do sender para o `processBatch`, e lá decidir qual template usar.
+A função `send-whatsapp` (disparos reais) já foi corrigida corretamente. O problema é apenas na função de teste.
 
-### Regra
+## Correção necessária
 
-- Se o nome do sender contiver "visita" (case-insensitive) → usar template `visita_prova_envio`
-- Qualquer outro sender → usar template `aviso_pro_confirma_3` (padrão atual)
+### Arquivo: `supabase/functions/test-whatsapp/index.ts`
 
-### Alterações no arquivo `supabase/functions/send-whatsapp/index.ts`
-
-**1. Retornar `senderName` na função `resolveAuthHeader`**
-
-A função já possui `senderPhone`, basta adicionar `senderName` ao retorno:
+**1. Adicionar a constante do template Visita Prova**
 
 ```typescript
-return { authHeader: '...', senderPhone, senderName: sender.name };
+const TEMPLATE_IDENTIFIER = 'aviso_pro_confirma_3';
+const VISITA_TEMPLATE_IDENTIFIER = 'visita_prova_envio';
 ```
 
-**2. Adicionar `templateIdentifier` na interface `RequestBody`**
+**2. Capturar o nome do sender ao buscar no banco**
 
-Para que os batches subsequentes (self-invocação) saibam qual template usar:
+Atualmente o código captura `apiKey` e `apiSource`, mas não captura o `name` do sender para decisão de template. Adicionar:
 
 ```typescript
-interface RequestBody {
-  ...
-  templateIdentifier?: string; // novo campo
-}
+let senderName = 'ENV_DEFAULT';
+// ...dentro do if (senders && senders.length > 0):
+senderName = sender.name;
 ```
 
-**3. Passar `templateIdentifier` como parâmetro para `processBatch`**
+**3. Determinar o template pelo nome do sender**
+
+Logo após definir o `authHeader`, adicionar:
 
 ```typescript
-async function processBatch(
-  members, offset, authHeader, announcement, condominium, supabase,
-  templateIdentifier: string  // novo parâmetro
-)
+const templateToUse = senderName.toLowerCase().includes('visita')
+  ? VISITA_TEMPLATE_IDENTIFIER
+  : TEMPLATE_IDENTIFIER;
 ```
 
-**4. Usar `templateIdentifier` no FormData em vez da constante**
+**4. Usar `templateToUse` no FormData**
+
+Substituir linha 100:
+```typescript
+formData.append('template_identifier', templateToUse);
+```
+
+**5. Logar o template usado**
 
 ```typescript
-formData.append('template_identifier', templateIdentifier);
-// em vez de: formData.append('template_identifier', TEMPLATE_IDENTIFIER);
+console.log(`Using template: ${templateToUse} (sender: ${senderName})`);
 ```
 
-**5. Na primeira invocação, determinar o template pelo nome do sender**
+## Resultado esperado
 
-```typescript
-const senderInfo = await resolveAuthHeader(supabase);
-const templateIdentifier = senderInfo.senderName?.toLowerCase().includes('visita')
-  ? 'visita_prova_envio'
-  : TEMPLATE_IDENTIFIER; // 'aviso_pro_confirma_3'
-```
+Após a correção, ao clicar em "Testar WhatsApp" com o sender "Visita Prova" ativo:
+- O log mostrará: `Using template: visita_prova_envio (sender: Visita Prova)`
+- A mensagem enviada usará o template correto
+- O teste refletirá exatamente o mesmo comportamento do disparo real
 
-**6. Propagar `templateIdentifier` na self-invocação (batches seguintes)**
+## Arquivo modificado
 
-```typescript
-body: JSON.stringify({
-  announcement, condominium,
-  batchOffset: nextOffset,
-  membersPayload: members,
-  authHeader,
-  templateIdentifier,  // novo campo propagado
-})
-```
-
-### Fluxo resultante
-
-```text
-Sender "Visita Prova" ativo
-  → resolveAuthHeader retorna senderName = "Visita Prova"
-  → "visita prova".includes("visita") = true
-  → templateIdentifier = "visita_prova_envio"
-  → todos os batches usam esse template
-
-Qualquer outro sender ativo
-  → senderName = "Numero 1", "Numero 2", etc.
-  → templateIdentifier = "aviso_pro_confirma_3"
-```
-
-### Arquivos modificados
-
-- `supabase/functions/send-whatsapp/index.ts` — única alteração necessária
+- `supabase/functions/test-whatsapp/index.ts` — única alteração necessária

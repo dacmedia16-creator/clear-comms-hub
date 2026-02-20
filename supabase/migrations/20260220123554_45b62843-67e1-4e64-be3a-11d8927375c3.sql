@@ -1,0 +1,1 @@
+ALTER TABLE whatsapp_senders ADD COLUMN IF NOT EXISTS template_identifier text;

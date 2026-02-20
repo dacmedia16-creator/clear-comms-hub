@@ -85,10 +85,11 @@ function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader: string; senderPhone: string; senderName: string } | null> {
+async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader: string; senderPhone: string; senderName: string; templateIdentifier: string | null } | null> {
   let apiKey = Deno.env.get('ZIONTALK_API_KEY');
   let senderPhone = 'ENV_DEFAULT';
   let senderName = 'ENV_DEFAULT';
+  let templateIdentifier: string | null = null;
 
   const { data: senders, error: sendersError } = await supabase
     .from('whatsapp_senders')
@@ -104,13 +105,14 @@ async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader
     apiKey = sender.api_key;
     senderPhone = sender.phone;
     senderName = sender.name;
-    console.log(`Using sender: ${sender.name} (${senderPhone})`);
+    templateIdentifier = sender.template_identifier ?? null;
+    console.log(`Using sender: ${sender.name} (${senderPhone}), template_identifier: ${templateIdentifier ?? 'default'}`);
   } else {
     console.log("No active senders found, using ENV fallback");
   }
 
   if (!apiKey) return null;
-  return { authHeader: 'Basic ' + encode(`${apiKey}:`), senderPhone, senderName };
+  return { authHeader: 'Basic ' + encode(`${apiKey}:`), senderPhone, senderName, templateIdentifier };
 }
 
 async function fetchAndFilterMembers(
@@ -357,9 +359,7 @@ serve(async (req) => {
       );
     }
 
-    const templateIdentifier = senderInfo.senderName.toLowerCase().includes('visita')
-      ? 'visita_prova_envio'
-      : TEMPLATE_IDENTIFIER;
+    const templateIdentifier = senderInfo.templateIdentifier ?? TEMPLATE_IDENTIFIER;
 
     console.log(`[Initial] Sender="${senderInfo.senderName}", template="${templateIdentifier}"`);
 

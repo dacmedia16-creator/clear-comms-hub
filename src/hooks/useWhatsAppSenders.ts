@@ -14,6 +14,7 @@ export interface WhatsAppSender {
   api_key: string;
   is_active: boolean;
   is_default: boolean;
+  template_identifier: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -24,6 +25,7 @@ export interface CreateWhatsAppSender {
   api_key: string;
   is_active?: boolean;
   is_default?: boolean;
+  template_identifier?: string | null;
 }
 
 export function useWhatsAppSenders() {

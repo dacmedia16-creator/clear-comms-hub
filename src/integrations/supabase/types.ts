@@ -807,6 +807,7 @@ export type Database = {
           is_default: boolean | null
           name: string
           phone: string
+          template_identifier: string | null
           updated_at: string | null
         }
         Insert: {
@@ -817,6 +818,7 @@ export type Database = {
           is_default?: boolean | null
           name: string
           phone: string
+          template_identifier?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -827,6 +829,7 @@ export type Database = {
           is_default?: boolean | null
           name?: string
           phone?: string
+          template_identifier?: string | null
           updated_at?: string | null
         }
         Relationships: []

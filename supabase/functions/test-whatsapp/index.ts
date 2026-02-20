@@ -33,6 +33,8 @@ serve(async (req) => {
     let apiSource = 'ENV_FALLBACK';
     let senderName = 'ENV_DEFAULT';
 
+    let senderTemplateIdentifier: string | null = null;
+
     const { data: senders, error: sendersError } = await supabase
       .from('whatsapp_senders')
       .select('*')
@@ -46,8 +48,9 @@ serve(async (req) => {
       const sender = senders[0];
       apiKey = sender.api_key;
       senderName = sender.name;
+      senderTemplateIdentifier = sender.template_identifier ?? null;
       apiSource = `DB: ${sender.name} (${sender.phone})`;
-      console.log(`Using sender from database: ${sender.name} (${sender.phone})`);
+      console.log(`Using sender from database: ${sender.name} (${sender.phone}), template_identifier: ${senderTemplateIdentifier ?? 'default'}`);
     } else {
       console.log("No active senders found, using ENV fallback");
     }
@@ -76,9 +79,7 @@ serve(async (req) => {
 
     const authHeader = 'Basic ' + encode(`${apiKey}:`);
 
-    const templateToUse = senderName.toLowerCase().includes('visita')
-      ? VISITA_TEMPLATE_IDENTIFIER
-      : TEMPLATE_IDENTIFIER;
+    const templateToUse = senderTemplateIdentifier ?? TEMPLATE_IDENTIFIER;
     console.log(`Using template: ${templateToUse} (sender: ${senderName})`);
     const { phone, condominiumId }: RequestBody = await req.json();
 

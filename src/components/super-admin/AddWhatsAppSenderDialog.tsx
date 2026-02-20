@@ -36,6 +36,7 @@ export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps)
   const [apiKey, setApiKey] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [isDefault, setIsDefault] = useState(false);
+  const [templateIdentifier, setTemplateIdentifier] = useState("");
 
   const resetForm = () => {
     setName("");
@@ -43,6 +44,7 @@ export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps)
     setApiKey("");
     setIsActive(true);
     setIsDefault(false);
+    setTemplateIdentifier("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,6 +59,7 @@ export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps)
       api_key: apiKey.trim(),
       is_active: isActive,
       is_default: isDefault,
+      template_identifier: templateIdentifier.trim() || null,
     });
 
     setSaving(false);
@@ -121,6 +124,19 @@ export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps)
               />
               <p className="text-xs text-muted-foreground">
                 A API Key será armazenada de forma segura no banco de dados
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="templateIdentifier">Identificador do Template (opcional)</Label>
+              <Input
+                id="templateIdentifier"
+                placeholder="aviso_pro_confirma_3"
+                value={templateIdentifier}
+                onChange={(e) => setTemplateIdentifier(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Copie o identificador exato do template no painel Zion Talk. Vazio = template padrão.
               </p>
             </div>
 

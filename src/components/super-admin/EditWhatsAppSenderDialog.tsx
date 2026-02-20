@@ -37,6 +37,7 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
   const [apiKey, setApiKey] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [isDefault, setIsDefault] = useState(false);
+  const [templateIdentifier, setTemplateIdentifier] = useState("");
 
   useEffect(() => {
     if (sender) {
@@ -45,6 +46,7 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
       setApiKey(""); // Don't show existing API key for security
       setIsActive(sender.is_active);
       setIsDefault(sender.is_default);
+      setTemplateIdentifier(sender.template_identifier ?? "");
     }
   }, [sender]);
 
@@ -60,6 +62,7 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
       phone: phone.replace(/\D/g, ""),
       is_active: isActive,
       is_default: isDefault,
+      template_identifier: templateIdentifier.trim() || null,
     };
 
     // Only update API key if provided
@@ -120,6 +123,19 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
               />
               <p className="text-xs text-muted-foreground">
                 Preencha apenas se desejar alterar a API Key
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="editTemplateIdentifier">Identificador do Template (opcional)</Label>
+              <Input
+                id="editTemplateIdentifier"
+                placeholder="aviso_pro_confirma_3"
+                value={templateIdentifier}
+                onChange={(e) => setTemplateIdentifier(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Copie o identificador exato do template no painel Zion Talk. Vazio = template padrão.
               </p>
             </div>
 

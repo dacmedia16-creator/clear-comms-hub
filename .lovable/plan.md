@@ -1,15 +1,13 @@
 
-## Diagnóstico: Número de teste está na blacklist de opt-out
+## Situação atual
 
-O número `+5515981788214` (Denis) realizou opt-out em 18/02/2026 às 20:30. A função `send-whatsapp` filtra corretamente todos os números com `opted_out_at IS NOT NULL`, por isso o disparo não chegou — não é bug, é o comportamento esperado da proteção de opt-out.
+O número `+5515981788214` (Denis) ainda consta com opt-out ativo na tabela `whatsapp_optouts` (opted_out_at = 18/02/2026 20:30). A atualização anterior não foi executada.
 
-O `test-whatsapp` usa uma rota diferente (envia direto para a API Zion Talk sem passar pelo filtro de opt-out), por isso os testes chegaram normalmente.
+## O que precisa ser feito (em ordem)
 
-## Solução
+### Passo 1 — Limpar o opt-out no banco de dados
 
-Remover o opt-out do número `+5515981788214` diretamente no banco de dados, limpando o campo `opted_out_at` para NULL.
-
-Essa operação é um UPDATE na tabela `whatsapp_optouts`:
+Executar o UPDATE na tabela `whatsapp_optouts`:
 
 ```sql
 UPDATE whatsapp_optouts
@@ -17,14 +15,17 @@ SET opted_out_at = NULL
 WHERE phone = '+5515981788214';
 ```
 
-Após essa correção, o número voltará a receber disparos normais.
+Isso remove o bloqueio e o número volta a ser elegível para receber disparos.
 
-## O que NÃO precisa mudar
+### Passo 2 — Realizar o disparo de teste
 
-- A lógica de filtro de opt-out está correta e não deve ser alterada
-- A função `send-whatsapp` está funcionando como esperado
-- O template `visita_prova_envio` está sendo selecionado corretamente
+Após a limpeza do opt-out, acionar um disparo real via painel para um aviso direcionado ao número `+5515981788214`, confirmando que:
 
-## Arquivo/recurso modificado
+- O filtro de opt-out não bloqueia mais o número
+- O template `visita_prova_envio` é selecionado corretamente pelo sender "Visita Prova"
+- A mensagem chega no WhatsApp
 
-- Tabela `whatsapp_optouts` — UPDATE via migration SQL (uma linha)
+## Arquivos/recursos modificados
+
+- Tabela `whatsapp_optouts` — UPDATE (opted_out_at → NULL) para o número `+5515981788214`
+- Nenhum arquivo de código precisa ser alterado

@@ -111,9 +111,9 @@ serve(async (req) => {
 
     if (templateToUse === VISITA_TEMPLATE_IDENTIFIER) {
       // Parâmetros posicionais ({{1}}, {{2}}, {{3}}) para visita_prova_envio
-      formData.append('bodyParams[1]', 'Teste');
-      formData.append('bodyParams[2]', 'Mensagem de teste do sistema');
-      formData.append('bodyParams[3]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
+      formData.append('buttonUrlDynamicParams[1]', 'Teste');
+      formData.append('buttonUrlDynamicParams[2]', 'Mensagem de teste do sistema');
+      formData.append('buttonUrlDynamicParams[3]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
     } else {
       // Parâmetros nomeados para aviso_pro_confirma_3
       formData.append('bodyParams[nome]', 'Teste');

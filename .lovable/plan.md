@@ -1,49 +1,49 @@
 
 ## Objetivo
 
-Restaurar o template `visita_prova_envio` para o sender "Visita Prova (15) 99845-9830", reintroduzindo a lógica de detecção por nome do sender.
+Remover os parâmetros de botão dinâmico (`buttonUrlDynamicParams`) do payload quando o template `visita_prova_envio` é usado, já que este template tem URL fixa configurada na Meta e não aceita parâmetros dinâmicos.
 
-## O que será feito
+## Diagnóstico
 
-### Arquivo: `supabase/functions/send-whatsapp/index.ts` (linha 358)
+O template `aviso_pro_confirma_3` usa dois botões com URLs dinâmicas (slug do condomínio + token de opt-out). Quando o código envia `buttonUrlDynamicParams[0]` e `buttonUrlDynamicParams[1]` para um template com URL fixa, a Meta pode rejeitar ou ignorar a mensagem silenciosamente — mesmo que a API Zion Talk retorne `201`.
 
-Restaurar de:
+A solução é não enviar esses campos quando o template `visita_prova_envio` está sendo usado.
+
+## O que será alterado
+
+### `supabase/functions/send-whatsapp/index.ts` — função `processBatch`
+
+Na montagem do FormData, adicionar uma condição: só appenda `buttonUrlDynamicParams` se o template **não** for `visita_prova_envio`:
+
 ```typescript
-const templateIdentifier = TEMPLATE_IDENTIFIER;
+formData.append('mobile_phone', member.phone);
+formData.append('template_identifier', templateIdentifier);
+formData.append('language', TEMPLATE_LANGUAGE);
+formData.append('bodyParams[nome]', member.full_name || 'morador(a)');
+formData.append('bodyParams[aviso]', announcement.title);
+formData.append('bodyParams[lembrete]', lembrete);
+
+// Só envia params dinâmicos para templates que usam URL dinâmica
+if (templateIdentifier !== 'visita_prova_envio') {
+  formData.append('buttonUrlDynamicParams[0]', `c/${condominium.slug}`);
+  formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
+}
 ```
 
-Para:
+### `supabase/functions/test-whatsapp/index.ts` — disparo de teste
+
+Da mesma forma, só envia `buttonUrlDynamicParams` se o template não for `visita_prova_envio`:
+
 ```typescript
-const templateIdentifier = senderInfo.senderName.toLowerCase().includes('visita')
-  ? 'visita_prova_envio'
-  : TEMPLATE_IDENTIFIER;
+if (templateToUse !== VISITA_TEMPLATE_IDENTIFIER) {
+  formData.append('buttonUrlDynamicParams[0]', 'c/demo');
+  formData.append('buttonUrlDynamicParams[1]', 'test-demo');
+}
 ```
-
-### Arquivo: `supabase/functions/test-whatsapp/index.ts` (linha 79)
-
-Restaurar de:
-```typescript
-const templateToUse = TEMPLATE_IDENTIFIER;
-```
-
-Para:
-```typescript
-const templateToUse = senderName.toLowerCase().includes('visita')
-  ? VISITA_TEMPLATE_IDENTIFIER
-  : TEMPLATE_IDENTIFIER;
-```
-
-A constante `VISITA_TEMPLATE_IDENTIFIER = 'visita_prova_envio'` já existe no arquivo `test-whatsapp/index.ts` (linha 14), então não precisa ser redeclarada.
-
-## Observação importante
-
-Na conversa anterior, levantamos a hipótese de que o `visita_prova_envio` pode ter um **botão com URL fixa** configurado na Meta — o que faria o campo `buttonUrlDynamicParams` ser ignorado silenciosamente. A API Zion Talk retornaria `201` mesmo assim, mas o link do aviso no botão seria incorreto ou inexistente.
-
-Se os testes com o template `visita_prova_envio` continuarem sem entrega visível mesmo com `201`, a causa mais provável é essa configuração de URL fixa no template da Meta Business Suite — e a solução seria editar o template na Meta para usar URLs dinâmicas, ou manter o `aviso_pro_confirma_3`.
 
 ## Arquivos modificados
 
-- `supabase/functions/send-whatsapp/index.ts` — restaurar detecção por nome do sender
-- `supabase/functions/test-whatsapp/index.ts` — restaurar detecção por nome do sender
+- `supabase/functions/send-whatsapp/index.ts` — condicionar `buttonUrlDynamicParams` ao template
+- `supabase/functions/test-whatsapp/index.ts` — condicionar `buttonUrlDynamicParams` ao template
 
-Após o deploy, o número Visita Prova voltará a usar `visita_prova_envio` e os demais senders continuam com `aviso_pro_confirma_3`.
+Após o deploy, o número Visita Prova enviará o payload sem parâmetros de botão dinâmico, compatível com um template de URL fixa configurado na Meta.

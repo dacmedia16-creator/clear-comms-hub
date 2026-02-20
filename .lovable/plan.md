@@ -1,30 +1,47 @@
 
-## Problema identificado
+## Objetivo
 
-O número `+5515981788214` possui 3 registros na tabela `whatsapp_optouts`. Um deles ainda tem `opted_out_at` preenchido com a data 18/02/2026, o que faz o sistema bloquear o número em todos os disparos.
+Remover a lógica de seleção de template baseada no nome do sender "Visita Prova" e fazer esse número usar o template padrão `aviso_pro_confirma_3`, igual a todos os outros senders.
 
-O fluxo de filtro na Edge Function funciona assim: se qualquer registro com esse telefone tiver `opted_out_at` não nulo, o número é excluído da lista de destinatários.
+## Problema atual
+
+Na Edge Function `send-whatsapp`, existe esta lógica:
+
+```typescript
+const templateIdentifier = senderInfo.senderName.toLowerCase().includes('visita')
+  ? 'visita_prova_envio'
+  : TEMPLATE_IDENTIFIER;
+```
+
+Isso faz o sender "Visita Prova (15) 99845-9830" usar o template `visita_prova_envio` automaticamente. O usuário quer que ele volte a usar o template padrão `aviso_pro_confirma_3`.
+
+A mesma lógica existe no `test-whatsapp` para disparos de teste.
 
 ## Solução
 
-Limpar o campo `opted_out_at` no registro com opt-out ativo (id `a644df0e-fbb7-44e3-bece-53db7d4c48f8`):
+Remover a detecção por nome e fazer todos os senders usarem `TEMPLATE_IDENTIFIER` (`aviso_pro_confirma_3`) por padrão.
 
-```sql
-UPDATE whatsapp_optouts
-SET opted_out_at = NULL
-WHERE phone = '+5515981788214'
-  AND opted_out_at IS NOT NULL;
+### Arquivo: `supabase/functions/send-whatsapp/index.ts`
+
+Substituir:
+```typescript
+const templateIdentifier = senderInfo.senderName.toLowerCase().includes('visita')
+  ? 'visita_prova_envio'
+  : TEMPLATE_IDENTIFIER;
 ```
 
-Após isso, todos os 3 registros do número terão `opted_out_at = NULL`, e o número voltará a ser elegível para receber disparos normalmente.
+Por:
+```typescript
+const templateIdentifier = TEMPLATE_IDENTIFIER;
+```
 
-## Verificação após a correção
+### Arquivo: `supabase/functions/test-whatsapp/index.ts`
 
-Após o update, será feito um disparo de teste via Edge Function `test-whatsapp` diretamente via chamada à API para confirmar que:
-- O número não é mais bloqueado pelo filtro de opt-out
-- O template `visita_prova_envio` é selecionado corretamente
+Remover também qualquer lógica similar de detecção de "visita" para uso do `VISITA_TEMPLATE_IDENTIFIER`.
 
-## Arquivos/recursos modificados
+## Arquivos modificados
 
-- Tabela `whatsapp_optouts` — UPDATE (opted_out_at → NULL) para todos os registros do número `+5515981788214` com opt-out ativo
-- Nenhum arquivo de código precisa ser alterado
+- `supabase/functions/send-whatsapp/index.ts` — remover inferência de template por nome do sender
+- `supabase/functions/test-whatsapp/index.ts` — remover inferência de template por nome do sender (se existir)
+
+Após o deploy, o número Visita Prova voltará a usar o template `aviso_pro_confirma_3` em todos os disparos, reais e de teste.

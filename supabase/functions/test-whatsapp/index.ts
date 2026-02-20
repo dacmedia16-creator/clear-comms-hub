@@ -110,8 +110,10 @@ serve(async (req) => {
     formData.append('bodyParams[nome]', 'Teste');
     formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
     formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
-    formData.append('buttonUrlDynamicParams[0]', 'c/demo');
-    formData.append('buttonUrlDynamicParams[1]', 'test-demo');
+    if (templateToUse !== VISITA_TEMPLATE_IDENTIFIER) {
+      formData.append('buttonUrlDynamicParams[0]', 'c/demo');
+      formData.append('buttonUrlDynamicParams[1]', 'test-demo');
+    }
 
     const response = await fetch(
       'https://app.ziontalk.com/api/send_template_message/',

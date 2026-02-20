@@ -1,31 +1,30 @@
 
-## Situação atual
+## Problema identificado
 
-O número `+5515981788214` (Denis) ainda consta com opt-out ativo na tabela `whatsapp_optouts` (opted_out_at = 18/02/2026 20:30). A atualização anterior não foi executada.
+O número `+5515981788214` possui 3 registros na tabela `whatsapp_optouts`. Um deles ainda tem `opted_out_at` preenchido com a data 18/02/2026, o que faz o sistema bloquear o número em todos os disparos.
 
-## O que precisa ser feito (em ordem)
+O fluxo de filtro na Edge Function funciona assim: se qualquer registro com esse telefone tiver `opted_out_at` não nulo, o número é excluído da lista de destinatários.
 
-### Passo 1 — Limpar o opt-out no banco de dados
+## Solução
 
-Executar o UPDATE na tabela `whatsapp_optouts`:
+Limpar o campo `opted_out_at` no registro com opt-out ativo (id `a644df0e-fbb7-44e3-bece-53db7d4c48f8`):
 
 ```sql
 UPDATE whatsapp_optouts
 SET opted_out_at = NULL
-WHERE phone = '+5515981788214';
+WHERE phone = '+5515981788214'
+  AND opted_out_at IS NOT NULL;
 ```
 
-Isso remove o bloqueio e o número volta a ser elegível para receber disparos.
+Após isso, todos os 3 registros do número terão `opted_out_at = NULL`, e o número voltará a ser elegível para receber disparos normalmente.
 
-### Passo 2 — Realizar o disparo de teste
+## Verificação após a correção
 
-Após a limpeza do opt-out, acionar um disparo real via painel para um aviso direcionado ao número `+5515981788214`, confirmando que:
-
-- O filtro de opt-out não bloqueia mais o número
-- O template `visita_prova_envio` é selecionado corretamente pelo sender "Visita Prova"
-- A mensagem chega no WhatsApp
+Após o update, será feito um disparo de teste via Edge Function `test-whatsapp` diretamente via chamada à API para confirmar que:
+- O número não é mais bloqueado pelo filtro de opt-out
+- O template `visita_prova_envio` é selecionado corretamente
 
 ## Arquivos/recursos modificados
 
-- Tabela `whatsapp_optouts` — UPDATE (opted_out_at → NULL) para o número `+5515981788214`
+- Tabela `whatsapp_optouts` — UPDATE (opted_out_at → NULL) para todos os registros do número `+5515981788214` com opt-out ativo
 - Nenhum arquivo de código precisa ser alterado

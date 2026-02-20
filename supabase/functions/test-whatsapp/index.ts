@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 const TEMPLATE_IDENTIFIER = 'aviso_pro_confirma_3';
+const VISITA_TEMPLATE_IDENTIFIER = 'visita_prova_envio';
 const TEMPLATE_LANGUAGE = 'pt_BR';
 
 interface RequestBody {
@@ -31,8 +32,8 @@ serve(async (req) => {
     let apiKey = Deno.env.get('ZIONTALK_API_KEY');
     let apiSource = 'ENV_FALLBACK';
     let senderName = 'ENV_DEFAULT';
+
     let senderTemplateIdentifier: string | null = null;
-    let paramStyle: 'named' | 'numeric' = 'named';
 
     const { data: senders, error: sendersError } = await supabase
       .from('whatsapp_senders')
@@ -48,9 +49,8 @@ serve(async (req) => {
       apiKey = sender.api_key;
       senderName = sender.name;
       senderTemplateIdentifier = sender.template_identifier ?? null;
-      paramStyle = sender.param_style ?? 'named';
       apiSource = `DB: ${sender.name} (${sender.phone})`;
-      console.log(`Using sender from database: ${sender.name} (${sender.phone}), template_identifier: ${senderTemplateIdentifier ?? 'default'}, param_style: ${paramStyle}`);
+      console.log(`Using sender from database: ${sender.name} (${sender.phone}), template_identifier: ${senderTemplateIdentifier ?? 'default'}`);
     } else {
       console.log("No active senders found, using ENV fallback");
     }
@@ -80,7 +80,7 @@ serve(async (req) => {
     const authHeader = 'Basic ' + encode(`${apiKey}:`);
 
     const templateToUse = senderTemplateIdentifier ?? TEMPLATE_IDENTIFIER;
-    console.log(`Using template: ${templateToUse} (sender: ${senderName}), param_style: ${paramStyle}`);
+    console.log(`Using template: ${templateToUse} (sender: ${senderName})`);
     const { phone, condominiumId }: RequestBody = await req.json();
 
     if (!phone) {
@@ -103,18 +103,19 @@ serve(async (req) => {
 
     console.log(`Sending test WhatsApp (template) to ${formattedPhone}`);
 
+    // Use send_template_message with aviso_informativo template
     const formData = new FormData();
     formData.append('mobile_phone', formattedPhone);
     formData.append('template_identifier', templateToUse);
     formData.append('language', TEMPLATE_LANGUAGE);
 
-    if (paramStyle === 'numeric') {
-      // Parâmetros posicionais ({{1}}, {{2}}, {{3}})
+    if (templateToUse === VISITA_TEMPLATE_IDENTIFIER) {
+      // Parâmetros posicionais ({{1}}, {{2}}, {{3}}) para visita_prova_envio
       formData.append('bodyParams[1]', 'Teste');
       formData.append('bodyParams[2]', 'Mensagem de teste do sistema');
       formData.append('bodyParams[3]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
     } else {
-      // Parâmetros nomeados + botões dinâmicos
+      // Parâmetros nomeados para aviso_pro_confirma_3
       formData.append('bodyParams[nome]', 'Teste');
       formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
       formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
@@ -127,7 +128,7 @@ serve(async (req) => {
     for (const [key, value] of formData.entries()) {
       formDataLog[key] = value as string;
     }
-    console.log(`[Test] Sender: ${senderName} | API Key: ${apiKey?.substring(0, 8)}... | Template: ${templateToUse} | ParamStyle: ${paramStyle}`);
+    console.log(`[Test] Sender: ${senderName} | API Key: ${apiKey?.substring(0, 8)}... | Template: ${templateToUse}`);
     console.log(`[Test] Payload enviado para Zion Talk:`, JSON.stringify(formDataLog));
 
     const response = await fetch(

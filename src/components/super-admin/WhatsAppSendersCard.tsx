@@ -124,7 +124,6 @@ export function WhatsAppSendersCard() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Telefone</TableHead>
                   <TableHead>Template</TableHead>
-                  <TableHead>Parâmetros</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-center">Padrão</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -139,11 +138,6 @@ export function WhatsAppSendersCard() {
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">
                     {sender.template_identifier ?? <span className="italic">padrão</span>}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={sender.param_style === 'numeric' ? 'secondary' : 'outline'} className="text-xs">
-                      {sender.param_style === 'numeric' ? 'posicional' : 'nomeado'}
-                    </Badge>
                   </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center">

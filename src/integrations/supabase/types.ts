@@ -806,7 +806,6 @@ export type Database = {
           is_active: boolean | null
           is_default: boolean | null
           name: string
-          param_style: string
           phone: string
           template_identifier: string | null
           updated_at: string | null
@@ -818,7 +817,6 @@ export type Database = {
           is_active?: boolean | null
           is_default?: boolean | null
           name: string
-          param_style?: string
           phone: string
           template_identifier?: string | null
           updated_at?: string | null
@@ -830,7 +828,6 @@ export type Database = {
           is_active?: boolean | null
           is_default?: boolean | null
           name?: string
-          param_style?: string
           phone?: string
           template_identifier?: string | null
           updated_at?: string | null

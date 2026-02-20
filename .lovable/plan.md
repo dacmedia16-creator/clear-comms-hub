@@ -1,61 +1,30 @@
 
-## Problema identificado
+## Diagnóstico: Número de teste está na blacklist de opt-out
 
-O `test-whatsapp` tem o template `aviso_pro_confirma_3` **hardcoded** nas linhas 10 e 100 do arquivo `supabase/functions/test-whatsapp/index.ts`. Mesmo que o sender "Visita Prova" esteja ativo, o teste sempre envia com o template errado.
+O número `+5515981788214` (Denis) realizou opt-out em 18/02/2026 às 20:30. A função `send-whatsapp` filtra corretamente todos os números com `opted_out_at IS NOT NULL`, por isso o disparo não chegou — não é bug, é o comportamento esperado da proteção de opt-out.
 
-A função `send-whatsapp` (disparos reais) já foi corrigida corretamente. O problema é apenas na função de teste.
+O `test-whatsapp` usa uma rota diferente (envia direto para a API Zion Talk sem passar pelo filtro de opt-out), por isso os testes chegaram normalmente.
 
-## Correção necessária
+## Solução
 
-### Arquivo: `supabase/functions/test-whatsapp/index.ts`
+Remover o opt-out do número `+5515981788214` diretamente no banco de dados, limpando o campo `opted_out_at` para NULL.
 
-**1. Adicionar a constante do template Visita Prova**
+Essa operação é um UPDATE na tabela `whatsapp_optouts`:
 
-```typescript
-const TEMPLATE_IDENTIFIER = 'aviso_pro_confirma_3';
-const VISITA_TEMPLATE_IDENTIFIER = 'visita_prova_envio';
+```sql
+UPDATE whatsapp_optouts
+SET opted_out_at = NULL
+WHERE phone = '+5515981788214';
 ```
 
-**2. Capturar o nome do sender ao buscar no banco**
+Após essa correção, o número voltará a receber disparos normais.
 
-Atualmente o código captura `apiKey` e `apiSource`, mas não captura o `name` do sender para decisão de template. Adicionar:
+## O que NÃO precisa mudar
 
-```typescript
-let senderName = 'ENV_DEFAULT';
-// ...dentro do if (senders && senders.length > 0):
-senderName = sender.name;
-```
+- A lógica de filtro de opt-out está correta e não deve ser alterada
+- A função `send-whatsapp` está funcionando como esperado
+- O template `visita_prova_envio` está sendo selecionado corretamente
 
-**3. Determinar o template pelo nome do sender**
+## Arquivo/recurso modificado
 
-Logo após definir o `authHeader`, adicionar:
-
-```typescript
-const templateToUse = senderName.toLowerCase().includes('visita')
-  ? VISITA_TEMPLATE_IDENTIFIER
-  : TEMPLATE_IDENTIFIER;
-```
-
-**4. Usar `templateToUse` no FormData**
-
-Substituir linha 100:
-```typescript
-formData.append('template_identifier', templateToUse);
-```
-
-**5. Logar o template usado**
-
-```typescript
-console.log(`Using template: ${templateToUse} (sender: ${senderName})`);
-```
-
-## Resultado esperado
-
-Após a correção, ao clicar em "Testar WhatsApp" com o sender "Visita Prova" ativo:
-- O log mostrará: `Using template: visita_prova_envio (sender: Visita Prova)`
-- A mensagem enviada usará o template correto
-- O teste refletirá exatamente o mesmo comportamento do disparo real
-
-## Arquivo modificado
-
-- `supabase/functions/test-whatsapp/index.ts` — única alteração necessária
+- Tabela `whatsapp_optouts` — UPDATE via migration SQL (uma linha)

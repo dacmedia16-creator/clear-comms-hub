@@ -1,44 +1,87 @@
 
+## Usar template diferente para o sender "Visita Prova"
 
-## Adicionar Deduplicacao ao Envio de WhatsApp
+### O que precisa mudar
 
-### O que sera feito
-Atualizar a Edge Function `send-whatsapp` para verificar os logs existentes antes de enviar, pulando automaticamente membros que ja receberam a mensagem com sucesso para o mesmo aviso.
+O sender "Visita Prova" (telefone (15) 99845-9830) está cadastrado na tabela `whatsapp_senders`. Atualmente, a função `resolveAuthHeader` já busca o sender ativo e retorna o `authHeader`, mas não retorna o nome do sender. A mudança é passar o nome do sender para o `processBatch`, e lá decidir qual template usar.
 
-### Como funciona
-Antes de montar a lista final de destinatarios, a funcao consultara a tabela `whatsapp_logs` filtrando por `announcement_id` e `status = 'sent'`. Os telefones ja enviados com sucesso serao removidos da lista de membros, evitando duplicatas.
+### Regra
 
-### Detalhes Tecnicos
+- Se o nome do sender contiver "visita" (case-insensitive) → usar template `visita_prova_envio`
+- Qualquer outro sender → usar template `aviso_pro_confirma_3` (padrão atual)
 
-**Arquivo: `supabase/functions/send-whatsapp/index.ts`**
+### Alterações no arquivo `supabase/functions/send-whatsapp/index.ts`
 
-Na funcao `fetchAndFilterMembers`, apos os filtros existentes (blocks, units, optouts), adicionar:
+**1. Retornar `senderName` na função `resolveAuthHeader`**
 
-1. Consultar `whatsapp_logs` com `announcement_id` e `status = 'sent'`
-2. Criar um Set com os `recipient_phone` ja enviados
-3. Filtrar o array de membros removendo quem ja tem log de sucesso
-4. Logar quantos foram pulados para auditoria
+A função já possui `senderPhone`, basta adicionar `senderName` ao retorno:
 
-Trecho da logica:
-```text
-// Apos filtro de optouts
-const { data: sentLogs } = await supabase
-  .from('whatsapp_logs')
-  .select('recipient_phone')
-  .eq('announcement_id', announcement.id)
-  .eq('status', 'sent');
+```typescript
+return { authHeader: '...', senderPhone, senderName: sender.name };
+```
 
-if (sentLogs && sentLogs.length > 0) {
-  const alreadySent = new Set(sentLogs.map(l => l.recipient_phone));
-  members = members.filter(m => !alreadySent.has(m.phone));
-  console.log(`Skipped ${alreadySent.size} already-sent phones`);
+**2. Adicionar `templateIdentifier` na interface `RequestBody`**
+
+Para que os batches subsequentes (self-invocação) saibam qual template usar:
+
+```typescript
+interface RequestBody {
+  ...
+  templateIdentifier?: string; // novo campo
 }
 ```
 
-### Beneficio
-- Permite reenviar um aviso com seguranca, sem duplicar mensagens
-- Funciona tanto para retomar envios travados quanto para reenvios manuais
-- Zero mudanca no frontend
+**3. Passar `templateIdentifier` como parâmetro para `processBatch`**
 
-### Apos o deploy
-Basta clicar em "Enviar WhatsApp" novamente no aviso "Participante do Congresso de Ozonioterapia". A funcao vai detectar os 18 ja enviados e processar apenas os ~521 restantes.
+```typescript
+async function processBatch(
+  members, offset, authHeader, announcement, condominium, supabase,
+  templateIdentifier: string  // novo parâmetro
+)
+```
+
+**4. Usar `templateIdentifier` no FormData em vez da constante**
+
+```typescript
+formData.append('template_identifier', templateIdentifier);
+// em vez de: formData.append('template_identifier', TEMPLATE_IDENTIFIER);
+```
+
+**5. Na primeira invocação, determinar o template pelo nome do sender**
+
+```typescript
+const senderInfo = await resolveAuthHeader(supabase);
+const templateIdentifier = senderInfo.senderName?.toLowerCase().includes('visita')
+  ? 'visita_prova_envio'
+  : TEMPLATE_IDENTIFIER; // 'aviso_pro_confirma_3'
+```
+
+**6. Propagar `templateIdentifier` na self-invocação (batches seguintes)**
+
+```typescript
+body: JSON.stringify({
+  announcement, condominium,
+  batchOffset: nextOffset,
+  membersPayload: members,
+  authHeader,
+  templateIdentifier,  // novo campo propagado
+})
+```
+
+### Fluxo resultante
+
+```text
+Sender "Visita Prova" ativo
+  → resolveAuthHeader retorna senderName = "Visita Prova"
+  → "visita prova".includes("visita") = true
+  → templateIdentifier = "visita_prova_envio"
+  → todos os batches usam esse template
+
+Qualquer outro sender ativo
+  → senderName = "Numero 1", "Numero 2", etc.
+  → templateIdentifier = "aviso_pro_confirma_3"
+```
+
+### Arquivos modificados
+
+- `supabase/functions/send-whatsapp/index.ts` — única alteração necessária

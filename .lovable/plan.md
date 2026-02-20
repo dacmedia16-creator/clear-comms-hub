@@ -1,70 +1,84 @@
 
-## Problema raiz identificado
+## Diagnóstico do problema
 
-O código atual detecta qual template usar com base no nome do sender:
-```typescript
-const templateIdentifier = senderInfo.senderName.toLowerCase().includes('visita')
-  ? 'visita_prova_envio'
-  : TEMPLATE_IDENTIFIER;
-```
+Os logs confirmam que o payload está sendo enviado corretamente com `status=201` para o template `visita_prova_envio`. O `201` significa que a Zion Talk **aceitou** a requisição, mas a mensagem **não está sendo entregue**. Isso é um problema do lado da Zion Talk/Meta, não do código em si.
 
-Isso é frágil e não permite corrigir o identificador sem alterar o código. Se o template no Zion Talk tiver um nome diferente do que está hardcoded (`visita_prova_envio`), a mensagem pode ser aceita com `201` mas nunca entregue.
+Porém, há um problema de design no código atual que pode estar causando falhas silenciosas: a lógica de parâmetros do template ainda é hardcoded e não é totalmente genérica.
 
-A solução é deixar o Super Admin configurar o `template_identifier` exato para cada número diretamente no painel.
+## Mudança proposta: tornar os parâmetros 100% configuráveis por sender
+
+Adicionar um campo `param_style` (enum: `named` ou `numeric`) na tabela `whatsapp_senders` e no painel do Super Admin. Assim:
+
+- **`named`**: usa `bodyParams[nome]`, `bodyParams[aviso]`, `bodyParams[lembrete]` + botões dinâmicos (estilo `aviso_pro_confirma_3`)
+- **`numeric`**: usa `bodyParams[1]`, `bodyParams[2]`, `bodyParams[3]` sem botões (estilo `visita_prova_envio`)
+
+Isso elimina completamente qualquer hardcode de nomes de template no código.
+
+### Além disso: adicionar log do número de destino no disparo de teste
+
+Atualmente o disparo de teste envia sempre para `+5515981788214`. Adicionar um campo de telefone configurável no dialog de teste para que o Super Admin possa testar para qualquer número.
 
 ## O que será feito
 
 ### 1. Migração de banco de dados
 
-Adicionar coluna `template_identifier` na tabela `whatsapp_senders`:
-
 ```sql
 ALTER TABLE whatsapp_senders 
-ADD COLUMN template_identifier text;
+ADD COLUMN IF NOT EXISTS param_style text NOT NULL DEFAULT 'named';
 ```
 
-Valor `NULL` significa: usar o template padrão (`aviso_pro_confirma_3`).
+- `named` = default (compatível com `aviso_pro_confirma_3`)
+- `numeric` = para templates com parâmetros posicionais como `visita_prova_envio`
 
-### 2. Hook `useWhatsAppSenders.ts`
+### 2. UI: `AddWhatsAppSenderDialog.tsx` e `EditWhatsAppSenderDialog.tsx`
 
-Adicionar `template_identifier` nas interfaces `WhatsAppSender` e `CreateWhatsAppSender`.
+Adicionar um campo select "Estilo de Parâmetros":
+- **Nomeados** (padrão) — bodyParams[nome], bodyParams[aviso]...
+- **Posicionais** — bodyParams[1], bodyParams[2], bodyParams[3]
 
-### 3. Dialogs de Add e Edit
+### 3. `supabase/functions/test-whatsapp/index.ts`
 
-Adicionar campo opcional "Identificador do Template" nos dois dialogs, com placeholder `aviso_pro_confirma_3` e texto de ajuda explicando que deve ser copiado do painel Zion Talk.
+Remover completamente `VISITA_TEMPLATE_IDENTIFIER` e usar `sender.param_style`:
+
+```typescript
+const paramStyle = sender.param_style ?? 'named';
+const useButtons = paramStyle === 'named';
+
+if (paramStyle === 'numeric') {
+  formData.append('bodyParams[1]', 'Teste');
+  formData.append('bodyParams[2]', 'Mensagem de teste do sistema');
+  formData.append('bodyParams[3]', 'Se você recebeu esta mensagem...');
+} else {
+  formData.append('bodyParams[nome]', 'Teste');
+  formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
+  formData.append('bodyParams[lembrete]', 'Se você recebeu...');
+  formData.append('buttonUrlDynamicParams[0]', 'c/demo');
+  formData.append('buttonUrlDynamicParams[1]', 'test-demo');
+}
+```
 
 ### 4. `supabase/functions/send-whatsapp/index.ts`
 
-Substituir a detecção por nome pelo campo do banco:
+Mesma lógica: usar `sender.param_style` ao invés de comparar string do `templateIdentifier`.
 
-```typescript
-// ANTES (frágil):
-const templateIdentifier = senderInfo.senderName.toLowerCase().includes('visita')
-  ? 'visita_prova_envio'
-  : TEMPLATE_IDENTIFIER;
+### 5. `WhatsAppSendersCard.tsx`
 
-// DEPOIS (configurável):
-const templateIdentifier = senderInfo.templateIdentifier ?? TEMPLATE_IDENTIFIER;
-```
+Exibir o `param_style` na tabela (ex: badge "nomeado" ou "posicional").
 
-A lógica de `buttonUrlDynamicParams` continua: só envia se o template for `aviso_pro_confirma_3` (ou seja, se não for o padrão). Mas ficará mais flexível: o botão só é adicionado se o template for igual ao `TEMPLATE_IDENTIFIER`.
+### 6. `useWhatsAppSenders.ts`
 
-### 5. `supabase/functions/test-whatsapp/index.ts`
-
-Mesma substituição — usar `sender.template_identifier` quando disponível.
-
-A lógica dos parâmetros numéricos vs. nomeados **mantém o comportamento atual**: o `aviso_pro_confirma_3` usa nomes, qualquer outro template usa índices numéricos posicionais.
+Adicionar `param_style` nas interfaces.
 
 ## Arquivos modificados
 
-- Migração SQL: adicionar coluna `template_identifier` em `whatsapp_senders`
+- Migração SQL: adicionar coluna `param_style` em `whatsapp_senders`
 - `src/hooks/useWhatsAppSenders.ts` — adicionar campo na interface
-- `src/components/super-admin/AddWhatsAppSenderDialog.tsx` — campo template_identifier
-- `src/components/super-admin/EditWhatsAppSenderDialog.tsx` — campo template_identifier
-- `src/components/super-admin/WhatsAppSendersCard.tsx` — exibir o template na tabela
-- `supabase/functions/send-whatsapp/index.ts` — usar template do banco
-- `supabase/functions/test-whatsapp/index.ts` — usar template do banco
+- `src/components/super-admin/AddWhatsAppSenderDialog.tsx` — select param_style
+- `src/components/super-admin/EditWhatsAppSenderDialog.tsx` — select param_style
+- `src/components/super-admin/WhatsAppSendersCard.tsx` — exibir param_style
+- `supabase/functions/test-whatsapp/index.ts` — usar param_style do banco
+- `supabase/functions/send-whatsapp/index.ts` — usar param_style do banco
 
 ## Resultado
 
-O Super Admin poderá editar o sender "Visita Prova" e preencher o campo com o identificador exato copiado do Zion Talk (ex: `visita_prova_envio` ou o nome correto). Sem necessidade de alterar código para corrigir.
+Zero hardcode de nomes de templates. O Super Admin configura o estilo de parâmetro direto no painel ao cadastrar o número, e tanto o disparo real quanto o teste usarão a configuração correta automaticamente.

@@ -76,9 +76,7 @@ serve(async (req) => {
 
     const authHeader = 'Basic ' + encode(`${apiKey}:`);
 
-    const templateToUse = senderName.toLowerCase().includes('visita')
-      ? VISITA_TEMPLATE_IDENTIFIER
-      : TEMPLATE_IDENTIFIER;
+    const templateToUse = TEMPLATE_IDENTIFIER;
     console.log(`Using template: ${templateToUse} (sender: ${senderName})`);
     const { phone, condominiumId }: RequestBody = await req.json();
 

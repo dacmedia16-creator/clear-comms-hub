@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 const TEMPLATE_IDENTIFIER = 'aviso_pro_confirma_3';
+const VISITA_TEMPLATE_IDENTIFIER = 'visita_prova_envio';
 const TEMPLATE_LANGUAGE = 'pt_BR';
 
 interface RequestBody {
@@ -30,6 +31,7 @@ serve(async (req) => {
     // Fetch sender (DB first, ENV fallback)
     let apiKey = Deno.env.get('ZIONTALK_API_KEY');
     let apiSource = 'ENV_FALLBACK';
+    let senderName = 'ENV_DEFAULT';
 
     const { data: senders, error: sendersError } = await supabase
       .from('whatsapp_senders')
@@ -43,6 +45,7 @@ serve(async (req) => {
     } else if (senders && senders.length > 0) {
       const sender = senders[0];
       apiKey = sender.api_key;
+      senderName = sender.name;
       apiSource = `DB: ${sender.name} (${sender.phone})`;
       console.log(`Using sender from database: ${sender.name} (${sender.phone})`);
     } else {
@@ -72,6 +75,11 @@ serve(async (req) => {
     console.log(`API Key source: ${apiSource}`);
 
     const authHeader = 'Basic ' + encode(`${apiKey}:`);
+
+    const templateToUse = senderName.toLowerCase().includes('visita')
+      ? VISITA_TEMPLATE_IDENTIFIER
+      : TEMPLATE_IDENTIFIER;
+    console.log(`Using template: ${templateToUse} (sender: ${senderName})`);
     const { phone, condominiumId }: RequestBody = await req.json();
 
     if (!phone) {
@@ -97,7 +105,7 @@ serve(async (req) => {
     // Use send_template_message with aviso_informativo template
     const formData = new FormData();
     formData.append('mobile_phone', formattedPhone);
-    formData.append('template_identifier', TEMPLATE_IDENTIFIER);
+    formData.append('template_identifier', templateToUse);
     formData.append('language', TEMPLATE_LANGUAGE);
     formData.append('bodyParams[nome]', 'Teste');
     formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');

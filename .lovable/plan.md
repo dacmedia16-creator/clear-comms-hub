@@ -1,84 +1,46 @@
 
-## Diagnóstico do problema
+## Alteração: bodyParams posicionais → buttonUrlDynamicParams no test-whatsapp
 
-Os logs confirmam que o payload está sendo enviado corretamente com `status=201` para o template `visita_prova_envio`. O `201` significa que a Zion Talk **aceitou** a requisição, mas a mensagem **não está sendo entregue**. Isso é um problema do lado da Zion Talk/Meta, não do código em si.
+### Contexto
 
-Porém, há um problema de design no código atual que pode estar causando falhas silenciosas: a lógica de parâmetros do template ainda é hardcoded e não é totalmente genérica.
+No `test-whatsapp/index.ts`, quando o template usado não é o padrão (`aviso_pro_confirma_3`), o código envia os parâmetros posicionais assim:
 
-## Mudança proposta: tornar os parâmetros 100% configuráveis por sender
-
-Adicionar um campo `param_style` (enum: `named` ou `numeric`) na tabela `whatsapp_senders` e no painel do Super Admin. Assim:
-
-- **`named`**: usa `bodyParams[nome]`, `bodyParams[aviso]`, `bodyParams[lembrete]` + botões dinâmicos (estilo `aviso_pro_confirma_3`)
-- **`numeric`**: usa `bodyParams[1]`, `bodyParams[2]`, `bodyParams[3]` sem botões (estilo `visita_prova_envio`)
-
-Isso elimina completamente qualquer hardcode de nomes de template no código.
-
-### Além disso: adicionar log do número de destino no disparo de teste
-
-Atualmente o disparo de teste envia sempre para `+5515981788214`. Adicionar um campo de telefone configurável no dialog de teste para que o Super Admin possa testar para qualquer número.
-
-## O que será feito
-
-### 1. Migração de banco de dados
-
-```sql
-ALTER TABLE whatsapp_senders 
-ADD COLUMN IF NOT EXISTS param_style text NOT NULL DEFAULT 'named';
+```
+bodyParams[1] = 'Teste'
+bodyParams[2] = 'Mensagem de teste do sistema'
+bodyParams[3] = 'Se você recebeu esta mensagem...'
 ```
 
-- `named` = default (compatível com `aviso_pro_confirma_3`)
-- `numeric` = para templates com parâmetros posicionais como `visita_prova_envio`
+A alteração solicitada é renomear essas chaves para `buttonUrlDynamicParams`:
 
-### 2. UI: `AddWhatsAppSenderDialog.tsx` e `EditWhatsAppSenderDialog.tsx`
+```
+buttonUrlDynamicParams[1] = 'Teste'
+buttonUrlDynamicParams[2] = 'Mensagem de teste do sistema'
+buttonUrlDynamicParams[3] = 'Se você recebeu esta mensagem...'
+```
 
-Adicionar um campo select "Estilo de Parâmetros":
-- **Nomeados** (padrão) — bodyParams[nome], bodyParams[aviso]...
-- **Posicionais** — bodyParams[1], bodyParams[2], bodyParams[3]
+### Arquivo alterado
 
-### 3. `supabase/functions/test-whatsapp/index.ts`
-
-Remover completamente `VISITA_TEMPLATE_IDENTIFIER` e usar `sender.param_style`:
+**`supabase/functions/test-whatsapp/index.ts`** — linhas 114-116:
 
 ```typescript
-const paramStyle = sender.param_style ?? 'named';
-const useButtons = paramStyle === 'named';
+// ANTES
+formData.append('bodyParams[1]', 'Teste');
+formData.append('bodyParams[2]', 'Mensagem de teste do sistema');
+formData.append('bodyParams[3]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
 
-if (paramStyle === 'numeric') {
-  formData.append('bodyParams[1]', 'Teste');
-  formData.append('bodyParams[2]', 'Mensagem de teste do sistema');
-  formData.append('bodyParams[3]', 'Se você recebeu esta mensagem...');
-} else {
-  formData.append('bodyParams[nome]', 'Teste');
-  formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
-  formData.append('bodyParams[lembrete]', 'Se você recebeu...');
-  formData.append('buttonUrlDynamicParams[0]', 'c/demo');
-  formData.append('buttonUrlDynamicParams[1]', 'test-demo');
-}
+// DEPOIS
+formData.append('buttonUrlDynamicParams[1]', 'Teste');
+formData.append('buttonUrlDynamicParams[2]', 'Mensagem de teste do sistema');
+formData.append('buttonUrlDynamicParams[3]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
 ```
 
-### 4. `supabase/functions/send-whatsapp/index.ts`
+### O que NÃO muda
 
-Mesma lógica: usar `sender.param_style` ao invés de comparar string do `templateIdentifier`.
+- A lógica de seleção de template (`templateToUse`) permanece igual.
+- O bloco `else` (template padrão com `bodyParams[nome]`, `bodyParams[aviso]`, `bodyParams[lembrete]` + `buttonUrlDynamicParams[0]` e `[1]`) não é tocado.
+- O `send-whatsapp/index.ts` não é alterado nesta mudança.
 
-### 5. `WhatsAppSendersCard.tsx`
+### Resultado
 
-Exibir o `param_style` na tabela (ex: badge "nomeado" ou "posicional").
-
-### 6. `useWhatsAppSenders.ts`
-
-Adicionar `param_style` nas interfaces.
-
-## Arquivos modificados
-
-- Migração SQL: adicionar coluna `param_style` em `whatsapp_senders`
-- `src/hooks/useWhatsAppSenders.ts` — adicionar campo na interface
-- `src/components/super-admin/AddWhatsAppSenderDialog.tsx` — select param_style
-- `src/components/super-admin/EditWhatsAppSenderDialog.tsx` — select param_style
-- `src/components/super-admin/WhatsAppSendersCard.tsx` — exibir param_style
-- `supabase/functions/test-whatsapp/index.ts` — usar param_style do banco
-- `supabase/functions/send-whatsapp/index.ts` — usar param_style do banco
-
-## Resultado
-
-Zero hardcode de nomes de templates. O Super Admin configura o estilo de parâmetro direto no painel ao cadastrar o número, e tanto o disparo real quanto o teste usarão a configuração correta automaticamente.
+O payload enviado para a Zion Talk no disparo de teste com o template `visita_prova_envio` passará a usar `buttonUrlDynamicParams` no lugar de `bodyParams` para os parâmetros posicionais.

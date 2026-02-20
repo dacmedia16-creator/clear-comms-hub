@@ -116,7 +116,7 @@ serve(async (req) => {
 
     if (templateToUse === VISITA_TEMPLATE_IDENTIFIER) {
       // 1 botão dinâmico apenas (optout token)
-      formData.append('buttonUrlDynamicParams[0]', 'test-demo');
+      formData.append('buttonUrlDynamicParams[1]', 'test-demo');
     } else {
       // 2 botões dinâmicos: slug do condo + optout token
       formData.append('buttonUrlDynamicParams[0]', 'c/demo');

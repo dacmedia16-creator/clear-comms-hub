@@ -245,7 +245,7 @@ async function processBatch(
       formData.append('bodyParams[lembrete]', lembrete);
       if (templateIdentifier === 'visita_prova_envio') {
         // 1 botão dinâmico apenas (optout token)
-        formData.append('buttonUrlDynamicParams[0]', `${optoutToken}`);
+        formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
       } else {
         // 2 botões dinâmicos: slug do condo + optout token
         formData.append('buttonUrlDynamicParams[0]', `c/${condominium.slug}`);

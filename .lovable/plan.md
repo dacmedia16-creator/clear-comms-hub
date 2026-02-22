@@ -1,49 +1,36 @@
 
-## Correção: buttonUrlDynamicParams[0] → buttonUrlDynamicParams[1]
 
-### O que o suporte da Zion confirmou
+## Adicionar template `vip7_captacao`
 
-A imagem mostra que o payload correto para `visita_prova_envio` usa **índice 1**, não 0:
+O novo template tem a mesma estrutura do `visita_prova_envio`: apenas 1 botao dinamico de URL (opt-out) no indice `[1]`.
 
-```
-buttonUrlDynamicParams[1] = test-demo   ✓  (correto)
-buttonUrlDynamicParams[0] = test-demo   ✗  (como está agora)
-```
+### Alteracoes
 
-### Arquivos a corrigir
+**1. `supabase/functions/test-whatsapp/index.ts`**
+- Adicionar constante `VIP7_TEMPLATE_IDENTIFIER = 'vip7_captacao'`
+- Atualizar a condicao do `if` para incluir o novo template:
+  ```
+  if (templateToUse === VISITA_TEMPLATE_IDENTIFIER || templateToUse === VIP7_TEMPLATE_IDENTIFIER)
+  ```
+  Isso garante que o teste envia apenas `buttonUrlDynamicParams[1]` (sem o `[0]` da timeline).
 
-**`supabase/functions/test-whatsapp/index.ts`**
+**2. `supabase/functions/send-whatsapp/index.ts`**
+- Adicionar a mesma logica na funcao `processBatch`:
+  ```
+  if (templateIdentifier === 'visita_prova_envio' || templateIdentifier === 'vip7_captacao')
+  ```
+  Isso garante que o disparo real tambem envia apenas `buttonUrlDynamicParams[1]` com o token de opt-out.
 
-Linha com:
-```typescript
-formData.append('buttonUrlDynamicParams[0]', 'test-demo');
-```
-Passar para:
-```typescript
-formData.append('buttonUrlDynamicParams[1]', 'test-demo');
-```
+**3. `src/lib/whatsapp-templates.ts`**
+- Exportar a nova constante para referencia no frontend:
+  ```typescript
+  export const VIP7_TEMPLATE_IDENTIFIER = 'vip7_captacao';
+  ```
 
-**`supabase/functions/send-whatsapp/index.ts`**
+### Resultado
 
-Linha com:
-```typescript
-formData.append('buttonUrlDynamicParams[0]', `${optoutToken}`);
-```
-Passar para:
-```typescript
-formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
-```
+Ao configurar `vip7_captacao` como `template_identifier` de um remetente na tabela `whatsapp_senders`, o sistema enviara automaticamente o payload correto com apenas 1 botao dinamico (opt-out).
 
-### Payload final após a correção
+### Deploy
 
-```
-mobile_phone               = +55XXXXXXXXXX
-template_identifier        = visita_prova_envio
-language                   = pt_BR
-bodyParams[nome]           = Teste
-bodyParams[aviso]          = Mensagem de teste do sistema
-bodyParams[lembrete]       = Se você recebeu esta mensagem...
-buttonUrlDynamicParams[1]  = test-demo
-```
-
-Apenas 2 linhas alteradas — uma em cada Edge Function. Após o deploy, faça um novo disparo de teste para confirmar a entrega.
+As duas Edge Functions serao redeployadas automaticamente apos a alteracao.

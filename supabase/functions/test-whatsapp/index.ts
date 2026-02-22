@@ -9,6 +9,7 @@ const corsHeaders = {
 
 const TEMPLATE_IDENTIFIER = 'aviso_pro_confirma_3';
 const VISITA_TEMPLATE_IDENTIFIER = 'visita_prova_envio';
+const VIP7_TEMPLATE_IDENTIFIER = 'vip7_captacao';
 const TEMPLATE_LANGUAGE = 'pt_BR';
 
 interface RequestBody {
@@ -114,7 +115,7 @@ serve(async (req) => {
     formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
     formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
 
-    if (templateToUse === VISITA_TEMPLATE_IDENTIFIER) {
+    if (templateToUse === VISITA_TEMPLATE_IDENTIFIER || templateToUse === VIP7_TEMPLATE_IDENTIFIER) {
       // 1 botão dinâmico apenas (optout token)
       formData.append('buttonUrlDynamicParams[1]', 'test-demo');
     } else {

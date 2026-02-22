@@ -3,6 +3,7 @@
 // Esta constante é usada apenas para preview local (mostrar ao gestor como ficará a mensagem)
 
 export const TEMPLATE_IDENTIFIER = 'aviso_pro_confirma_3';
+export const VIP7_TEMPLATE_IDENTIFIER = 'vip7_captacao';
 export const TEMPLATE_LANGUAGE = 'pt_BR';
 
 // Preview text — simula o template da Meta para exibição local

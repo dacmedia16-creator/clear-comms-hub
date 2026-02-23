@@ -1,37 +1,31 @@
 
 
-## Assunto de email editavel para organizacoes genericas
+## Selecionar Todos os Membros
 
-Permitir que gestores de organizacoes do tipo `generic` personalizem o assunto do email ao criar um aviso, em vez de usar o padrao `[Nome da Org] Titulo do Aviso`.
+Adicionar um checkbox "Selecionar todos" na tabela de membros, com checkboxes individuais em cada linha, permitindo selecao em massa para acoes futuras (remover, mover entre listas, etc).
 
 ### Alteracoes
 
-**1. `src/pages/AdminCondominiumPage.tsx`**
-- Novo state: `emailSubject` (string, inicializado vazio)
-- Quando o usuario marca "Enviar via Email" E `organizationType === 'generic'`, exibir um campo de Input logo abaixo do checkbox de email com:
-  - Label: "Assunto do email"
-  - Placeholder: o valor padrao (`[NomeOrg] Titulo`)
-  - Auto-preenchido com `[${condominium.name}] ${title}` quando vazio
-- Passar `emailSubject` na chamada `sendEmailToMembers`
-- Resetar `emailSubject` ao limpar o formulario
+**`src/pages/CondoMembersPage.tsx`**
 
-**2. `src/hooks/useSendEmail.ts`**
-- Adicionar parametro opcional `emailSubject?: string` na interface `AnnouncementForEmail`
-- Passar `email_subject` no body da chamada da edge function
-
-**3. `supabase/functions/send-email/index.ts`**
-- Aceitar `email_subject` opcional no `RequestBody`
-- Na funcao `sendEmailsInBackground`, usar `email_subject` se fornecido, caso contrario manter o padrao `[${condominium.name}] ${announcement.title}`
+1. Novo state: `selectedMemberIds` (Set de strings)
+2. Adicionar coluna de checkbox no header da tabela com logica de "selecionar todos" (toggle entre selecionar todos os filtrados da pagina atual e desmarcar todos)
+3. Adicionar checkbox em cada linha da tabela
+4. Barra de acoes em massa que aparece quando ha membros selecionados, com:
+   - Contagem de selecionados (ex: "5 selecionados")
+   - Botao "Remover selecionados" (com confirmacao)
+   - Limpar selecao ao mudar de pagina, lista ou busca
+5. No mobile (cards), adicionar checkbox tambem em cada card
 
 ### Detalhes tecnicos
 
-- O campo de assunto so aparece quando: `organizationType === 'generic'` E `sendEmail === true` E `condominium?.notification_email === true`
-- O placeholder mostra o assunto padrao em tempo real (atualiza conforme o titulo muda)
-- Se o campo ficar vazio, o backend usa o formato padrao como fallback
-- Nenhuma alteracao de banco de dados necessaria (o assunto nao e persistido, e usado apenas no momento do disparo)
+- O checkbox "Selecionar todos" no header seleciona/desmarca apenas os membros da pagina atual (`paginatedMembers`)
+- Estado intermediario (indeterminate) quando apenas alguns da pagina estao selecionados
+- Ao remover membros em massa, chamar `removeMember` para cada selecionado e depois limpar selecao
+- Resetar selecao ao mudar pagina, filtro de busca ou lista selecionada
+- Usar o componente `Checkbox` do Radix UI ja existente no projeto
 
-### Arquivos modificados
+### Arquivo modificado
 
-- `src/pages/AdminCondominiumPage.tsx` (novo state + campo condicional + passagem do valor)
-- `src/hooks/useSendEmail.ts` (novo parametro opcional)
-- `supabase/functions/send-email/index.ts` (aceitar e usar assunto customizado)
+- `src/pages/CondoMembersPage.tsx`
+

@@ -14,6 +14,7 @@ interface CreateMemberRequest {
   block: string;
   unit: string;
   role: "admin" | "syndic" | "resident" | "collaborator";
+  listId?: string | null;
 }
 
 const REQUIRES_LOCATION = ["condominium", "franchise"];
@@ -83,7 +84,7 @@ Deno.serve(async (req) => {
     console.log("Authenticated user:", userId);
 
     const body: CreateMemberRequest = await req.json();
-    const { condominiumId, fullName, phone, email, block, unit, role } = body;
+    const { condominiumId, fullName, phone, email, block, unit, role, listId } = body;
 
     if (!condominiumId || !role) {
       return new Response(
@@ -175,6 +176,7 @@ Deno.serve(async (req) => {
         block: block?.trim() || null,
         unit: unit?.trim() || null,
         is_approved: true,
+        list_id: listId || null,
       });
 
     if (roleError) {

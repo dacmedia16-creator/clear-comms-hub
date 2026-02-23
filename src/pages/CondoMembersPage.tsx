@@ -28,6 +28,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ImportMembersDialog, ParsedMember } from "@/components/ImportMembersDialog";
 import { useOrganizationBehavior } from "@/hooks/useOrganizationBehavior";
 import { getRoleLabel } from "@/lib/organization-types";
+import { MemberListSelector } from "@/components/MemberListSelector";
+import { useMemberLists } from "@/hooks/useMemberLists";
 import {
   Pagination,
   PaginationContent,
@@ -51,10 +53,11 @@ export default function CondoMembersPage() {
   const { condoId } = useParams<{ condoId: string }>();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { members, loading, createMember, removeMember, approveMember, importMembers, updateMember } = useCondoMembers(condoId || "");
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const { terms, behavior, placeholders } = useOrganizationBehavior(condoId);
+  const { terms, behavior, placeholders, organizationType } = useOrganizationBehavior(condoId);
+
+  const isGeneric = organizationType === "generic";
 
   const [condoName, setCondoName] = useState<string>("");
   const [condoSlug, setCondoSlug] = useState<string>("");
@@ -65,6 +68,10 @@ export default function CondoMembersPage() {
   const [editingMember, setEditingMember] = useState<CondoMember | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedListId, setSelectedListId] = useState<string | null>(null);
+
+  const { lists, createList, updateList, deleteList, moveMemberToList } = useMemberLists(isGeneric ? condoId : undefined);
+  const { members, loading, createMember, removeMember, approveMember, importMembers, updateMember, refetch: refetchMembers } = useCondoMembers(condoId || "", isGeneric ? selectedListId : undefined);
 
   const filteredMembers = useMemo(
     () => {
@@ -160,7 +167,7 @@ export default function CondoMembersPage() {
     unit: string;
     role: "admin" | "syndic" | "resident" | "collaborator";
   }) => {
-    const result = await createMember(data);
+    const result = await createMember({ ...data, listId: selectedListId });
     if (result.success) {
       toast({ title: `${terms.member} cadastrado com sucesso!` });
     } else {
@@ -323,6 +330,23 @@ export default function CondoMembersPage() {
 
       {/* Main Content */}
       <main className="container px-4 mx-auto py-8">
+        {/* Member Lists selector - only for generic orgs */}
+        {isGeneric && (
+          <div className="mb-4">
+            <MemberListSelector
+              lists={lists}
+              selectedListId={selectedListId}
+              onSelectList={(id) => {
+                setSelectedListId(id);
+                setCurrentPage(1);
+              }}
+              onCreateList={createList}
+              onUpdateList={updateList}
+              onDeleteList={deleteList}
+            />
+          </div>
+        )}
+
         {!loading && members.length > 0 && (
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

@@ -26,7 +26,7 @@ export interface CondoMember {
   } | null;
 }
 
-export function useCondoMembers(condoId: string) {
+export function useCondoMembers(condoId: string, listId?: string | null) {
   const [members, setMembers] = useState<CondoMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +42,7 @@ export function useCondoMembers(condoId: string) {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from("user_roles")
         .select(`
           id,
@@ -53,6 +53,7 @@ export function useCondoMembers(condoId: string) {
           unit,
           is_approved,
           created_at,
+          list_id,
           profiles:user_id (
             id,
             full_name,
@@ -66,8 +67,13 @@ export function useCondoMembers(condoId: string) {
             phone
           )
         `)
-        .eq("condominium_id", condoId)
-        .order("created_at", { ascending: false });
+        .eq("condominium_id", condoId);
+
+      if (listId) {
+        query = query.eq("list_id", listId);
+      }
+
+      const { data, error: fetchError } = await query.order("created_at", { ascending: false });
 
       if (fetchError) throw fetchError;
 
@@ -95,7 +101,7 @@ export function useCondoMembers(condoId: string) {
 
   useEffect(() => {
     fetchMembers();
-  }, [condoId]);
+  }, [condoId, listId]);
 
   const addMember = async (
     userId: string,
@@ -130,6 +136,7 @@ export function useCondoMembers(condoId: string) {
     block: string;
     unit: string;
     role: "admin" | "syndic" | "resident" | "collaborator";
+    listId?: string | null;
   }) => {
     try {
       // Call edge function to create member (bypasses RLS safely)
@@ -142,6 +149,7 @@ export function useCondoMembers(condoId: string) {
           block: memberData.block,
           unit: memberData.unit,
           role: memberData.role,
+          listId: memberData.listId || null,
         }
       });
 

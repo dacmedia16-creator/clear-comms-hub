@@ -333,6 +333,41 @@ export type Database = {
           },
         ]
       }
+      member_lists: {
+        Row: {
+          condominium_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          condominium_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          condominium_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_lists_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           announcements_per_month: number
@@ -561,6 +596,7 @@ export type Database = {
           created_at: string
           id: string
           is_approved: boolean
+          list_id: string | null
           member_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           unit: string | null
@@ -573,6 +609,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_approved?: boolean
+          list_id?: string | null
           member_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           unit?: string | null
@@ -585,6 +622,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_approved?: boolean
+          list_id?: string | null
           member_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           unit?: string | null
@@ -596,6 +634,13 @@ export type Database = {
             columns: ["condominium_id"]
             isOneToOne: false
             referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "member_lists"
             referencedColumns: ["id"]
           },
           {

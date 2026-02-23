@@ -269,6 +269,7 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
           body: {
             condominiumId: condoId,
             members: chunks[i],
+            listId: listId || null,
           }
         });
 

@@ -18,6 +18,7 @@ interface MemberInput {
 interface BatchRequest {
   condominiumId: string;
   members: MemberInput[];
+  listId?: string;
 }
 
 const REQUIRES_LOCATION = ["condominium", "franchise"];
@@ -95,7 +96,7 @@ Deno.serve(async (req) => {
     console.log("Batch import by user:", userId);
 
     const body: BatchRequest = await req.json();
-    const { condominiumId, members } = body;
+    const { condominiumId, members, listId } = body;
 
     if (!condominiumId || !members || !Array.isArray(members)) {
       return new Response(
@@ -241,6 +242,7 @@ Deno.serve(async (req) => {
       block: newMembers[i].block?.trim() || null,
       unit: newMembers[i].unit?.trim() || null,
       is_approved: true,
+      list_id: listId || null,
     }));
 
     const { error: rolesError } = await serviceClient

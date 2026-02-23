@@ -1,66 +1,37 @@
 
 
-## Listas de Membros para Organizacoes Genericas
+## Assunto de email editavel para organizacoes genericas
 
-Funcionalidade exclusiva para organizacoes do tipo `generic` que permite criar multiplas listas independentes de membros, cada uma funcionando como um grupo separado com seus proprios membros.
+Permitir que gestores de organizacoes do tipo `generic` personalizem o assunto do email ao criar um aviso, em vez de usar o padrao `[Nome da Org] Titulo do Aviso`.
 
-### Modelo de Dados
+### Alteracoes
 
-Nova tabela `member_lists` para armazenar as listas:
+**1. `src/pages/AdminCondominiumPage.tsx`**
+- Novo state: `emailSubject` (string, inicializado vazio)
+- Quando o usuario marca "Enviar via Email" E `organizationType === 'generic'`, exibir um campo de Input logo abaixo do checkbox de email com:
+  - Label: "Assunto do email"
+  - Placeholder: o valor padrao (`[NomeOrg] Titulo`)
+  - Auto-preenchido com `[${condominium.name}] ${title}` quando vazio
+- Passar `emailSubject` na chamada `sendEmailToMembers`
+- Resetar `emailSubject` ao limpar o formulario
 
-```text
-member_lists
------------
-id           uuid (PK)
-condominium_id uuid (FK -> condominiums)
-name         text (nome da lista, ex: "Equipe A", "Leads Quentes")
-description  text (opcional)
-created_at   timestamptz
-updated_at   timestamptz
-```
+**2. `src/hooks/useSendEmail.ts`**
+- Adicionar parametro opcional `emailSubject?: string` na interface `AnnouncementForEmail`
+- Passar `email_subject` no body da chamada da edge function
 
-Nova coluna na tabela `user_roles`:
-- `list_id` uuid (FK -> member_lists, nullable) - vincula o membro a uma lista especifica
+**3. `supabase/functions/send-email/index.ts`**
+- Aceitar `email_subject` opcional no `RequestBody`
+- Na funcao `sendEmailsInBackground`, usar `email_subject` se fornecido, caso contrario manter o padrao `[${condominium.name}] ${announcement.title}`
 
-### RLS (Seguranca)
+### Detalhes tecnicos
 
-- SELECT/INSERT/UPDATE/DELETE em `member_lists`: permitido para quem pode gerenciar o condominio (`can_manage_condominium`) ou super admins.
+- O campo de assunto so aparece quando: `organizationType === 'generic'` E `sendEmail === true` E `condominium?.notification_email === true`
+- O placeholder mostra o assunto padrao em tempo real (atualiza conforme o titulo muda)
+- Se o campo ficar vazio, o backend usa o formato padrao como fallback
+- Nenhuma alteracao de banco de dados necessaria (o assunto nao e persistido, e usado apenas no momento do disparo)
 
-### Interface (CondoMembersPage)
+### Arquivos modificados
 
-Somente quando `organizationType === 'generic'`:
-
-1. **Seletor de listas** no topo da pagina (acima da busca):
-   - Dropdown ou abas horizontais com as listas criadas
-   - Botao "Nova Lista" para criar uma lista
-   - Opcao "Todos" para ver todos os membros (sem filtro)
-
-2. **Dialog de criar/editar lista**: campos Nome e Descricao (opcional)
-
-3. **Filtro automatico**: ao selecionar uma lista, a tabela mostra apenas os membros vinculados aquela lista
-
-4. **Ao adicionar membro**: se uma lista esta selecionada, o membro e automaticamente vinculado a ela
-
-5. **Opcao de mover membro**: no menu de acoes, permitir mover um membro entre listas
-
-### Arquivos a criar/modificar
-
-**Novos:**
-- `src/hooks/useMemberLists.ts` - hook para CRUD de listas (fetch, create, update, delete)
-- `src/components/MemberListSelector.tsx` - componente de selecao de lista com botao de criar
-- `src/components/CreateMemberListDialog.tsx` - dialog para criar/editar lista
-
-**Modificados:**
-- Migracao SQL: criar tabela `member_lists` + adicionar coluna `list_id` em `user_roles`
-- `src/pages/CondoMembersPage.tsx`: adicionar seletor de listas (apenas para `generic`), filtrar membros por `list_id`
-- `src/hooks/useCondoMembers.ts`: aceitar `listId` como parametro opcional para filtrar membros; ao criar membro, passar `list_id`
-- `src/components/super-admin/AddMemberDialog.tsx`: receber `listId` opcional para vincular ao criar
-
-### Fluxo do usuario
-
-1. Gestor acessa a pagina de membros de uma organizacao generica
-2. Ve um seletor de listas no topo (inicialmente vazio, mostra "Todos")
-3. Clica em "Nova Lista" -> preenche nome -> lista criada
-4. Seleciona a lista -> ve apenas os membros daquela lista
-5. Ao adicionar membro com uma lista selecionada, o membro e vinculado automaticamente
-6. Pode alternar entre listas ou ver "Todos" para visao completa
+- `src/pages/AdminCondominiumPage.tsx` (novo state + campo condicional + passagem do valor)
+- `src/hooks/useSendEmail.ts` (novo parametro opcional)
+- `supabase/functions/send-email/index.ts` (aceitar e usar assunto customizado)

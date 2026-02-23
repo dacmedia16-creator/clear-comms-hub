@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
@@ -14,7 +14,18 @@ import {
 import { useCondoMembers, getMemberDisplayName, getMemberEmail, getMemberPhone, getMemberLocation, CondoMember } from "@/hooks/useCondoMembers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check, Bell, Settings, FileText, Upload, Pencil, Search } from "lucide-react";
+import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check, Bell, Settings, FileText, Upload, Pencil, Search, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { EditMemberDialog, UpdateMemberData } from "@/components/EditMemberDialog";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +80,9 @@ export default function CondoMembersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
+  const [bulkRemoveDialogOpen, setBulkRemoveDialogOpen] = useState(false);
+  const [bulkRemoving, setBulkRemoving] = useState(false);
 
   const { lists, createList, updateList, deleteList, moveMemberToList } = useMemberLists(isGeneric ? condoId : undefined);
   const { members, loading, createMember, removeMember, approveMember, importMembers, updateMember, refetch: refetchMembers } = useCondoMembers(condoId || "", isGeneric ? selectedListId : undefined);
@@ -93,9 +107,59 @@ export default function CondoMembersPage() {
     [filteredMembers, currentPage]
   );
 
+  // Reset selection when page, search, or list changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [members.length, searchQuery]);
+    setSelectedMemberIds(new Set());
+  }, [members.length, searchQuery, selectedListId]);
+
+  // Selection helpers
+  const allPageSelected = paginatedMembers.length > 0 && paginatedMembers.every(m => selectedMemberIds.has(m.id));
+  const somePageSelected = paginatedMembers.some(m => selectedMemberIds.has(m.id));
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedMemberIds(prev => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        paginatedMembers.forEach(m => next.delete(m.id));
+      } else {
+        paginatedMembers.forEach(m => next.add(m.id));
+      }
+      return next;
+    });
+  }, [allPageSelected, paginatedMembers]);
+
+  const toggleSelectMember = useCallback((id: string) => {
+    setSelectedMemberIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleBulkRemove = async () => {
+    setBulkRemoving(true);
+    let successCount = 0;
+    for (const id of selectedMemberIds) {
+      const result = await removeMember(id);
+      if (result.success) successCount++;
+    }
+    setBulkRemoving(false);
+    setBulkRemoveDialogOpen(false);
+    setSelectedMemberIds(new Set());
+    toast({
+      title: `${successCount} ${successCount === 1 ? terms.member.toLowerCase() : terms.memberPlural.toLowerCase()} removido(s)`,
+    });
+  };
+
+  const selectAllCheckboxRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.dataset.state = allPageSelected ? "checked" : somePageSelected ? "indeterminate" : "unchecked";
+      (selectAllCheckboxRef.current as any).indeterminate = somePageSelected && !allPageSelected;
+    }
+  }, [allPageSelected, somePageSelected]);
 
   // Nav items for syndic
   const syndicNavItems: MobileNavItem[] = condoId ? [
@@ -358,6 +422,37 @@ export default function CondoMembersPage() {
             />
           </div>
         )}
+
+        {/* Bulk action bar */}
+        {selectedMemberIds.size > 0 && (
+          <div className="mb-4 flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-4 py-3">
+            <span className="text-sm font-medium">{selectedMemberIds.size} selecionado(s)</span>
+            <Button variant="destructive" size="sm" onClick={() => setBulkRemoveDialogOpen(true)}>
+              <Trash2 className="w-4 h-4 mr-1" /> Remover selecionados
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedMemberIds(new Set())}>
+              <X className="w-4 h-4 mr-1" /> Limpar
+            </Button>
+          </div>
+        )}
+
+        <AlertDialog open={bulkRemoveDialogOpen} onOpenChange={setBulkRemoveDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remover {selectedMemberIds.size} {selectedMemberIds.size === 1 ? terms.member.toLowerCase() : terms.memberPlural.toLowerCase()}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação não pode ser desfeita. Os membros selecionados serão removidos permanentemente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={bulkRemoving}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleBulkRemove} disabled={bulkRemoving} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                {bulkRemoving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                Remover
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -381,11 +476,18 @@ export default function CondoMembersPage() {
                 const location = getMemberLocation(member);
                 
                 return (
-                  <MobileCardItem
-                    key={member.id}
-                    title={displayName}
-                    subtitle={email || ""}
-                    className={!member.is_approved ? "border-yellow-500/50" : ""}
+                  <div key={member.id} className="flex items-start gap-3">
+                    <div className="pt-4">
+                      <Checkbox
+                        checked={selectedMemberIds.has(member.id)}
+                        onCheckedChange={() => toggleSelectMember(member.id)}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <MobileCardItem
+                        title={displayName}
+                        subtitle={email || ""}
+                        className={!member.is_approved ? "border-yellow-500/50" : ""}
                     metadata={
                       <span className="text-xs">
                         {format(new Date(member.created_at), "dd/MM/yyyy", { locale: ptBR })}
@@ -443,7 +545,9 @@ export default function CondoMembersPage() {
                     {phone && (
                       <p className="text-xs text-muted-foreground">{phone}</p>
                     )}
-                  </MobileCardItem>
+                      </MobileCardItem>
+                    </div>
+                  </div>
                 );
               })
             )}
@@ -454,6 +558,13 @@ export default function CondoMembersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      ref={selectAllCheckboxRef}
+                      checked={allPageSelected}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead>Usuário</TableHead>
                   <TableHead>Telefone</TableHead>
                   <TableHead>{behavior.requiresLocation ? `${terms.block}/${terms.unit}` : terms.block}</TableHead>
@@ -466,7 +577,7 @@ export default function CondoMembersPage() {
               <TableBody>
                 {members.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       <div className="flex flex-col items-center gap-2">
                         <UserCircle className="w-12 h-12 opacity-30" />
                         <p>Nenhum {terms.member.toLowerCase()} cadastrado neste {terms.organization.toLowerCase()}</p>
@@ -482,7 +593,13 @@ export default function CondoMembersPage() {
                     const location = getMemberLocation(member);
                     
                     return (
-                      <TableRow key={member.id} className={!member.is_approved ? "bg-yellow-500/5" : ""}>
+                      <TableRow key={member.id} className={`${!member.is_approved ? "bg-yellow-500/5" : ""} ${selectedMemberIds.has(member.id) ? "bg-muted/50" : ""}`}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedMemberIds.has(member.id)}
+                            onCheckedChange={() => toggleSelectMember(member.id)}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div>
                             <div className="font-medium">{displayName}</div>

@@ -195,6 +195,36 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
     }
   };
 
+  const removeMembersBulk = async (memberIds: string[]): Promise<{ success: boolean; count: number; error?: string }> => {
+    try {
+      const condoMemberIds = members
+        .filter(m => memberIds.includes(m.id) && m.member_id)
+        .map(m => m.member_id as string);
+
+      const { error: rolesError } = await supabase
+        .from("user_roles")
+        .delete()
+        .in("id", memberIds);
+
+      if (rolesError) throw rolesError;
+
+      if (condoMemberIds.length > 0) {
+        const { error: membersError } = await supabase
+          .from("condo_members")
+          .delete()
+          .in("id", condoMemberIds);
+
+        if (membersError) throw membersError;
+      }
+
+      await fetchMembers();
+      return { success: true, count: memberIds.length };
+    } catch (err: any) {
+      console.error("Error bulk removing members:", err);
+      return { success: false, count: 0, error: err.message };
+    }
+  };
+
   const approveMember = async (memberId: string) => {
     try {
       const { error } = await supabase
@@ -314,6 +344,7 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
     addMember,
     createMember,
     removeMember,
+    removeMembersBulk,
     approveMember,
     importMembers,
     updateMember,

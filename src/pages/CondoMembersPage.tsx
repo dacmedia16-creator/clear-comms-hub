@@ -85,7 +85,7 @@ export default function CondoMembersPage() {
   const [bulkRemoving, setBulkRemoving] = useState(false);
 
   const { lists, createList, updateList, deleteList, moveMemberToList } = useMemberLists(isGeneric ? condoId : undefined);
-  const { members, loading, createMember, removeMember, approveMember, importMembers, updateMember, refetch: refetchMembers } = useCondoMembers(condoId || "", isGeneric ? selectedListId : undefined);
+  const { members, loading, createMember, removeMember, removeMembersBulk, approveMember, importMembers, updateMember, refetch: refetchMembers } = useCondoMembers(condoId || "", isGeneric ? selectedListId : undefined);
 
   const filteredMembers = useMemo(
     () => {
@@ -140,17 +140,15 @@ export default function CondoMembersPage() {
 
   const handleBulkRemove = async () => {
     setBulkRemoving(true);
-    let successCount = 0;
-    for (const id of selectedMemberIds) {
-      const result = await removeMember(id);
-      if (result.success) successCount++;
-    }
+    const result = await removeMembersBulk(Array.from(selectedMemberIds));
     setBulkRemoving(false);
     setBulkRemoveDialogOpen(false);
     setSelectedMemberIds(new Set());
-    toast({
-      title: `${successCount} ${successCount === 1 ? terms.member.toLowerCase() : terms.memberPlural.toLowerCase()} removido(s)`,
-    });
+    if (result.success) {
+      toast({ title: `${result.count} ${result.count === 1 ? terms.member.toLowerCase() : terms.memberPlural.toLowerCase()} removido(s)` });
+    } else {
+      toast({ title: "Erro ao remover", description: result.error, variant: "destructive" });
+    }
   };
 
   const selectAllCheckboxRef = useRef<HTMLButtonElement>(null);

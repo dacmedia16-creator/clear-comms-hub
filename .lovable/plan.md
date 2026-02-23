@@ -1,27 +1,33 @@
 
 
-## Corrigir importacao de membros para lista selecionada
+## Mover membros importados para a lista Alphaville 1
 
-O problema e que a funcao de importacao em lote (`create-members-batch`) nao recebe nem utiliza o `list_id` ao inserir os registros na tabela `user_roles`. Por isso, todos os membros importados ficam sem lista (aparecem no "geral" em vez da lista selecionada).
+Os 386 membros que foram importados recentemente (em 2026-02-23 13:55) ficaram sem lista (list_id = NULL) porque o bug foi corrigido depois da importacao. Vamos mover todos eles para a lista "Alphaville 1" via uma migracao SQL.
 
-### Alteracoes
+### Alteracao
 
-**1. `src/hooks/useCondoMembers.ts` - funcao `importMembers`**
-- Passar o `listId` atual (recebido pelo hook via parametro) no body da chamada para a edge function `create-members-batch`
+**Migracao SQL** (uma unica query):
 
-**2. `supabase/functions/create-members-batch/index.ts`**
-- Aceitar o campo opcional `listId` no `BatchRequest`
-- Ao inserir os registros em `user_roles`, incluir `list_id: listId || null` em cada registro
+```text
+UPDATE user_roles
+SET list_id = '7c759ffa-f300-441a-a60d-d609508f4b9b'
+WHERE condominium_id = (
+  SELECT condominium_id 
+  FROM member_lists 
+  WHERE id = '7c759ffa-f300-441a-a60d-d609508f4b9b'
+)
+AND list_id IS NULL
+AND created_at >= '2026-02-23 13:55:00+00';
+```
+
+Isso atualiza os 386 registros de uma so vez, movendo-os do "Geral" para a lista "Alphaville 1".
 
 ### Detalhes tecnicos
 
-No hook `useCondoMembers`, o segundo parametro ja e o `listId` da lista selecionada. A funcao `importMembers` precisa apenas adicionar esse valor ao body enviado para a edge function.
+- A query filtra por `list_id IS NULL` (membros sem lista) e `created_at >= '2026-02-23 13:55:00'` (somente os importados recentemente)
+- O `list_id` alvo e `7c759ffa-f300-441a-a60d-d609508f4b9b` (Alphaville 1)
+- Sera criado um arquivo de migracao em `supabase/migrations/`
 
-Na edge function, a unica mudanca e:
-- Adicionar `listId?: string` na interface `BatchRequest`
-- Adicionar `list_id: body.listId || null` no objeto de cada `user_roles` inserido
+### Arquivo criado
 
-### Arquivos modificados
-
-- `src/hooks/useCondoMembers.ts` (passar listId no body)
-- `supabase/functions/create-members-batch/index.ts` (aceitar e usar listId)
+- `supabase/migrations/<timestamp>_move_members_to_alphaville1.sql`

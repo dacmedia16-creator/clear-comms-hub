@@ -30,6 +30,7 @@ interface RequestBody {
   announcement: Announcement;
   condominium: Condominium;
   baseUrl: string;
+  email_subject?: string;
 }
 
 interface ContactInfo {
@@ -214,11 +215,12 @@ async function sendEmailsInBackground(
   announcement: Announcement,
   condominium: Condominium,
   baseUrl: string,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  email_subject?: string
 ) {
   console.log(`[Background] Iniciando envio de emails para ${members.length} membros via ZeptoMail API...`);
 
-  const subject = `[${condominium.name}] ${announcement.title}`;
+  const subject = email_subject || `[${condominium.name}] ${announcement.title}`;
   const htmlContent = generateEmailHtml(announcement, condominium, baseUrl);
 
   for (let i = 0; i < members.length; i++) {
@@ -278,7 +280,7 @@ serve(async (req) => {
       );
     }
 
-    const { announcement, condominium, baseUrl }: RequestBody = await req.json();
+    const { announcement, condominium, baseUrl, email_subject }: RequestBody = await req.json();
 
     console.log(`Processing email send for announcement ${announcement.id} in condominium ${condominium.id}`);
 
@@ -359,7 +361,7 @@ serve(async (req) => {
 
     // Start background processing with delays
     EdgeRuntime.waitUntil(
-      sendEmailsInBackground(validMembers, announcement, condominium, baseUrl, supabase)
+      sendEmailsInBackground(validMembers, announcement, condominium, baseUrl, supabase, email_subject)
     );
 
     // Return immediate response

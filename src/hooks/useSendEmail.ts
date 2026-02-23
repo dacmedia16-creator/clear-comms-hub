@@ -9,6 +9,7 @@ interface AnnouncementForEmail {
   target_blocks?: string[] | null;
   target_units?: string[] | null;
   target_member_ids?: string[] | null;
+  emailSubject?: string;
 }
 
 interface CondominiumForEmail {
@@ -54,6 +55,7 @@ export function useSendEmail() {
             slug: condominium.slug,
           },
           baseUrl,
+          email_subject: announcement.emailSubject || undefined,
         },
       });
 

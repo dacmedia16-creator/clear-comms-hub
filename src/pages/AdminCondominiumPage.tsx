@@ -136,6 +136,7 @@ export default function AdminCondominiumPage() {
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [sendSMS, setSendSMS] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
   
   // Expanded announcement content
   const [expandedAnnouncementId, setExpandedAnnouncementId] = useState<string | null>(null);
@@ -322,7 +323,7 @@ export default function AdminCondominiumPage() {
       if (sendEmail && condominium.notification_email) {
         try {
           const result = await sendEmailToMembers(
-            { ...data, id: data.id, target_blocks: targetBlocksArray, target_units: targetUnitsArray, target_member_ids: targetMemberIdsArray },
+            { ...data, id: data.id, target_blocks: targetBlocksArray, target_units: targetUnitsArray, target_member_ids: targetMemberIdsArray, emailSubject: emailSubject.trim() || undefined },
             { ...condominium, id: condominium.id },
             baseUrl
           );
@@ -353,6 +354,7 @@ export default function AdminCondominiumPage() {
       setSendWhatsApp(false);
       setSendSMS(false);
       setSendEmail(false);
+      setEmailSubject("");
 
       // Show success dialog with share option
       setSuccessDialogOpen(true);
@@ -815,6 +817,20 @@ export default function AdminCondominiumPage() {
                         </p>
                       </div>
                     </div>
+
+                    {/* Email Subject - only for generic orgs */}
+                    {sendEmail && condominium?.notification_email && organizationType === 'generic' && (
+                      <div className="ml-7">
+                        <Label htmlFor="email-subject" className="text-sm">Assunto do email</Label>
+                        <Input
+                          id="email-subject"
+                          value={emailSubject}
+                          onChange={(e) => setEmailSubject(e.target.value)}
+                          placeholder={`[${condominium?.name}] ${title || 'Título do aviso'}`}
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 

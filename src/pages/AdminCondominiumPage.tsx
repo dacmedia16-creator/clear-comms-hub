@@ -65,6 +65,7 @@ import { MemberSearchSelect } from "@/components/MemberSearchSelect";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { linkifyText, linkifyTextWithButtons } from "@/lib/utils";
 import { WhatsAppMonitor } from "@/components/WhatsAppMonitor";
+import { useMemberLists } from "@/hooks/useMemberLists";
 
 interface Announcement {
   id: string;
@@ -124,10 +125,14 @@ export default function AdminCondominiumPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // Recipient targeting
-  const [recipientType, setRecipientType] = useState<"all" | "blocks" | "units" | "specific">("all");
+  const [recipientType, setRecipientType] = useState<"all" | "blocks" | "units" | "specific" | "list">("all");
   const [selectedBlocks, setSelectedBlocks] = useState<string[]>([]);
   const [targetUnits, setTargetUnits] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [selectedListId, setSelectedListId] = useState<string | null>(null);
+
+  // Member lists for generic orgs
+  const { lists: memberLists } = useMemberLists(condoId);
 
   // Fetch available blocks for targeting
   const { blocks } = useCondoBlocks(condoId || "");
@@ -222,9 +227,26 @@ export default function AdminCondominiumPage() {
       const targetUnitsArray = recipientType === "units" && targetUnits.trim()
         ? targetUnits.split(",").map(u => u.trim()).filter(Boolean)
         : null;
-      const targetMemberIdsArray = recipientType === "specific" && selectedMemberIds.length > 0
-        ? selectedMemberIds
-        : null;
+      let targetMemberIdsArray: string[] | null = null;
+      if (recipientType === "specific" && selectedMemberIds.length > 0) {
+        targetMemberIdsArray = selectedMemberIds;
+      } else if (recipientType === "list" && selectedListId) {
+        // Fetch member IDs from the selected list
+        const { data: listMembers, error: listError } = await supabase
+          .from("user_roles")
+          .select("member_id")
+          .eq("condominium_id", condominium.id)
+          .eq("list_id", selectedListId)
+          .not("member_id", "is", null);
+
+        if (listError) throw listError;
+        targetMemberIdsArray = listMembers?.map(m => m.member_id!).filter(Boolean) || null;
+        if (targetMemberIdsArray && targetMemberIdsArray.length === 0) {
+          toast({ title: "Lista vazia", description: "A lista selecionada não possui membros.", variant: "destructive" });
+          setCreating(false);
+          return;
+        }
+      }
 
       // Create announcement
       const { data, error } = await supabase
@@ -351,6 +373,7 @@ export default function AdminCondominiumPage() {
       setSelectedBlocks([]);
       setTargetUnits("");
       setSelectedMemberIds([]);
+      setSelectedListId(null);
       setSendWhatsApp(false);
       setSendSMS(false);
       setSendEmail(false);
@@ -716,10 +739,12 @@ export default function AdminCondominiumPage() {
                       Destinatários
                     </Label>
                     <RadioGroup
-                      value={recipientType === "all" || recipientType === "specific" ? recipientType : "all"}
+                      value={recipientType === "all" || recipientType === "specific" || recipientType === "list" ? recipientType : "all"}
                       onValueChange={(v) => {
-                        setRecipientType(v as "all" | "specific");
-                        if (v === "all") setSelectedMemberIds([]);
+                        setRecipientType(v as "all" | "specific" | "list");
+                        if (v === "all") { setSelectedMemberIds([]); setSelectedListId(null); }
+                        if (v === "specific") setSelectedListId(null);
+                        if (v === "list") setSelectedMemberIds([]);
                       }}
                       className="space-y-3"
                     >
@@ -729,6 +754,35 @@ export default function AdminCondominiumPage() {
                           Todos os {terms.memberPlural.toLowerCase()}
                         </Label>
                       </div>
+
+                      {memberLists.length > 0 && (
+                        <div className="flex items-start space-x-2">
+                          <RadioGroupItem value="list" id="recipient-list" className="mt-1" />
+                          <div className="flex-1">
+                            <Label htmlFor="recipient-list" className="cursor-pointer font-normal">
+                              Lista de membros
+                            </Label>
+                            {recipientType === "list" && (
+                              <Select
+                                value={selectedListId || ""}
+                                onValueChange={(v) => setSelectedListId(v)}
+                              >
+                                <SelectTrigger className="mt-2 bg-card">
+                                  <SelectValue placeholder="Selecione uma lista..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card">
+                                  {memberLists.map((list) => (
+                                    <SelectItem key={list.id} value={list.id}>
+                                      {list.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-start space-x-2">
                         <RadioGroupItem value="specific" id="recipient-specific" className="mt-1" />
                         <div className="flex-1">

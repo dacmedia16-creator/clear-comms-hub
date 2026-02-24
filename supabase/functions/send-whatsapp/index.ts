@@ -240,10 +240,14 @@ async function processBatch(
       formData.append('mobile_phone', member.phone);
       formData.append('template_identifier', templateIdentifier);
       formData.append('language', TEMPLATE_LANGUAGE);
-      formData.append('bodyParams[nome]', member.full_name || 'morador(a)');
+      const noNomeTemplates = ['vip7_captacao2'];
+      if (!noNomeTemplates.includes(templateIdentifier)) {
+        formData.append('bodyParams[nome]', member.full_name || 'morador(a)');
+      }
       formData.append('bodyParams[aviso]', announcement.title);
       formData.append('bodyParams[lembrete]', lembrete);
-      if (templateIdentifier === 'visita_prova_envio' || templateIdentifier === 'vip7_captacao') {
+      const singleButtonTemplates = ['visita_prova_envio', 'vip7_captacao', 'vip7_captacao2'];
+      if (singleButtonTemplates.includes(templateIdentifier)) {
         // 1 botão dinâmico apenas (optout token)
         formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
       } else {

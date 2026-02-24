@@ -240,15 +240,16 @@ async function processBatch(
       formData.append('mobile_phone', member.phone);
       formData.append('template_identifier', templateIdentifier);
       formData.append('language', TEMPLATE_LANGUAGE);
-      const noNomeTemplates = ['vip7_captacao2'];
+      const noNomeTemplates = ['vip7_captacao2', 'vip7_captacao3'];
       if (!noNomeTemplates.includes(templateIdentifier)) {
         formData.append('bodyParams[nome]', member.full_name || 'morador(a)');
       }
       formData.append('bodyParams[aviso]', announcement.title);
       formData.append('bodyParams[lembrete]', lembrete);
+      const singleButtonIdx0Templates = ['vip7_captacao2', 'vip7_captacao3'];
       const singleButtonIdx1Templates = ['visita_prova_envio', 'vip7_captacao'];
-      if (templateIdentifier === 'vip7_captacao2') {
-        // vip7_captacao2: botão único no índice [0]
+      if (singleButtonIdx0Templates.includes(templateIdentifier)) {
+        // vip7_captacao2/3: botão único no índice [0]
         formData.append('buttonUrlDynamicParams[0]', `${optoutToken}`);
       } else if (singleButtonIdx1Templates.includes(templateIdentifier)) {
         // 1 botão dinâmico no índice [1] (optout token)

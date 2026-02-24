@@ -246,8 +246,8 @@ async function processBatch(
       }
       formData.append('bodyParams[aviso]', announcement.title);
       formData.append('bodyParams[lembrete]', lembrete);
-      const singleButtonIdx0Templates = ['vip7_captacao2'];
-      const singleButtonIdx1Templates = ['visita_prova_envio', 'vip7_captacao', 'vip7_captacao3'];
+      const singleButtonIdx0Templates = ['vip7_captacao2', 'vip7_captacao3'];
+      const singleButtonIdx1Templates = ['visita_prova_envio', 'vip7_captacao'];
       if (singleButtonIdx0Templates.includes(templateIdentifier)) {
         // vip7_captacao2/3: botão único no índice [0]
         formData.append('buttonUrlDynamicParams[0]', `${optoutToken}`);

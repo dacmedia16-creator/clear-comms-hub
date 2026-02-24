@@ -1,33 +1,28 @@
 
 
-## Mover membros importados para a lista Alphaville 1
+## Cadastrar novo template WhatsApp: `vip7_captacao2`
 
-Os 386 membros que foram importados recentemente (em 2026-02-23 13:55) ficaram sem lista (list_id = NULL) porque o bug foi corrigido depois da importacao. Vamos mover todos eles para a lista "Alphaville 1" via uma migracao SQL.
+### Resumo
+Adicionar o template `vip7_captacao2` como opção disponivel no sistema. Esse template tem apenas **1 botao dinamico** (opt-out no indice `[1]`) e **nao usa a variavel `{{nome}}`**, apenas `{{aviso}}` e `{{lembrete}}`.
 
-### Alteracao
+### Alteracoes
 
-**Migracao SQL** (uma unica query):
+#### 1. `src/lib/whatsapp-templates.ts`
+- Adicionar constante `VIP7_2_TEMPLATE_IDENTIFIER = 'vip7_captacao2'`
 
-```text
-UPDATE user_roles
-SET list_id = '7c759ffa-f300-441a-a60d-d609508f4b9b'
-WHERE condominium_id = (
-  SELECT condominium_id 
-  FROM member_lists 
-  WHERE id = '7c759ffa-f300-441a-a60d-d609508f4b9b'
-)
-AND list_id IS NULL
-AND created_at >= '2026-02-23 13:55:00+00';
-```
+#### 2. `supabase/functions/send-whatsapp/index.ts`
+- Na condicao que verifica templates com 1 botao (linha 246), adicionar `vip7_captacao2` a lista:
+  ```
+  if (['visita_prova_envio', 'vip7_captacao', 'vip7_captacao2'].includes(templateIdentifier))
+  ```
+- Na parte que monta os `bodyParams`, adicionar condicao para templates sem `{{nome}}`:
+  - Se o template for `vip7_captacao2`, **nao enviar** `bodyParams[nome]`
+  - Enviar apenas `bodyParams[aviso]` e `bodyParams[lembrete]`
 
-Isso atualiza os 386 registros de uma so vez, movendo-os do "Geral" para a lista "Alphaville 1".
+#### 3. `supabase/functions/test-whatsapp/index.ts`
+- Adicionar constante para o novo template
+- Garantir que o disparo de teste tambem respeite a logica de 1 botao e sem `{{nome}}`
 
 ### Detalhes tecnicos
 
-- A query filtra por `list_id IS NULL` (membros sem lista) e `created_at >= '2026-02-23 13:55:00'` (somente os importados recentemente)
-- O `list_id` alvo e `7c759ffa-f300-441a-a60d-d609508f4b9b` (Alphaville 1)
-- Sera criado um arquivo de migracao em `supabase/migrations/`
-
-### Arquivo criado
-
-- `supabase/migrations/<timestamp>_move_members_to_alphaville1.sql`
+A edge function `send-whatsapp` atualmente envia 3 bodyParams para todos os templates (`nome`, `aviso`, `lembrete`). Para o `vip7_captacao2`, o parametro `nome` sera omitido pois a Meta rejeita parametros nao esperados pelo template. A logica de botoes sera a mesma dos templates `visita_prova_envio` e `vip7_captacao` (apenas `buttonUrlDynamicParams[1]` com o token de opt-out).

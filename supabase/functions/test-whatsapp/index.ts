@@ -11,6 +11,7 @@ const TEMPLATE_IDENTIFIER = 'aviso_pro_confirma_3';
 const VISITA_TEMPLATE_IDENTIFIER = 'visita_prova_envio';
 const VIP7_TEMPLATE_IDENTIFIER = 'vip7_captacao';
 const VIP7_2_TEMPLATE_IDENTIFIER = 'vip7_captacao2';
+const VIP7_3_TEMPLATE_IDENTIFIER = 'vip7_captacao3';
 const TEMPLATE_LANGUAGE = 'pt_BR';
 
 interface RequestBody {
@@ -112,16 +113,17 @@ serve(async (req) => {
     formData.append('language', TEMPLATE_LANGUAGE);
 
     // bodyParams conforme template
-    const noNomeTemplates = [VIP7_2_TEMPLATE_IDENTIFIER];
+    const noNomeTemplates = [VIP7_2_TEMPLATE_IDENTIFIER, VIP7_3_TEMPLATE_IDENTIFIER];
     if (!noNomeTemplates.includes(templateToUse)) {
       formData.append('bodyParams[nome]', 'Teste');
     }
     formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
     formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
 
+    const singleButtonIdx0Templates = [VIP7_2_TEMPLATE_IDENTIFIER, VIP7_3_TEMPLATE_IDENTIFIER];
     const singleButtonIdx1Templates = [VISITA_TEMPLATE_IDENTIFIER, VIP7_TEMPLATE_IDENTIFIER];
-    if (templateToUse === VIP7_2_TEMPLATE_IDENTIFIER) {
-      // vip7_captacao2: botão único no índice [0]
+    if (singleButtonIdx0Templates.includes(templateToUse)) {
+      // vip7_captacao2/3: botão único no índice [0]
       formData.append('buttonUrlDynamicParams[0]', 'test-demo');
     } else if (singleButtonIdx1Templates.includes(templateToUse)) {
       // 1 botão dinâmico no índice [1] (optout token)

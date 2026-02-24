@@ -246,9 +246,12 @@ async function processBatch(
       }
       formData.append('bodyParams[aviso]', announcement.title);
       formData.append('bodyParams[lembrete]', lembrete);
-      const singleButtonTemplates = ['visita_prova_envio', 'vip7_captacao', 'vip7_captacao2'];
-      if (singleButtonTemplates.includes(templateIdentifier)) {
-        // 1 botão dinâmico apenas (optout token)
+      const singleButtonIdx1Templates = ['visita_prova_envio', 'vip7_captacao'];
+      if (templateIdentifier === 'vip7_captacao2') {
+        // vip7_captacao2: botão único no índice [0]
+        formData.append('buttonUrlDynamicParams[0]', `${optoutToken}`);
+      } else if (singleButtonIdx1Templates.includes(templateIdentifier)) {
+        // 1 botão dinâmico no índice [1] (optout token)
         formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
       } else {
         // 2 botões dinâmicos: slug do condo + optout token

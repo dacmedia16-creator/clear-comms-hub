@@ -119,9 +119,12 @@ serve(async (req) => {
     formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
     formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
 
-    const singleButtonTemplates = [VISITA_TEMPLATE_IDENTIFIER, VIP7_TEMPLATE_IDENTIFIER, VIP7_2_TEMPLATE_IDENTIFIER];
-    if (singleButtonTemplates.includes(templateToUse)) {
-      // 1 botão dinâmico apenas (optout token)
+    const singleButtonIdx1Templates = [VISITA_TEMPLATE_IDENTIFIER, VIP7_TEMPLATE_IDENTIFIER];
+    if (templateToUse === VIP7_2_TEMPLATE_IDENTIFIER) {
+      // vip7_captacao2: botão único no índice [0]
+      formData.append('buttonUrlDynamicParams[0]', 'test-demo');
+    } else if (singleButtonIdx1Templates.includes(templateToUse)) {
+      // 1 botão dinâmico no índice [1] (optout token)
       formData.append('buttonUrlDynamicParams[1]', 'test-demo');
     } else {
       // 2 botões dinâmicos: slug do condo + optout token

@@ -120,8 +120,8 @@ serve(async (req) => {
     formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
     formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
 
-    const singleButtonIdx0Templates = [VIP7_2_TEMPLATE_IDENTIFIER, VIP7_3_TEMPLATE_IDENTIFIER];
-    const singleButtonIdx1Templates = [VISITA_TEMPLATE_IDENTIFIER, VIP7_TEMPLATE_IDENTIFIER];
+    const singleButtonIdx0Templates = [VIP7_2_TEMPLATE_IDENTIFIER];
+    const singleButtonIdx1Templates = [VISITA_TEMPLATE_IDENTIFIER, VIP7_TEMPLATE_IDENTIFIER, VIP7_3_TEMPLATE_IDENTIFIER];
     if (singleButtonIdx0Templates.includes(templateToUse)) {
       // vip7_captacao2/3: botão único no índice [0]
       formData.append('buttonUrlDynamicParams[0]', 'test-demo');

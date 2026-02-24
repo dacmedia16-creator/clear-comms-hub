@@ -10,6 +10,7 @@ const corsHeaders = {
 const TEMPLATE_IDENTIFIER = 'aviso_pro_confirma_3';
 const VISITA_TEMPLATE_IDENTIFIER = 'visita_prova_envio';
 const VIP7_TEMPLATE_IDENTIFIER = 'vip7_captacao';
+const VIP7_2_TEMPLATE_IDENTIFIER = 'vip7_captacao2';
 const TEMPLATE_LANGUAGE = 'pt_BR';
 
 interface RequestBody {
@@ -110,12 +111,16 @@ serve(async (req) => {
     formData.append('template_identifier', templateToUse);
     formData.append('language', TEMPLATE_LANGUAGE);
 
-    // Sempre usa bodyParams nomeados
-    formData.append('bodyParams[nome]', 'Teste');
+    // bodyParams conforme template
+    const noNomeTemplates = [VIP7_2_TEMPLATE_IDENTIFIER];
+    if (!noNomeTemplates.includes(templateToUse)) {
+      formData.append('bodyParams[nome]', 'Teste');
+    }
     formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
     formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
 
-    if (templateToUse === VISITA_TEMPLATE_IDENTIFIER || templateToUse === VIP7_TEMPLATE_IDENTIFIER) {
+    const singleButtonTemplates = [VISITA_TEMPLATE_IDENTIFIER, VIP7_TEMPLATE_IDENTIFIER, VIP7_2_TEMPLATE_IDENTIFIER];
+    if (singleButtonTemplates.includes(templateToUse)) {
       // 1 botão dinâmico apenas (optout token)
       formData.append('buttonUrlDynamicParams[1]', 'test-demo');
     } else {

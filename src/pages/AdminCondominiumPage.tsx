@@ -153,8 +153,9 @@ export default function AdminCondominiumPage() {
   // WhatsApp monitor state
   const [monitorAnnouncementId, setMonitorAnnouncementId] = useState<string | null>(null);
   const [monitorTotal, setMonitorTotal] = useState<number | undefined>(undefined);
+  const [monitorBroadcastId, setMonitorBroadcastId] = useState<string | null>(null);
   
-  const { sendToMembers: sendWhatsAppToMembers } = useSendWhatsApp();
+  const { sendToMembers: sendWhatsAppToMembers, lastBroadcastId } = useSendWhatsApp();
   const { sendToMembers: sendSMSToMembers } = useSendSMS();
   const { sendToMembers: sendEmailToMembers } = useSendEmail();
 
@@ -318,6 +319,7 @@ export default function AdminCondominiumPage() {
               });
               setMonitorAnnouncementId(data.id);
               setMonitorTotal(result.total);
+              setMonitorBroadcastId((result as any).broadcast_id || null);
             }
         } catch (whatsappError) {
           console.error("Error sending WhatsApp:", whatsappError);
@@ -908,9 +910,11 @@ export default function AdminCondominiumPage() {
             announcementId={monitorAnnouncementId}
             condominiumId={condoId}
             totalExpected={monitorTotal}
+            broadcastId={monitorBroadcastId}
             onClose={() => {
               setMonitorAnnouncementId(null);
               setMonitorTotal(undefined);
+              setMonitorBroadcastId(null);
             }}
           />
         )}
@@ -987,17 +991,26 @@ export default function AdminCondominiumPage() {
                           <SendWhatsAppButton
                             announcement={{ ...announcement, id: announcement.id }}
                             condominium={{ ...condominium, id: condominium.id }}
-                            onSendStarted={(annId, total) => {
+                            onSendStarted={(annId, total, broadcastId) => {
                               setMonitorAnnouncementId(annId);
                               setMonitorTotal(total);
+                              setMonitorBroadcastId(broadcastId || null);
                             }}
                           />
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => {
+                            onClick={async () => {
                               setMonitorAnnouncementId(announcement.id);
                               setMonitorTotal(undefined);
+                              const { data: bc } = await supabase
+                                .from('whatsapp_broadcasts')
+                                .select('id')
+                                .eq('announcement_id', announcement.id)
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .single();
+                              setMonitorBroadcastId(bc?.id || null);
                             }}
                             title="Ver envios WhatsApp"
                           >

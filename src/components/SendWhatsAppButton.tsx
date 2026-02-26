@@ -10,7 +10,7 @@ interface SendWhatsAppButtonProps {
   variant?: "ghost" | "outline" | "default";
   size?: "sm" | "default" | "icon";
   showLabel?: boolean;
-  onSendStarted?: (announcementId: string, totalExpected: number) => void;
+  onSendStarted?: (announcementId: string, totalExpected: number, broadcastId?: string) => void;
 }
 
 export function SendWhatsAppButton({
@@ -47,7 +47,7 @@ export function SendWhatsAppButton({
 
     // Notify parent that send started
     if (onSendStarted && result.total > 0) {
-      onSendStarted(announcement.id, result.total);
+      onSendStarted(announcement.id, result.total, (result as any).broadcast_id);
     }
 
     if (result.failed === 0) {

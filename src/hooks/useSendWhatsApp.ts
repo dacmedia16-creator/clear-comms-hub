@@ -17,6 +17,7 @@ interface SendWhatsAppResponse {
   message?: string;
   error?: string;
   status?: string;
+  broadcast_id?: string;
 }
 
 interface AnnouncementWithTargeting extends AnnouncementForShare {
@@ -29,6 +30,7 @@ interface AnnouncementWithTargeting extends AnnouncementForShare {
 export function useSendWhatsApp() {
   const [sending, setSending] = useState(false);
   const [lastResult, setLastResult] = useState<SendWhatsAppResponse | null>(null);
+  const [lastBroadcastId, setLastBroadcastId] = useState<string | null>(null);
 
   const sendToMembers = async (
     announcement: AnnouncementWithTargeting,
@@ -37,6 +39,7 @@ export function useSendWhatsApp() {
   ): Promise<SendWhatsAppResponse> => {
     setSending(true);
     setLastResult(null);
+    setLastBroadcastId(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('send-whatsapp', {
@@ -74,6 +77,9 @@ export function useSendWhatsApp() {
 
       const result = data as SendWhatsAppResponse;
       setLastResult(result);
+      if (result.broadcast_id) {
+        setLastBroadcastId(result.broadcast_id);
+      }
       return result;
 
     } catch (err) {
@@ -96,5 +102,6 @@ export function useSendWhatsApp() {
     sendToMembers,
     sending,
     lastResult,
+    lastBroadcastId,
   };
 }

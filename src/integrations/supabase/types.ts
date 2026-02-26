@@ -747,6 +747,44 @@ export type Database = {
           },
         ]
       }
+      whatsapp_broadcasts: {
+        Row: {
+          announcement_id: string
+          condominium_id: string
+          created_at: string | null
+          id: string
+          status: string
+          total_members: number
+          updated_at: string | null
+        }
+        Insert: {
+          announcement_id: string
+          condominium_id: string
+          created_at?: string | null
+          id?: string
+          status?: string
+          total_members?: number
+          updated_at?: string | null
+        }
+        Update: {
+          announcement_id?: string
+          condominium_id?: string
+          created_at?: string | null
+          id?: string
+          status?: string
+          total_members?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_broadcasts_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_logs: {
         Row: {
           announcement_id: string | null

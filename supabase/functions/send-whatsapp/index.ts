@@ -47,6 +47,8 @@ interface RequestBody {
   membersPayload?: UnifiedMember[];
   authHeader?: string;
   templateIdentifier?: string;
+  broadcastId?: string;
+  existingBroadcastId?: string;
 }
 
 interface ContactInfo {
@@ -200,6 +202,16 @@ async function fetchAndFilterMembers(
   return members;
 }
 
+async function checkBroadcastPaused(supabase: SupabaseClient, broadcastId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('whatsapp_broadcasts')
+    .select('status')
+    .eq('id', broadcastId)
+    .single();
+  
+  return data?.status === 'paused';
+}
+
 async function processBatch(
   members: UnifiedMember[],
   offset: number,
@@ -207,8 +219,18 @@ async function processBatch(
   announcement: Announcement,
   condominium: Condominium,
   supabase: SupabaseClient,
-  templateIdentifier: string
+  templateIdentifier: string,
+  broadcastId?: string
 ) {
+  // Check if broadcast is paused before processing
+  if (broadcastId) {
+    const isPaused = await checkBroadcastPaused(supabase, broadcastId);
+    if (isPaused) {
+      console.log(`[Batch] Broadcast ${broadcastId} is paused. Stopping at offset=${offset}`);
+      return;
+    }
+  }
+
   const batch = members.slice(offset, offset + BATCH_SIZE);
   const lembrete = announcement.summary || "Acesse o link para mais detalhes.";
 
@@ -221,6 +243,15 @@ async function processBatch(
       const delaySeconds = Math.floor(Math.random() * 16) + 15;
       console.log(`[Batch] Waiting ${delaySeconds}s before next send...`);
       await randomDelay(15, 30);
+    }
+
+    // Check pause status between each message
+    if (broadcastId && i > 0) {
+      const isPaused = await checkBroadcastPaused(supabase, broadcastId);
+      if (isPaused) {
+        console.log(`[Batch] Broadcast ${broadcastId} paused mid-batch at message ${offset + i}/${members.length}`);
+        return;
+      }
     }
 
     const globalIndex = offset + i + 1;
@@ -249,13 +280,10 @@ async function processBatch(
       const singleButtonIdx0Templates = ['vip7_captacao2', 'vip7_captacao3'];
       const singleButtonIdx1Templates = ['visita_prova_envio', 'vip7_captacao'];
       if (singleButtonIdx0Templates.includes(templateIdentifier)) {
-        // vip7_captacao2/3: botão único no índice [0]
         formData.append('buttonUrlDynamicParams[0]', `${optoutToken}`);
       } else if (singleButtonIdx1Templates.includes(templateIdentifier)) {
-        // 1 botão dinâmico no índice [1] (optout token)
         formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
       } else {
-        // 2 botões dinâmicos: slug do condo + optout token
         formData.append('buttonUrlDynamicParams[0]', `c/${condominium.slug}`);
         formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
       }
@@ -302,6 +330,15 @@ async function processBatch(
   // Self-invoke for next batch if there are more members
   const nextOffset = offset + BATCH_SIZE;
   if (nextOffset < members.length) {
+    // Check pause before self-invoking
+    if (broadcastId) {
+      const isPaused = await checkBroadcastPaused(supabase, broadcastId);
+      if (isPaused) {
+        console.log(`[Batch] Broadcast ${broadcastId} paused before next batch. Stopping.`);
+        return;
+      }
+    }
+
     console.log(`[Batch] Invoking next batch: offset=${nextOffset}, remaining=${members.length - nextOffset}`);
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -320,6 +357,7 @@ async function processBatch(
           membersPayload: members,
           authHeader,
           templateIdentifier,
+          broadcastId,
         }),
       });
       const resText = await res.text();
@@ -329,6 +367,14 @@ async function processBatch(
     }
   } else {
     console.log(`[Batch] ✓ All ${members.length} members processed!`);
+    // Mark broadcast as completed
+    if (broadcastId) {
+      await supabase
+        .from('whatsapp_broadcasts')
+        .update({ status: 'completed', updated_at: new Date().toISOString() })
+        .eq('id', broadcastId);
+      console.log(`[Batch] Broadcast ${broadcastId} marked as completed`);
+    }
   }
 }
 
@@ -339,7 +385,7 @@ serve(async (req) => {
 
   try {
     const body: RequestBody = await req.json();
-    const { announcement, condominium, batchOffset = 0, membersPayload, authHeader: passedAuthHeader, templateIdentifier: passedTemplateIdentifier } = body;
+    const { announcement, condominium, batchOffset = 0, membersPayload, authHeader: passedAuthHeader, templateIdentifier: passedTemplateIdentifier, broadcastId: passedBroadcastId, existingBroadcastId } = body;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -351,7 +397,7 @@ serve(async (req) => {
       console.log(`[Continuation] Batch offset=${batchOffset}, members=${membersPayload.length}`);
 
       EdgeRuntime.waitUntil(
-        processBatch(membersPayload, batchOffset, passedAuthHeader, announcement, condominium, supabase, passedTemplateIdentifier ?? TEMPLATE_IDENTIFIER)
+        processBatch(membersPayload, batchOffset, passedAuthHeader, announcement, condominium, supabase, passedTemplateIdentifier ?? TEMPLATE_IDENTIFIER, passedBroadcastId)
       );
 
       return new Response(
@@ -392,17 +438,46 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[Initial] Found ${members.length} members. Starting batch processing with size=${BATCH_SIZE}`);
+    // Reuse existing broadcast or create new one
+    let broadcastId = existingBroadcastId || null;
+    
+    if (existingBroadcastId) {
+      // Resume: update existing broadcast back to processing
+      await supabase
+        .from('whatsapp_broadcasts')
+        .update({ status: 'processing', total_members: members.length, updated_at: new Date().toISOString() })
+        .eq('id', existingBroadcastId);
+      console.log(`[Initial] Resuming existing broadcast ${existingBroadcastId}`);
+    } else {
+      // Create new broadcast record
+      const { data: broadcast, error: broadcastError } = await supabase
+        .from('whatsapp_broadcasts')
+        .insert({
+          announcement_id: announcement.id,
+          condominium_id: condominium.id,
+          status: 'processing',
+          total_members: members.length,
+        })
+        .select('id')
+        .single();
+
+      if (broadcastError) {
+        console.error("Error creating broadcast record:", broadcastError);
+      }
+      broadcastId = broadcast?.id || null;
+    }
+    console.log(`[Initial] Found ${members.length} members. Broadcast ID: ${broadcastId}. Starting batch processing with size=${BATCH_SIZE}`);
 
     // Start first batch in background
     EdgeRuntime.waitUntil(
-      processBatch(members, 0, senderInfo.authHeader, announcement, condominium, supabase, templateIdentifier)
+      processBatch(members, 0, senderInfo.authHeader, announcement, condominium, supabase, templateIdentifier, broadcastId)
     );
 
     return new Response(
       JSON.stringify({
         total: members.length,
         status: 'processing',
+        broadcast_id: broadcastId,
         message: `Enviando mensagens para ${members.length} moradores em lotes de ${BATCH_SIZE}. Cada envio terá um intervalo de 15-30 segundos.`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

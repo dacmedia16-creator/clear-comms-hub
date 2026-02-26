@@ -12,9 +12,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { X, CheckCircle, XCircle, Clock, MessageCircle } from "lucide-react";
+import { X, CheckCircle, XCircle, Clock, MessageCircle, Pause, Play } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { toast } from "@/hooks/use-toast";
 
 interface WhatsAppLog {
   id: string;
@@ -29,6 +30,7 @@ interface WhatsAppMonitorProps {
   announcementId: string;
   condominiumId: string;
   totalExpected?: number;
+  broadcastId?: string | null;
   onClose: () => void;
 }
 
@@ -36,10 +38,105 @@ export function WhatsAppMonitor({
   announcementId,
   condominiumId,
   totalExpected,
+  broadcastId,
   onClose,
 }: WhatsAppMonitorProps) {
   const [logs, setLogs] = useState<WhatsAppLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [broadcastStatus, setBroadcastStatus] = useState<string | null>(null);
+  const [togglingPause, setTogglingPause] = useState(false);
+
+  const isPaused = broadcastStatus === 'paused';
+  const isCompleted = broadcastStatus === 'completed';
+
+  // Fetch broadcast status
+  useEffect(() => {
+    if (!broadcastId) return;
+
+    const fetchStatus = async () => {
+      const { data } = await supabase
+        .from('whatsapp_broadcasts')
+        .select('status')
+        .eq('id', broadcastId)
+        .single();
+      if (data) setBroadcastStatus(data.status);
+    };
+
+    fetchStatus();
+
+    // Realtime subscription for broadcast status
+    const channel = supabase
+      .channel(`broadcast-status-${broadcastId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'whatsapp_broadcasts',
+          filter: `id=eq.${broadcastId}`,
+        },
+        (payload) => {
+          const newStatus = (payload.new as any).status;
+          setBroadcastStatus(newStatus);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [broadcastId]);
+
+  const handleTogglePause = async () => {
+    if (!broadcastId) return;
+    setTogglingPause(true);
+
+    try {
+      if (isPaused) {
+        // Resume: update status then re-invoke the edge function
+        await supabase
+          .from('whatsapp_broadcasts')
+          .update({ status: 'processing', updated_at: new Date().toISOString() })
+          .eq('id', broadcastId);
+
+        // Re-invoke the edge function - it will fetch members again and deduplicate
+        const { data: ann } = await supabase
+          .from('announcements')
+          .select('id, title, summary, category, target_blocks, target_units, target_member_ids')
+          .eq('id', announcementId)
+          .single();
+
+        const { data: condo } = await supabase
+          .from('condominiums')
+          .select('id, name, slug')
+          .eq('id', condominiumId)
+          .single();
+
+        if (ann && condo) {
+          await supabase.functions.invoke('send-whatsapp', {
+            body: {
+              announcement: ann,
+              condominium: condo,
+              baseUrl: window.location.origin,
+              existingBroadcastId: broadcastId,
+            },
+          });
+          toast({ title: "Envio retomado", description: "O disparo de WhatsApp foi retomado." });
+        }
+      } else {
+        // Pause
+        await supabase
+          .from('whatsapp_broadcasts')
+          .update({ status: 'paused', updated_at: new Date().toISOString() })
+          .eq('id', broadcastId);
+        toast({ title: "Envio pausado", description: "O disparo será pausado antes do próximo envio." });
+      }
+    } catch (err) {
+      console.error("Error toggling pause:", err);
+    } finally {
+      setTogglingPause(false);
+    }
+  };
 
   const fetchLogs = async () => {
     const { data, error } = await supabase
@@ -100,7 +197,13 @@ export function WhatsAppMonitor({
   const total = totalExpected || logs.length;
   const processed = sent + failed;
   const progressPercent = total > 0 ? Math.round((processed / total) * 100) : 0;
-  const isComplete = totalExpected ? processed >= totalExpected : false;
+  const isAllDone = totalExpected ? processed >= totalExpected : isCompleted;
+
+  const statusText = isAllDone
+    ? "Concluído"
+    : isPaused
+    ? "Pausado"
+    : "Enviando...";
 
   return (
     <Card className="border-primary/30 bg-card">
@@ -119,16 +222,32 @@ export function WhatsAppMonitor({
         {/* Progress */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              {isComplete ? "Concluído" : "Enviando..."}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">{statusText}</span>
+              {broadcastId && !isAllDone && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={handleTogglePause}
+                  disabled={togglingPause}
+                  title={isPaused ? "Retomar envio" : "Pausar envio"}
+                >
+                  {isPaused ? (
+                    <Play className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <Pause className="w-4 h-4 text-yellow-600" />
+                  )}
+                </Button>
+              )}
+            </div>
             <span className="font-medium">{processed} / {total}</span>
           </div>
           <Progress value={progressPercent} className="h-2" />
         </div>
 
         {/* Counters */}
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <Badge className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
             <CheckCircle className="w-3 h-3 mr-1" />
             {sent} enviado{sent !== 1 ? "s" : ""}
@@ -137,7 +256,13 @@ export function WhatsAppMonitor({
             <XCircle className="w-3 h-3 mr-1" />
             {failed} falha{failed !== 1 ? "s" : ""}
           </Badge>
-          {totalExpected && processed < totalExpected && (
+          {isPaused && (
+            <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800">
+              <Pause className="w-3 h-3 mr-1" />
+              Pausado
+            </Badge>
+          )}
+          {totalExpected && processed < totalExpected && !isPaused && (
             <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800">
               <Clock className="w-3 h-3 mr-1" />
               {totalExpected - processed} pendente{totalExpected - processed !== 1 ? "s" : ""}

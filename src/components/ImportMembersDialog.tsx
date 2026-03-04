@@ -117,6 +117,7 @@ export function ImportMembersDialog({
     const rawBlock = (row[3] || "").toString().trim();
     const rawUnit = (row[4] || "").toString().trim();
     const roleStr = (row[5] || "").toString().trim();
+    const phoneSecondary = (row[6] || "").toString().trim();
     
     if (fullName && fullName.length < 2) errors.push("Nome inválido (mín. 2 caracteres)");
     if (!phone) errors.push("Telefone obrigatório");

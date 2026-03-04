@@ -385,6 +385,7 @@ export default function AdminCondominiumPage() {
       setTargetUnits("");
       setSelectedMemberIds([]);
       setSelectedListIds([]);
+      setSelectedListMemberIds([]);
       setSendWhatsApp(false);
       setSendSMS(false);
       setSendEmail(false);

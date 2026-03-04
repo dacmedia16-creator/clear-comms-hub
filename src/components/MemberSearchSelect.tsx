@@ -1,9 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X, Search, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { X, Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+
+const BATCH_SIZE = 50;
 
 interface MemberOption {
   id: string;
@@ -21,6 +24,7 @@ export function MemberSearchSelect({ condominiumId, selectedIds, onSelectionChan
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [batchPage, setBatchPage] = useState(0);
 
   useEffect(() => {
     async function fetchMembers() {
@@ -47,11 +51,7 @@ export function MemberSearchSelect({ condominiumId, selectedIds, onSelectionChan
           const source = role.profiles || role.condo_members;
           if (!source) return null;
           const id = role.user_id || role.member_id;
-          return {
-            id,
-            name: source.full_name || "Sem nome",
-            phone: source.phone || null,
-          };
+          return { id, name: source.full_name || "Sem nome", phone: source.phone || null };
         })
         .filter((m: MemberOption | null): m is MemberOption => m !== null);
 
@@ -61,13 +61,22 @@ export function MemberSearchSelect({ condominiumId, selectedIds, onSelectionChan
     fetchMembers();
   }, [condominiumId]);
 
-  const filtered = members.filter((m) => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    if (!q) return true;
-    return m.name.toLowerCase().includes(q) || (m.phone && m.phone.includes(q));
-  });
+    if (!q) return members;
+    return members.filter((m) => m.name.toLowerCase().includes(q) || (m.phone && m.phone.includes(q)));
+  }, [members, search]);
+
+  // Reset batch page when search changes
+  useEffect(() => { setBatchPage(0); }, [search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / BATCH_SIZE));
+  const batchStart = batchPage * BATCH_SIZE;
+  const batchEnd = Math.min(batchStart + BATCH_SIZE, filtered.length);
+  const batchMembers = filtered.slice(batchStart, batchEnd);
 
   const allFilteredSelected = filtered.length > 0 && filtered.every((m) => selectedIds.includes(m.id));
+  const batchAllSelected = batchMembers.length > 0 && batchMembers.every((m) => selectedIds.includes(m.id));
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -77,6 +86,17 @@ export function MemberSearchSelect({ condominiumId, selectedIds, onSelectionChan
     } else {
       const filteredIds = new Set(filtered.map((m) => m.id));
       onSelectionChange(selectedIds.filter((id) => !filteredIds.has(id)));
+    }
+  };
+
+  const handleSelectBatch = (checked: boolean) => {
+    if (checked) {
+      const newIds = new Set(selectedIds);
+      batchMembers.forEach((m) => newIds.add(m.id));
+      onSelectionChange(Array.from(newIds));
+    } else {
+      const batchIds = new Set(batchMembers.map((m) => m.id));
+      onSelectionChange(selectedIds.filter((id) => !batchIds.has(id)));
     }
   };
 
@@ -94,8 +114,8 @@ export function MemberSearchSelect({ condominiumId, selectedIds, onSelectionChan
     <div className="space-y-2 mt-2">
       {/* Selected badges */}
       {selectedMembers.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {selectedMembers.map((m) => (
+        <div className="flex flex-wrap gap-1.5 items-center">
+          {selectedMembers.slice(0, 10).map((m) => (
             <Badge key={m.id} variant="secondary" className="gap-1 pr-1">
               {m.name}
               <button
@@ -107,6 +127,10 @@ export function MemberSearchSelect({ condominiumId, selectedIds, onSelectionChan
               </button>
             </Badge>
           ))}
+          {selectedMembers.length > 10 && (
+            <span className="text-xs text-muted-foreground">+{selectedMembers.length - 10} mais</span>
+          )}
+          <span className="text-xs text-muted-foreground ml-auto">({selectedMembers.length} selecionados)</span>
         </div>
       )}
 
@@ -121,30 +145,59 @@ export function MemberSearchSelect({ condominiumId, selectedIds, onSelectionChan
         />
       </div>
 
-      {/* Member list with checkboxes */}
-      <div className="border rounded-md bg-card max-h-60 overflow-y-auto">
+      {/* Member list */}
+      <div className="border rounded-md bg-card max-h-72 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center p-3">
             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
           </div>
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground p-3 text-center">
-            Nenhum membro encontrado
-          </p>
+          <p className="text-sm text-muted-foreground p-3 text-center">Nenhum membro encontrado</p>
         ) : (
           <>
             {/* Select all */}
             <label className="flex items-center gap-2 px-3 py-2 border-b cursor-pointer hover:bg-accent">
-              <Checkbox
-                checked={allFilteredSelected}
-                onCheckedChange={handleSelectAll}
-              />
-              <span className="text-sm font-medium">
-                Selecionar todos ({filtered.length})
-              </span>
+              <Checkbox checked={allFilteredSelected} onCheckedChange={handleSelectAll} />
+              <span className="text-sm font-medium">Selecionar todos ({filtered.length})</span>
             </label>
 
-            {filtered.map((m) => (
+            {/* Batch select + navigation */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 border-b bg-muted/30">
+                <Checkbox checked={batchAllSelected} onCheckedChange={handleSelectBatch} />
+                <span className="text-sm font-medium flex-1">
+                  Selecionar lote ({batchStart + 1}-{batchEnd})
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    disabled={batchPage === 0}
+                    onClick={() => setBatchPage((p) => p - 1)}
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {batchPage + 1}/{totalPages}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    disabled={batchPage >= totalPages - 1}
+                    onClick={() => setBatchPage((p) => p + 1)}
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Members in current batch */}
+            {batchMembers.map((m) => (
               <label
                 key={m.id}
                 className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent text-sm"

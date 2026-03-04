@@ -117,6 +117,7 @@ export function AddMemberDialog({
   const resetForm = () => {
     setFullName("");
     setPhone("");
+    setPhoneSecondary("");
     setEmail("");
     setBlock("");
     setUnit("");

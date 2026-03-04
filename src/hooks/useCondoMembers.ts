@@ -134,6 +134,7 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
   const createMember = async (memberData: {
     fullName: string;
     phone: string;
+    phoneSecondary?: string;
     email: string;
     block: string;
     unit: string;

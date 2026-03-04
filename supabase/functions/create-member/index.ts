@@ -10,6 +10,7 @@ interface CreateMemberRequest {
   condominiumId: string;
   fullName: string;
   phone: string;
+  phoneSecondary: string | null;
   email: string;
   block: string;
   unit: string;

@@ -82,24 +82,35 @@ export function MemberListSearchSelect({
     const loadMembers = async () => {
       setExpandedState((s) => ({ ...s, loading: true, members: [], search: "", batchPage: 0 }));
 
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select(`
-          member_id,
-          condo_members:member_id (id, full_name, phone)
-        `)
-        .eq("condominium_id", condominiumId)
-        .eq("list_id", expandedListId)
-        .eq("is_approved", true)
-        .not("member_id", "is", null);
+      const allData: any[] = [];
+      let offset = 0;
+      const fetchBatchSize = 1000;
+      let hasMore = true;
 
-      if (error) {
-        console.error("Error loading list members:", error);
-        setExpandedState((s) => ({ ...s, loading: false }));
-        return;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select(`
+            member_id,
+            condo_members:member_id (id, full_name, phone)
+          `)
+          .eq("condominium_id", condominiumId)
+          .eq("list_id", expandedListId)
+          .eq("is_approved", true)
+          .not("member_id", "is", null)
+          .range(offset, offset + fetchBatchSize - 1);
+
+        if (error) {
+          console.error("Error loading list members:", error);
+          break;
+        }
+
+        allData.push(...(data || []));
+        hasMore = (data?.length || 0) === fetchBatchSize;
+        offset += fetchBatchSize;
       }
 
-      const mapped: MemberOption[] = (data || [])
+      const mapped: MemberOption[] = allData
         .map((role: any) => {
           const src = role.condo_members;
           if (!src) return null;

@@ -224,6 +224,7 @@ export default function CondoMembersPage() {
   const handleCreateNew = async (data: {
     fullName: string;
     phone: string;
+    phoneSecondary: string;
     email: string;
     block: string;
     unit: string;

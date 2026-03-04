@@ -113,11 +113,11 @@ export function ImportMembersDialog({
     
     const fullName = (row[0] || "").toString().trim();
     const phone = (row[1] || "").toString().trim();
-    const email = (row[2] || "").toString().trim();
-    const rawBlock = (row[3] || "").toString().trim();
-    const rawUnit = (row[4] || "").toString().trim();
-    const roleStr = (row[5] || "").toString().trim();
-    const phoneSecondary = (row[6] || "").toString().trim();
+    const phoneSecondary = (row[2] || "").toString().trim();
+    const email = (row[3] || "").toString().trim();
+    const rawBlock = (row[4] || "").toString().trim();
+    const rawUnit = (row[5] || "").toString().trim();
+    const roleStr = (row[6] || "").toString().trim();
     
     if (fullName && fullName.length < 2) errors.push("Nome inválido (mín. 2 caracteres)");
     if (!phone) errors.push("Telefone obrigatório");
@@ -223,9 +223,9 @@ export function ImportMembersDialog({
       : `${terms.unit} (opcional)`;
 
     const ws = XLSX.utils.aoa_to_sheet([
-      ["Nome (opcional)", "Telefone", "Email (opcional)", blockHeader, unitHeader, "Função", "Telefone 2 (opcional)"],
-      ["João da Silva", "11999999999", "joao@email.com", "A", "101", getRoleLabel("resident", terms).toLowerCase(), ""],
-      ["Maria Santos", "11988888888", "maria@email.com", "B", "202", getRoleLabel("resident", terms).toLowerCase(), "11977777777"],
+      ["Nome (opcional)", "Telefone", "Telefone 2 (opcional)", "Email (opcional)", blockHeader, unitHeader, "Função"],
+      ["João da Silva", "11999999999", "", "joao@email.com", "A", "101", getRoleLabel("resident", terms).toLowerCase()],
+      ["Maria Santos", "11988888888", "11977777777", "maria@email.com", "B", "202", getRoleLabel("resident", terms).toLowerCase()],
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, terms.memberPlural);
@@ -345,11 +345,11 @@ export function ImportMembersDialog({
                       <TableHead className="w-10">Status</TableHead>
                       <TableHead>Nome</TableHead>
                       <TableHead>Telefone</TableHead>
+                      <TableHead>Tel 2</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>{terms.block}</TableHead>
                       <TableHead>{terms.unit}</TableHead>
                       <TableHead>Função</TableHead>
-                      <TableHead>Tel 2</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -372,6 +372,9 @@ export function ImportMembersDialog({
                           {member.phone || <span className="text-destructive">—</span>}
                         </TableCell>
                         <TableCell>
+                          {member.phoneSecondary || <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell>
                           {member.email || <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell>
@@ -381,9 +384,6 @@ export function ImportMembersDialog({
                           {member.unit || <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="capitalize">{getRoleLabel(member.role, terms)}</TableCell>
-                        <TableCell>
-                          {member.phoneSecondary || <span className="text-muted-foreground">—</span>}
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

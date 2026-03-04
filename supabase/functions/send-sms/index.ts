@@ -116,7 +116,7 @@ serve(async (req) => {
       .select(`
         user_id, member_id, block, unit,
         profiles:user_id (id, phone, full_name, email),
-        condo_members:member_id (id, phone, full_name, email)
+        condo_members:member_id (id, phone, phone_secondary, full_name, email)
       `)
       .eq('condominium_id', condominium.id)
       .eq('is_approved', true);

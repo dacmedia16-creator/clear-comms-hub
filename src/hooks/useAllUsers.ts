@@ -90,7 +90,6 @@ export function useAllUsers() {
             condominium_name: (ur.condominiums as any)?.name || "—",
             is_approved: ur.is_approved ?? true,
           });
-        }
       }
 
       const usersWithRoles = allProfiles.map(profile => ({

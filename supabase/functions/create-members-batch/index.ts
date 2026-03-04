@@ -219,6 +219,7 @@ Deno.serve(async (req) => {
       full_name: m.fullName || m.phone || "Sem nome",
       email: m.email || null,
       phone: m.phone || null,
+      phone_secondary: m.phoneSecondary || null,
     }));
 
     const { data: insertedMembers, error: membersError } = await serviceClient

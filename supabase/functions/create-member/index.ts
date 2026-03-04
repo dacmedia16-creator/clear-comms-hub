@@ -156,6 +156,7 @@ Deno.serve(async (req) => {
         full_name: fullName || phone || "Sem nome",
         email: email || null,
         phone: phone || null,
+        phone_secondary: phoneSecondary || null,
       })
       .select("id")
       .single();

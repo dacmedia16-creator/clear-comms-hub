@@ -544,6 +544,9 @@ export default function CondoMembersPage() {
                     {phone && (
                       <p className="text-xs text-muted-foreground">{phone}</p>
                     )}
+                    {getMemberPhoneSecondary(member) && (
+                      <p className="text-xs text-muted-foreground/70">Tel 2: {getMemberPhoneSecondary(member)}</p>
+                    )}
                       </MobileCardItem>
                     </div>
                   </div>

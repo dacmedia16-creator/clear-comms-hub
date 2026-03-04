@@ -249,6 +249,7 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
     membersData: Array<{
       fullName: string;
       phone: string;
+      phoneSecondary?: string;
       email: string;
       block: string;
       unit: string;

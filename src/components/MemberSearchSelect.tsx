@@ -31,44 +31,62 @@ export function MemberSearchSelect({ condominiumId, selectedIds, onSelectionChan
       if (!condominiumId) return;
       setLoading(true);
 
-      const allData: any[] = [];
-      let offset = 0;
-      const batchSize = 1000;
-      let hasMore = true;
+      try {
+        // Step 1: Fetch roles via RPC (bypasses per-row RLS)
+        const batchSize = 1000;
+        const allRoles: any[] = [];
+        let offset = 0;
+        let hasMore = true;
 
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from("user_roles")
-          .select(`
-            user_id, member_id,
-            profiles:user_id (id, full_name, phone),
-            condo_members:member_id (id, full_name, phone)
-          `)
-          .eq("condominium_id", condominiumId)
-          .eq("is_approved", true)
-          .range(offset, offset + batchSize - 1);
-
-        if (error) {
-          console.error("Error fetching members:", error);
-          break;
+        while (hasMore) {
+          const { data, error } = await supabase.rpc('get_condominium_user_roles', {
+            _condominium_id: condominiumId,
+            _limit: batchSize,
+            _offset: offset,
+          });
+          if (error) { console.error("Error fetching roles:", error); break; }
+          allRoles.push(...(data || []));
+          hasMore = (data?.length || 0) === batchSize;
+          offset += batchSize;
         }
 
-        allData.push(...(data || []));
-        hasMore = (data?.length || 0) === batchSize;
-        offset += batchSize;
+        // Filter approved only
+        const approvedRoles = allRoles.filter((r: any) => r.is_approved);
+
+        // Step 2: Batch-fetch condo_members via RPC
+        const memberIds = [...new Set(approvedRoles.filter((r: any) => r.member_id).map((r: any) => r.member_id as string))];
+        const condoMembersMap = new Map<string, any>();
+        for (let i = 0; i < memberIds.length; i += batchSize) {
+          const batch = memberIds.slice(i, i + batchSize);
+          const { data } = await supabase.rpc('get_condo_members_by_ids', { _member_ids: batch });
+          (data || []).forEach((cm: any) => condoMembersMap.set(cm.id, cm));
+        }
+
+        // Step 3: Batch-fetch profiles
+        const userIds = [...new Set(approvedRoles.filter((r: any) => r.user_id).map((r: any) => r.user_id as string))];
+        const profilesMap = new Map<string, any>();
+        for (let i = 0; i < userIds.length; i += batchSize) {
+          const batch = userIds.slice(i, i + batchSize);
+          const { data } = await supabase.from("profiles").select("id, full_name, phone").in("id", batch);
+          (data || []).forEach((p: any) => profilesMap.set(p.id, p));
+        }
+
+        // Step 4: Merge
+        const mapped: MemberOption[] = approvedRoles
+          .map((role: any) => {
+            const source = role.user_id ? profilesMap.get(role.user_id) : condoMembersMap.get(role.member_id);
+            if (!source) return null;
+            const id = role.user_id || role.member_id;
+            return { id, name: source.full_name || "Sem nome", phone: source.phone || null };
+          })
+          .filter((m: MemberOption | null): m is MemberOption => m !== null);
+
+        setMembers(mapped);
+      } catch (err) {
+        console.error("Error fetching members:", err);
+      } finally {
+        setLoading(false);
       }
-
-      const mapped: MemberOption[] = allData
-        .map((role: any) => {
-          const source = role.profiles || role.condo_members;
-          if (!source) return null;
-          const id = role.user_id || role.member_id;
-          return { id, name: source.full_name || "Sem nome", phone: source.phone || null };
-        })
-        .filter((m: MemberOption | null): m is MemberOption => m !== null);
-
-      setMembers(mapped);
-      setLoading(false);
     }
     fetchMembers();
   }, [condominiumId]);

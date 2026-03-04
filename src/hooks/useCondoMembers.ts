@@ -319,12 +319,13 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
       if (roleError) throw roleError;
 
       // 2. If it's a condo_member, also update personal data
-      if (member.member_id && (updates.fullName || updates.phone !== undefined || updates.email !== undefined)) {
+      if (member.member_id && (updates.fullName || updates.phone !== undefined || updates.phoneSecondary !== undefined || updates.email !== undefined)) {
         const { error: memberError } = await supabase
           .from("condo_members")
           .update({
             full_name: updates.fullName || member.condo_member?.full_name || "",
             phone: updates.phone || null,
+            phone_secondary: updates.phoneSecondary || null,
             email: updates.email || null,
           })
           .eq("id", member.member_id);

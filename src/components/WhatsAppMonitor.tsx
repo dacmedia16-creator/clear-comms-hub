@@ -240,6 +240,7 @@ export function WhatsAppMonitor({
         },
         (payload) => {
           const newLog = payload.new as WhatsAppLog;
+          setLastLogTime(Date.now());
           setLogs((prev) => {
             if (prev.some((l) => l.id === newLog.id)) return prev;
             return [...prev, newLog];

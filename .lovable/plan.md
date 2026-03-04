@@ -1,82 +1,88 @@
 
 
-## Fix: Members showing as 0 for large organizations
+## Adicionar Pause/Resume nos envios de WhatsApp
 
-### Root Cause
+### Problema
+Atualmente nao existe forma de pausar um disparo de WhatsApp em andamento. Uma vez iniciado, o processo roda ate o fim sem controle do usuario.
 
-The query joins `user_roles` with `condo_members`, and the RLS policy on `condo_members` runs `can_manage_condominium()` for **every row** in the join. With 4616 members, this creates ~4616 individual RLS checks, likely causing a **PostgREST timeout**. The error is caught silently, leaving `members` as an empty array.
+### Arquitetura da solucao
+A Edge Function `send-whatsapp` usa self-invocation em lotes de 10. Para implementar pause/resume, precisamos de um flag no banco que a Edge Function consulta antes de cada lote. Quando pausado, ela para de se auto-invocar. Quando despausado, o frontend dispara a retomada.
 
-### Solution
+### Alteracoes
 
-**Two-pronged approach:**
+#### 1. Migracoes de banco de dados
 
-#### 1. Optimize the `condo_members` SELECT RLS policy
-
-Replace the current expensive subquery-based policy with a more efficient `SECURITY DEFINER` function that avoids repeated `can_manage_condominium` calls:
+Criar tabela `whatsapp_broadcasts` para rastrear o estado de cada disparo:
 
 ```sql
--- Create a helper function
-CREATE OR REPLACE FUNCTION public.can_view_condo_member(_member_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM user_roles ur
-    WHERE ur.member_id = _member_id
-      AND (
-        is_condominium_owner(ur.condominium_id)
-        OR has_condominium_role(ur.condominium_id, 'admin')
-        OR has_condominium_role(ur.condominium_id, 'syndic')
-        OR is_super_admin()
-      )
-  )
-$$;
+CREATE TABLE public.whatsapp_broadcasts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  announcement_id UUID NOT NULL REFERENCES public.announcements(id),
+  condominium_id UUID NOT NULL,
+  status TEXT NOT NULL DEFAULT 'processing', -- processing, paused, completed
+  total_members INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.whatsapp_broadcasts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated users can view broadcasts"
+  ON public.whatsapp_broadcasts FOR SELECT
+  TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can update broadcasts"
+  ON public.whatsapp_broadcasts FOR UPDATE
+  TO authenticated USING (true);
+
+CREATE POLICY "Service role can insert broadcasts"
+  ON public.whatsapp_broadcasts FOR INSERT
+  TO authenticated WITH CHECK (true);
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.whatsapp_broadcasts;
 ```
 
-Actually, the real fix is simpler: **avoid the join entirely** for the main listing query. Instead of letting PostgREST join through the foreign key (which triggers RLS on `condo_members` for every row), fetch `user_roles` first, then batch-fetch `condo_members` separately using the IDs.
+#### 2. `supabase/functions/send-whatsapp/index.ts`
 
-#### 2. Split the query in `useCondoMembers.ts`
+- No inicio do processamento (primeira invocacao), criar um registro em `whatsapp_broadcasts` com `status = 'processing'` e `total_members = members.length`
+- Retornar o `broadcast_id` na resposta inicial ao frontend
+- Na funcao `processBatch`, antes de processar cada lote e antes de cada self-invoke:
+  - Consultar `whatsapp_broadcasts` pelo `announcement_id`
+  - Se `status === 'paused'`, nao processar o lote e nao fazer self-invoke (encerrar silenciosamente)
+- Passar o `broadcast_id` no payload de self-invocacao
+- Ao terminar todos os lotes, atualizar `status = 'completed'`
 
-Instead of one query with embedded joins:
+#### 3. `src/components/WhatsAppMonitor.tsx`
 
-```typescript
-// Step 1: Fetch user_roles (only user_roles RLS applies)
-const roles = await supabase
-  .from("user_roles")
-  .select("id, user_id, member_id, role, block, unit, is_approved, created_at, list_id")
-  .eq("condominium_id", condoId)
-  .range(offset, offset + batchSize - 1);
+- Receber prop opcional `broadcastId`
+- Adicionar estado `isPaused` sincronizado com `whatsapp_broadcasts.status`
+- Usar Realtime subscription na tabela `whatsapp_broadcasts` para atualizar o estado em tempo real
+- Adicionar botao Pause/Play ao lado do texto "Enviando..." / "Pausado":
+  - Pause: faz `UPDATE whatsapp_broadcasts SET status = 'paused'` e mostra icone Play
+  - Play: faz `UPDATE whatsapp_broadcasts SET status = 'processing'` e re-invoca a Edge Function `send-whatsapp` com os mesmos parametros do announcement para retomar (a funcao vai buscar membros novamente, desduplicando os ja enviados)
+- Quando pausado, exibir "Pausado" no texto de status e badge amarelo
 
-// Step 2: Batch-fetch condo_members by IDs (single RLS check)
-const memberIds = roles.filter(r => r.member_id).map(r => r.member_id);
-const { data: condoMembers } = await supabase
-  .from("condo_members")
-  .select("id, full_name, email, phone, phone_secondary")
-  .in("id", memberIds);
+#### 4. `src/hooks/useSendWhatsApp.ts`
 
-// Step 3: Batch-fetch profiles by IDs
-const userIds = roles.filter(r => r.user_id).map(r => r.user_id);
-const { data: profiles } = await supabase
-  .from("profiles")
-  .select("id, full_name, email, phone")
-  .in("id", userIds);
+- Extrair `broadcast_id` da resposta da Edge Function e expor via `lastBroadcastId`
+- Passar para o `WhatsAppMonitor` ao abri-lo
 
-// Step 4: Merge in memory
-```
+#### 5. `src/pages/AdminCondominiumPage.tsx`
 
-This avoids the N+1 RLS problem because:
-- `user_roles` SELECT only checks `can_manage_condominium` once per row (already working)
-- `condo_members` `.in("id", memberIds)` triggers RLS but with a single batch check
-- `profiles` similarly uses a batch check
+- Passar `broadcastId` ao `WhatsAppMonitor`
 
-#### 3. Show error state in UI
+### Fluxo
 
-Add visible error feedback in `CondoMembersPage.tsx` so timeout errors aren't silently swallowed — show a retry button when `error` is set.
+1. Usuario dispara envio -> Edge Function cria registro em `whatsapp_broadcasts` com `status = 'processing'`
+2. Monitor exibe botao de Pause
+3. Usuario clica Pause -> frontend atualiza `status = 'paused'`
+4. Edge Function, ao tentar processar proximo lote, ve `status = 'paused'` e para
+5. Usuario clica Play -> frontend atualiza `status = 'processing'` e re-invoca a Edge Function
+6. Edge Function busca membros novamente, deduplica pelos ja enviados, e continua de onde parou
 
-### Files to change
-- `src/hooks/useCondoMembers.ts` — Split the joined query into separate batched queries + merge in memory
-- `src/pages/CondoMembersPage.tsx` — Display error state with retry button
+### Detalhes tecnicos
+
+- A deduplicacao ja existente (linhas 186-198 do send-whatsapp) garante que ao retomar, membros ja enviados sao ignorados automaticamente
+- Nenhum dado de payload precisa ser persistido; a retomada refaz o fetch de membros com deduplicacao
+- O intervalo entre lotes (15-30s) da tempo suficiente para a verificacao de pausa
 

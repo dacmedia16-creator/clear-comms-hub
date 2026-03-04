@@ -609,6 +609,9 @@ export default function CondoMembersPage() {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {phone || "—"}
+                          {getMemberPhoneSecondary(member) && (
+                            <div className="text-xs text-muted-foreground/70">Tel 2: {getMemberPhoneSecondary(member)}</div>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm">
                           {location}

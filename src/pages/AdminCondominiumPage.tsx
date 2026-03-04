@@ -131,6 +131,7 @@ export default function AdminCondominiumPage() {
   const [targetUnits, setTargetUnits] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
+  const [selectedListMemberIds, setSelectedListMemberIds] = useState<string[]>([]);
 
   // Member lists for generic orgs
   const { lists: memberLists } = useMemberLists(condoId);
@@ -232,20 +233,26 @@ export default function AdminCondominiumPage() {
       let targetMemberIdsArray: string[] | null = null;
       if (recipientType === "specific" && selectedMemberIds.length > 0) {
         targetMemberIdsArray = selectedMemberIds;
-      } else if (recipientType === "list" && selectedListIds.length > 0) {
-        // Fetch member IDs from all selected lists
-        const { data: listMembers, error: listError } = await supabase
-          .from("user_roles")
-          .select("member_id")
-          .eq("condominium_id", condominium.id)
-          .in("list_id", selectedListIds)
-          .not("member_id", "is", null);
+      } else if (recipientType === "list" && (selectedListIds.length > 0 || selectedListMemberIds.length > 0)) {
+        const allIds = new Set<string>(selectedListMemberIds);
 
-        if (listError) throw listError;
-        const uniqueIds = [...new Set(listMembers?.map(m => m.member_id!).filter(Boolean) || [])];
+        // Fetch members from fully selected lists
+        if (selectedListIds.length > 0) {
+          const { data: listMembers, error: listError } = await supabase
+            .from("user_roles")
+            .select("member_id")
+            .eq("condominium_id", condominium.id)
+            .in("list_id", selectedListIds)
+            .not("member_id", "is", null);
+
+          if (listError) throw listError;
+          listMembers?.forEach(m => { if (m.member_id) allIds.add(m.member_id); });
+        }
+
+        const uniqueIds = [...allIds];
         targetMemberIdsArray = uniqueIds.length > 0 ? uniqueIds : null;
         if (!targetMemberIdsArray) {
-          toast({ title: "Listas vazias", description: "As listas selecionadas não possuem membros.", variant: "destructive" });
+          toast({ title: "Sem membros", description: "Nenhum membro selecionado nas listas.", variant: "destructive" });
           setCreating(false);
           return;
         }
@@ -378,6 +385,7 @@ export default function AdminCondominiumPage() {
       setTargetUnits("");
       setSelectedMemberIds([]);
       setSelectedListIds([]);
+      setSelectedListMemberIds([]);
       setSendWhatsApp(false);
       setSendSMS(false);
       setSendEmail(false);
@@ -746,8 +754,8 @@ export default function AdminCondominiumPage() {
                       value={recipientType === "all" || recipientType === "specific" || recipientType === "list" ? recipientType : "all"}
                       onValueChange={(v) => {
                         setRecipientType(v as "all" | "specific" | "list");
-                        if (v === "all") { setSelectedMemberIds([]); setSelectedListIds([]); }
-                        if (v === "specific") setSelectedListIds([]);
+                        if (v === "all") { setSelectedMemberIds([]); setSelectedListIds([]); setSelectedListMemberIds([]); }
+                        if (v === "specific") { setSelectedListIds([]); setSelectedListMemberIds([]); }
                         if (v === "list") setSelectedMemberIds([]);
                       }}
                       className="space-y-3"
@@ -771,6 +779,9 @@ export default function AdminCondominiumPage() {
                                 lists={memberLists}
                                 selectedIds={selectedListIds}
                                 onSelectionChange={setSelectedListIds}
+                                condominiumId={condoId!}
+                                selectedListMemberIds={selectedListMemberIds}
+                                onListMemberSelectionChange={setSelectedListMemberIds}
                               />
                             )}
                           </div>

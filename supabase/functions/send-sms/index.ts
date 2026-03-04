@@ -41,7 +41,7 @@ interface MemberRow {
   block: string | null;
   unit: string | null;
   profiles: ContactInfo | null;
-  condo_members: ContactInfo | null;
+  condo_members: (ContactInfo & { phone_secondary?: string | null }) | null;
 }
 
 interface UnifiedMember {

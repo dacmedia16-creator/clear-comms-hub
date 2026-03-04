@@ -326,6 +326,16 @@ export function AddMemberDialog({
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="phoneSecondary">Telefone Secundário</Label>
+                <Input
+                  id="phoneSecondary"
+                  value={phoneSecondary}
+                  onChange={(e) => setPhoneSecondary(e.target.value)}
+                  placeholder="+55 11 88888-8888"
+                />
+              </div>
+
               {renderLocationFields(block, unit, setBlock, setUnit)}
 
               <div className="space-y-2">

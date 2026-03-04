@@ -231,6 +231,18 @@ export function EditMemberDialog({
               />
             </div>
 
+            {isCondoMember && (
+              <div className="space-y-2">
+                <Label htmlFor="phoneSecondary">Telefone Secundário</Label>
+                <Input
+                  id="phoneSecondary"
+                  value={phoneSecondary}
+                  onChange={(e) => setPhoneSecondary(e.target.value)}
+                  placeholder="(11) 88888-8888"
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Label htmlFor="email">Email</Label>

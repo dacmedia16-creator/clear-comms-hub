@@ -381,6 +381,9 @@ export function ImportMembersDialog({
                           {member.unit || <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="capitalize">{getRoleLabel(member.role, terms)}</TableCell>
+                        <TableCell>
+                          {member.phoneSecondary || <span className="text-muted-foreground">—</span>}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

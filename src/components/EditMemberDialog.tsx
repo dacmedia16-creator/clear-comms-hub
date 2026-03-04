@@ -155,6 +155,7 @@ export function EditMemberDialog({
       if (isCondoMember) {
         data.fullName = fullName.trim();
         data.phone = phone.trim() || undefined;
+        data.phoneSecondary = phoneSecondary.trim() || undefined;
         data.email = email.trim() || undefined;
       }
 

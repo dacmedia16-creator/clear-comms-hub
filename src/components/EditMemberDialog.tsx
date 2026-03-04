@@ -72,6 +72,7 @@ export function EditMemberDialog({
     if (member && open) {
       setFullName(getMemberDisplayName(member));
       setPhone(getMemberPhone(member) || "");
+      setPhoneSecondary(member.condo_member?.phone_secondary || "");
       setEmail(getMemberEmail(member) || "");
       setBlock(member.block || "");
       setUnit(member.unit || "");

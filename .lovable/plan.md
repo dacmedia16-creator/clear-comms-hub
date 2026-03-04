@@ -1,88 +1,27 @@
 
 
-## Adicionar Pause/Resume nos envios de WhatsApp
+## Retomar envio de WhatsApp interrompido
 
-### Problema
-Atualmente nao existe forma de pausar um disparo de WhatsApp em andamento. Uma vez iniciado, o processo roda ate o fim sem controle do usuario.
+O sistema já possui um mecanismo de retomada embutido: a Edge Function `send-whatsapp` verifica a tabela `whatsapp_logs` antes de cada envio e pula contatos que já receberam a mensagem com sucesso. O problema é que quando o envio falha por timeout (e não por pausa manual), o broadcast fica com status `processing` mas sem nenhum processo ativo, e não há botão de "Retomar" visível nesse estado.
 
-### Arquitetura da solucao
-A Edge Function `send-whatsapp` usa self-invocation em lotes de 10. Para implementar pause/resume, precisamos de um flag no banco que a Edge Function consulta antes de cada lote. Quando pausado, ela para de se auto-invocar. Quando despausado, o frontend dispara a retomada.
+### Problema identificado
 
-### Alteracoes
+O botão de Pause/Resume só aparece quando `broadcastId` existe e o envio não está concluído. Porém, quando o envio é interrompido por timeout da Edge Function, o status do broadcast permanece `processing` (nunca muda para `paused` ou `completed`), e o botão exibido é de "Pausar" -- não de "Retomar". O usuário precisaria pausar e depois retomar, o que não é intuitivo.
 
-#### 1. Migracoes de banco de dados
+### Solução
 
-Criar tabela `whatsapp_broadcasts` para rastrear o estado de cada disparo:
+Adicionar um botão **"Retomar envio"** que aparece quando o broadcast está em status `processing` mas não há progresso recente (stale). Isso detecta automaticamente envios travados.
 
-```sql
-CREATE TABLE public.whatsapp_broadcasts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  announcement_id UUID NOT NULL REFERENCES public.announcements(id),
-  condominium_id UUID NOT NULL,
-  status TEXT NOT NULL DEFAULT 'processing', -- processing, paused, completed
-  total_members INT NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+**`src/components/WhatsAppMonitor.tsx`:**
 
-ALTER TABLE public.whatsapp_broadcasts ENABLE ROW LEVEL SECURITY;
+1. Rastrear o timestamp do último log recebido e detectar "stalled" (sem novos logs há mais de 60 segundos enquanto `processing` e `processed < total`)
+2. Quando detectado como stalled, exibir um badge "Envio travado" e um botão "Retomar envio" que re-invoca a Edge Function com `existingBroadcastId`
+3. A lógica de retomada é idêntica à já existente no `handleTogglePause` (resume branch), reutilizando o mesmo código
 
-CREATE POLICY "Authenticated users can view broadcasts"
-  ON public.whatsapp_broadcasts FOR SELECT
-  TO authenticated USING (true);
+### Detalhes técnicos
 
-CREATE POLICY "Authenticated users can update broadcasts"
-  ON public.whatsapp_broadcasts FOR UPDATE
-  TO authenticated USING (true);
-
-CREATE POLICY "Service role can insert broadcasts"
-  ON public.whatsapp_broadcasts FOR INSERT
-  TO authenticated WITH CHECK (true);
-
-ALTER PUBLICATION supabase_realtime ADD TABLE public.whatsapp_broadcasts;
-```
-
-#### 2. `supabase/functions/send-whatsapp/index.ts`
-
-- No inicio do processamento (primeira invocacao), criar um registro em `whatsapp_broadcasts` com `status = 'processing'` e `total_members = members.length`
-- Retornar o `broadcast_id` na resposta inicial ao frontend
-- Na funcao `processBatch`, antes de processar cada lote e antes de cada self-invoke:
-  - Consultar `whatsapp_broadcasts` pelo `announcement_id`
-  - Se `status === 'paused'`, nao processar o lote e nao fazer self-invoke (encerrar silenciosamente)
-- Passar o `broadcast_id` no payload de self-invocacao
-- Ao terminar todos os lotes, atualizar `status = 'completed'`
-
-#### 3. `src/components/WhatsAppMonitor.tsx`
-
-- Receber prop opcional `broadcastId`
-- Adicionar estado `isPaused` sincronizado com `whatsapp_broadcasts.status`
-- Usar Realtime subscription na tabela `whatsapp_broadcasts` para atualizar o estado em tempo real
-- Adicionar botao Pause/Play ao lado do texto "Enviando..." / "Pausado":
-  - Pause: faz `UPDATE whatsapp_broadcasts SET status = 'paused'` e mostra icone Play
-  - Play: faz `UPDATE whatsapp_broadcasts SET status = 'processing'` e re-invoca a Edge Function `send-whatsapp` com os mesmos parametros do announcement para retomar (a funcao vai buscar membros novamente, desduplicando os ja enviados)
-- Quando pausado, exibir "Pausado" no texto de status e badge amarelo
-
-#### 4. `src/hooks/useSendWhatsApp.ts`
-
-- Extrair `broadcast_id` da resposta da Edge Function e expor via `lastBroadcastId`
-- Passar para o `WhatsAppMonitor` ao abri-lo
-
-#### 5. `src/pages/AdminCondominiumPage.tsx`
-
-- Passar `broadcastId` ao `WhatsAppMonitor`
-
-### Fluxo
-
-1. Usuario dispara envio -> Edge Function cria registro em `whatsapp_broadcasts` com `status = 'processing'`
-2. Monitor exibe botao de Pause
-3. Usuario clica Pause -> frontend atualiza `status = 'paused'`
-4. Edge Function, ao tentar processar proximo lote, ve `status = 'paused'` e para
-5. Usuario clica Play -> frontend atualiza `status = 'processing'` e re-invoca a Edge Function
-6. Edge Function busca membros novamente, deduplica pelos ja enviados, e continua de onde parou
-
-### Detalhes tecnicos
-
-- A deduplicacao ja existente (linhas 186-198 do send-whatsapp) garante que ao retomar, membros ja enviados sao ignorados automaticamente
-- Nenhum dado de payload precisa ser persistido; a retomada refaz o fetch de membros com deduplicacao
-- O intervalo entre lotes (15-30s) da tempo suficiente para a verificacao de pausa
+- Novo estado `isStalled`: `true` quando `broadcastStatus === 'processing'` e o último log tem mais de 60s e `processed < total`
+- O botão de retomar chama a mesma lógica do resume: busca announcement + condominium, invoca `send-whatsapp` com `existingBroadcastId`
+- A Edge Function já faz deduplicação via `whatsapp_logs`, então contatos já enviados são automaticamente ignorados
+- Nenhuma alteração no backend necessária
 

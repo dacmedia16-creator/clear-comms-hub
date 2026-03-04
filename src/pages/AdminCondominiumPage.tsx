@@ -772,6 +772,9 @@ export default function AdminCondominiumPage() {
                                 lists={memberLists}
                                 selectedIds={selectedListIds}
                                 onSelectionChange={setSelectedListIds}
+                                condominiumId={condoId!}
+                                selectedListMemberIds={selectedListMemberIds}
+                                onListMemberSelectionChange={setSelectedListMemberIds}
                               />
                             )}
                           </div>

@@ -79,8 +79,7 @@ export function useAllUsers() {
       
       // Group roles by user_id
       const rolesByUser: Record<string, UserRole[]> = {};
-      if (!rolesError && userRoles) {
-        for (const ur of userRoles) {
+      for (const ur of allUserRoles) {
           if (!rolesByUser[ur.user_id]) {
           rolesByUser[ur.user_id] = [];
           }

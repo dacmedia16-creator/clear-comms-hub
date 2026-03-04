@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCondoMembers, getMemberDisplayName, getMemberEmail, getMemberPhone, getMemberLocation, CondoMember } from "@/hooks/useCondoMembers";
+import { useCondoMembers, getMemberDisplayName, getMemberEmail, getMemberPhone, getMemberPhoneSecondary, getMemberLocation, CondoMember } from "@/hooks/useCondoMembers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Plus, ArrowLeft, Loader2, Trash2, UserCircle, Check, Bell, Settings, FileText, Upload, Pencil, Search, X } from "lucide-react";
@@ -224,6 +224,7 @@ export default function CondoMembersPage() {
   const handleCreateNew = async (data: {
     fullName: string;
     phone: string;
+    phoneSecondary: string;
     email: string;
     block: string;
     unit: string;
@@ -543,6 +544,9 @@ export default function CondoMembersPage() {
                     {phone && (
                       <p className="text-xs text-muted-foreground">{phone}</p>
                     )}
+                    {getMemberPhoneSecondary(member) && (
+                      <p className="text-xs text-muted-foreground/70">Tel 2: {getMemberPhoneSecondary(member)}</p>
+                    )}
                       </MobileCardItem>
                     </div>
                   </div>
@@ -608,6 +612,9 @@ export default function CondoMembersPage() {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {phone || "—"}
+                          {getMemberPhoneSecondary(member) && (
+                            <div className="text-xs text-muted-foreground/70">Tel 2: {getMemberPhoneSecondary(member)}</div>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm">
                           {location}

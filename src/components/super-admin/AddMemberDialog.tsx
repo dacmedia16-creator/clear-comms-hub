@@ -44,6 +44,7 @@ interface AddMemberDialogProps {
   onCreateNew: (data: {
     fullName: string;
     phone: string;
+    phoneSecondary: string;
     email: string;
     block: string;
     unit: string;
@@ -69,6 +70,7 @@ export function AddMemberDialog({
   // Form state for new member
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneSecondary, setPhoneSecondary] = useState("");
   const [email, setEmail] = useState("");
   const [block, setBlock] = useState("");
   const [unit, setUnit] = useState("");
@@ -115,6 +117,7 @@ export function AddMemberDialog({
   const resetForm = () => {
     setFullName("");
     setPhone("");
+    setPhoneSecondary("");
     setEmail("");
     setBlock("");
     setUnit("");
@@ -188,6 +191,7 @@ export function AddMemberDialog({
     const result = await onCreateNew({
       fullName: fullName.trim(),
       phone: phone.trim(),
+      phoneSecondary: phoneSecondary.trim(),
       email: email.trim(),
       block: block.trim(),
       unit: unit.trim(),
@@ -320,6 +324,16 @@ export function AddMemberDialog({
                     placeholder="joao@email.com"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phoneSecondary">Telefone Secundário</Label>
+                <Input
+                  id="phoneSecondary"
+                  value={phoneSecondary}
+                  onChange={(e) => setPhoneSecondary(e.target.value)}
+                  placeholder="+55 11 88888-8888"
+                />
               </div>
 
               {renderLocationFields(block, unit, setBlock, setUnit)}

@@ -56,6 +56,7 @@ interface ContactInfo {
   phone: string | null;
   full_name: string | null;
   email: string | null;
+  phone_secondary?: string | null;
 }
 
 interface MemberRow {
@@ -127,7 +128,7 @@ async function fetchAndFilterMembers(
     .select(`
       user_id, member_id, block, unit,
       profiles:user_id (id, phone, full_name, email),
-      condo_members:member_id (id, phone, full_name, email)
+      condo_members:member_id (id, phone, phone_secondary, full_name, email)
     `)
     .eq('condominium_id', condominium.id)
     .eq('is_approved', true);
@@ -148,17 +149,37 @@ async function fetchAndFilterMembers(
   }
 
   let members: UnifiedMember[] = filteredRows
-    .map(role => {
+    .flatMap(role => {
       const source = role.profiles || role.condo_members;
-      if (!source || !source.phone) return null;
-      return {
-        phone: normalizePhone(source.phone),
-        full_name: source.full_name,
-        block: role.block,
-        unit: role.unit,
-      };
-    })
-    .filter((m): m is UnifiedMember => m !== null);
+      if (!source) return [];
+      const entries: UnifiedMember[] = [];
+      if (source.phone) {
+        entries.push({
+          phone: normalizePhone(source.phone),
+          full_name: source.full_name,
+          block: role.block,
+          unit: role.unit,
+        });
+      }
+      // Add secondary phone for condo_members
+      if (role.condo_members?.phone_secondary) {
+        entries.push({
+          phone: normalizePhone(role.condo_members.phone_secondary),
+          full_name: source.full_name,
+          block: role.block,
+          unit: role.unit,
+        });
+      }
+      return entries;
+    });
+
+  // Deduplicate by phone (in case secondary equals another primary)
+  const seenPhones = new Set<string>();
+  members = members.filter(m => {
+    if (seenPhones.has(m.phone)) return false;
+    seenPhones.add(m.phone);
+    return true;
+  });
 
   const hasBlockFilter = announcement.target_blocks && announcement.target_blocks.length > 0;
   const hasUnitFilter = announcement.target_units && announcement.target_units.length > 0;

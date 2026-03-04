@@ -10,6 +10,7 @@ interface CreateMemberRequest {
   condominiumId: string;
   fullName: string;
   phone: string;
+  phoneSecondary: string | null;
   email: string;
   block: string;
   unit: string;
@@ -84,7 +85,7 @@ Deno.serve(async (req) => {
     console.log("Authenticated user:", userId);
 
     const body: CreateMemberRequest = await req.json();
-    const { condominiumId, fullName, phone, email, block, unit, role, listId } = body;
+    const { condominiumId, fullName, phone, phoneSecondary, email, block, unit, role, listId } = body;
 
     if (!condominiumId || !role) {
       return new Response(
@@ -155,6 +156,7 @@ Deno.serve(async (req) => {
         full_name: fullName || phone || "Sem nome",
         email: email || null,
         phone: phone || null,
+        phone_secondary: phoneSecondary || null,
       })
       .select("id")
       .single();

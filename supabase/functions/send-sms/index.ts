@@ -41,7 +41,7 @@ interface MemberRow {
   block: string | null;
   unit: string | null;
   profiles: ContactInfo | null;
-  condo_members: ContactInfo | null;
+  condo_members: (ContactInfo & { phone_secondary?: string | null }) | null;
 }
 
 interface UnifiedMember {
@@ -116,7 +116,7 @@ serve(async (req) => {
       .select(`
         user_id, member_id, block, unit,
         profiles:user_id (id, phone, full_name, email),
-        condo_members:member_id (id, phone, full_name, email)
+        condo_members:member_id (id, phone, phone_secondary, full_name, email)
       `)
       .eq('condominium_id', condominium.id)
       .eq('is_approved', true);
@@ -143,17 +143,38 @@ serve(async (req) => {
 
     // Unify members from both sources, filtering those with valid phone numbers
     let members: UnifiedMember[] = filteredRows
-      .map(role => {
+      .flatMap(role => {
         const source = role.profiles || role.condo_members;
-        if (!source || !source.phone) return null;
-        return {
-          phone: source.phone,
-          full_name: source.full_name,
-          block: role.block,
-          unit: role.unit,
-        };
-      })
-      .filter((m): m is UnifiedMember => m !== null);
+        if (!source) return [];
+        const entries: UnifiedMember[] = [];
+        if (source.phone) {
+          entries.push({
+            phone: source.phone,
+            full_name: source.full_name,
+            block: role.block,
+            unit: role.unit,
+          });
+        }
+        // Add secondary phone for condo_members
+        if (role.condo_members?.phone_secondary) {
+          entries.push({
+            phone: role.condo_members.phone_secondary,
+            full_name: source.full_name,
+            block: role.block,
+            unit: role.unit,
+          });
+        }
+        return entries;
+      });
+
+    // Deduplicate by phone (in case secondary equals another primary)
+    const seenPhones = new Set<string>();
+    members = members.filter(m => {
+      const normalized = m.phone.replace(/\D/g, '');
+      if (seenPhones.has(normalized)) return false;
+      seenPhones.add(normalized);
+      return true;
+    });
 
     // Apply targeting filters
     const hasBlockFilter = announcement.target_blocks && announcement.target_blocks.length > 0;

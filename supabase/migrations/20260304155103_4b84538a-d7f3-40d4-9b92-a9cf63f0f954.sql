@@ -1,0 +1,1 @@
+ALTER TABLE public.condo_members ADD COLUMN phone_secondary text;

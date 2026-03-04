@@ -29,6 +29,7 @@ import {
 export interface UpdateMemberData {
   fullName?: string;
   phone?: string;
+  phoneSecondary?: string;
   email?: string;
   block: string;
   unit: string;
@@ -53,6 +54,7 @@ export function EditMemberDialog({
 }: EditMemberDialogProps) {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneSecondary, setPhoneSecondary] = useState("");
   const [email, setEmail] = useState("");
   const [block, setBlock] = useState("");
   const [unit, setUnit] = useState("");
@@ -70,6 +72,7 @@ export function EditMemberDialog({
     if (member && open) {
       setFullName(getMemberDisplayName(member));
       setPhone(getMemberPhone(member) || "");
+      setPhoneSecondary(member.condo_member?.phone_secondary || "");
       setEmail(getMemberEmail(member) || "");
       setBlock(member.block || "");
       setUnit(member.unit || "");
@@ -152,6 +155,7 @@ export function EditMemberDialog({
       if (isCondoMember) {
         data.fullName = fullName.trim();
         data.phone = phone.trim() || undefined;
+        data.phoneSecondary = phoneSecondary.trim() || undefined;
         data.email = email.trim() || undefined;
       }
 
@@ -226,6 +230,18 @@ export function EditMemberDialog({
                 className={isProfile ? "bg-muted" : ""}
               />
             </div>
+
+            {isCondoMember && (
+              <div className="space-y-2">
+                <Label htmlFor="phoneSecondary">Telefone Secundário</Label>
+                <Input
+                  id="phoneSecondary"
+                  value={phoneSecondary}
+                  onChange={(e) => setPhoneSecondary(e.target.value)}
+                  placeholder="(11) 88888-8888"
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <div className="flex items-center gap-2">

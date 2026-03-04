@@ -23,6 +23,7 @@ export interface CondoMember {
     full_name: string;
     email: string | null;
     phone: string | null;
+    phone_secondary: string | null;
   } | null;
 }
 
@@ -64,7 +65,8 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
             id,
             full_name,
             email,
-            phone
+            phone,
+            phone_secondary
           )
         `)
         .eq("condominium_id", condoId);
@@ -132,6 +134,7 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
   const createMember = async (memberData: {
     fullName: string;
     phone: string;
+    phoneSecondary?: string;
     email: string;
     block: string;
     unit: string;
@@ -145,6 +148,7 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
           condominiumId: condoId,
           fullName: memberData.fullName,
           phone: memberData.phone,
+          phoneSecondary: memberData.phoneSecondary || null,
           email: memberData.email,
           block: memberData.block,
           unit: memberData.unit,
@@ -245,6 +249,7 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
     membersData: Array<{
       fullName: string;
       phone: string;
+      phoneSecondary?: string;
       email: string;
       block: string;
       unit: string;
@@ -296,6 +301,7 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
     updates: {
       fullName?: string;
       phone?: string;
+      phoneSecondary?: string;
       email?: string;
       block: string;
       unit: string;
@@ -316,12 +322,13 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
       if (roleError) throw roleError;
 
       // 2. If it's a condo_member, also update personal data
-      if (member.member_id && (updates.fullName || updates.phone !== undefined || updates.email !== undefined)) {
+      if (member.member_id && (updates.fullName || updates.phone !== undefined || updates.phoneSecondary !== undefined || updates.email !== undefined)) {
         const { error: memberError } = await supabase
           .from("condo_members")
           .update({
             full_name: updates.fullName || member.condo_member?.full_name || "",
             phone: updates.phone || null,
+            phone_secondary: updates.phoneSecondary || null,
             email: updates.email || null,
           })
           .eq("id", member.member_id);
@@ -373,6 +380,12 @@ export function getMemberEmail(member: CondoMember): string | null {
 export function getMemberPhone(member: CondoMember): string | null {
   if (member.profile?.phone) return member.profile.phone;
   if (member.condo_member?.phone) return member.condo_member.phone;
+  return null;
+}
+
+// Helper function to get secondary phone from a member
+export function getMemberPhoneSecondary(member: CondoMember): string | null {
+  if (member.condo_member?.phone_secondary) return member.condo_member.phone_secondary;
   return null;
 }
 

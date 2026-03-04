@@ -352,6 +352,12 @@ export function WhatsAppMonitor({
               Pausado
             </Badge>
           )}
+          {isStalled && (
+            <Badge className="bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800">
+              <XCircle className="w-3 h-3 mr-1" />
+              Envio travado
+            </Badge>
+          )}
           {totalExpected && processed < totalExpected && !isPaused && (
             <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800">
               <Clock className="w-3 h-3 mr-1" />

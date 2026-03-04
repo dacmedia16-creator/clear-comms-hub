@@ -23,6 +23,7 @@ export interface CondoMember {
     full_name: string;
     email: string | null;
     phone: string | null;
+    phone_secondary: string | null;
   } | null;
 }
 

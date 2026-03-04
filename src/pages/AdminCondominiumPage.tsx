@@ -62,6 +62,7 @@ import { Badge } from "@/components/ui/badge";
 import { useOrganizationBehavior } from "@/hooks/useOrganizationBehavior";
 import { getOrganizationBehavior } from "@/lib/organization-types";
 import { MemberSearchSelect } from "@/components/MemberSearchSelect";
+import { MemberListSearchSelect } from "@/components/MemberListSearchSelect";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { linkifyText, linkifyTextWithButtons } from "@/lib/utils";
 import { WhatsAppMonitor } from "@/components/WhatsAppMonitor";
@@ -129,7 +130,7 @@ export default function AdminCondominiumPage() {
   const [selectedBlocks, setSelectedBlocks] = useState<string[]>([]);
   const [targetUnits, setTargetUnits] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
-  const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
 
   // Member lists for generic orgs
   const { lists: memberLists } = useMemberLists(condoId);
@@ -231,19 +232,20 @@ export default function AdminCondominiumPage() {
       let targetMemberIdsArray: string[] | null = null;
       if (recipientType === "specific" && selectedMemberIds.length > 0) {
         targetMemberIdsArray = selectedMemberIds;
-      } else if (recipientType === "list" && selectedListId) {
-        // Fetch member IDs from the selected list
+      } else if (recipientType === "list" && selectedListIds.length > 0) {
+        // Fetch member IDs from all selected lists
         const { data: listMembers, error: listError } = await supabase
           .from("user_roles")
           .select("member_id")
           .eq("condominium_id", condominium.id)
-          .eq("list_id", selectedListId)
+          .in("list_id", selectedListIds)
           .not("member_id", "is", null);
 
         if (listError) throw listError;
-        targetMemberIdsArray = listMembers?.map(m => m.member_id!).filter(Boolean) || null;
-        if (targetMemberIdsArray && targetMemberIdsArray.length === 0) {
-          toast({ title: "Lista vazia", description: "A lista selecionada não possui membros.", variant: "destructive" });
+        const uniqueIds = [...new Set(listMembers?.map(m => m.member_id!).filter(Boolean) || [])];
+        targetMemberIdsArray = uniqueIds.length > 0 ? uniqueIds : null;
+        if (!targetMemberIdsArray) {
+          toast({ title: "Listas vazias", description: "As listas selecionadas não possuem membros.", variant: "destructive" });
           setCreating(false);
           return;
         }
@@ -375,7 +377,7 @@ export default function AdminCondominiumPage() {
       setSelectedBlocks([]);
       setTargetUnits("");
       setSelectedMemberIds([]);
-      setSelectedListId(null);
+      setSelectedListIds([]);
       setSendWhatsApp(false);
       setSendSMS(false);
       setSendEmail(false);
@@ -744,8 +746,8 @@ export default function AdminCondominiumPage() {
                       value={recipientType === "all" || recipientType === "specific" || recipientType === "list" ? recipientType : "all"}
                       onValueChange={(v) => {
                         setRecipientType(v as "all" | "specific" | "list");
-                        if (v === "all") { setSelectedMemberIds([]); setSelectedListId(null); }
-                        if (v === "specific") setSelectedListId(null);
+                        if (v === "all") { setSelectedMemberIds([]); setSelectedListIds([]); }
+                        if (v === "specific") setSelectedListIds([]);
                         if (v === "list") setSelectedMemberIds([]);
                       }}
                       className="space-y-3"
@@ -765,21 +767,11 @@ export default function AdminCondominiumPage() {
                               Lista de membros
                             </Label>
                             {recipientType === "list" && (
-                              <Select
-                                value={selectedListId || ""}
-                                onValueChange={(v) => setSelectedListId(v)}
-                              >
-                                <SelectTrigger className="mt-2 bg-card">
-                                  <SelectValue placeholder="Selecione uma lista..." />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card">
-                                  {memberLists.map((list) => (
-                                    <SelectItem key={list.id} value={list.id}>
-                                      {list.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <MemberListSearchSelect
+                                lists={memberLists}
+                                selectedIds={selectedListIds}
+                                onSelectionChange={setSelectedListIds}
+                              />
                             )}
                           </div>
                         </div>

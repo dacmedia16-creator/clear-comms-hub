@@ -30,23 +30,35 @@ export function MemberSearchSelect({ condominiumId, selectedIds, onSelectionChan
     async function fetchMembers() {
       if (!condominiumId) return;
       setLoading(true);
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select(`
-          user_id, member_id,
-          profiles:user_id (id, full_name, phone),
-          condo_members:member_id (id, full_name, phone)
-        `)
-        .eq("condominium_id", condominiumId)
-        .eq("is_approved", true);
 
-      if (error) {
-        console.error("Error fetching members:", error);
-        setLoading(false);
-        return;
+      const allData: any[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select(`
+            user_id, member_id,
+            profiles:user_id (id, full_name, phone),
+            condo_members:member_id (id, full_name, phone)
+          `)
+          .eq("condominium_id", condominiumId)
+          .eq("is_approved", true)
+          .range(offset, offset + batchSize - 1);
+
+        if (error) {
+          console.error("Error fetching members:", error);
+          break;
+        }
+
+        allData.push(...(data || []));
+        hasMore = (data?.length || 0) === batchSize;
+        offset += batchSize;
       }
 
-      const mapped: MemberOption[] = (data || [])
+      const mapped: MemberOption[] = allData
         .map((role: any) => {
           const source = role.profiles || role.condo_members;
           if (!source) return null;

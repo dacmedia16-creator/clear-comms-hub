@@ -85,7 +85,7 @@ export default function CondoMembersPage() {
   const [bulkRemoving, setBulkRemoving] = useState(false);
 
   const { lists, createList, updateList, deleteList, moveMemberToList } = useMemberLists(isGeneric ? condoId : undefined);
-  const { members, loading, createMember, removeMember, removeMembersBulk, approveMember, importMembers, updateMember, refetch: refetchMembers } = useCondoMembers(condoId || "", isGeneric ? selectedListId : undefined);
+  const { members, loading, error, createMember, removeMember, removeMembersBulk, approveMember, importMembers, updateMember, refetch: refetchMembers } = useCondoMembers(condoId || "", isGeneric ? selectedListId : undefined);
 
   const filteredMembers = useMemo(
     () => {

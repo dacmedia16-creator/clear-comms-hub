@@ -456,6 +456,17 @@ export default function CondoMembersPage() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
+        ) : error ? (
+          <Card className="p-8 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <UserCircle className="w-12 h-12 text-destructive opacity-50" />
+              <p className="text-destructive font-medium">Erro ao carregar {terms.memberPlural.toLowerCase()}</p>
+              <p className="text-sm text-muted-foreground">{error}</p>
+              <Button variant="outline" size="sm" onClick={refetchMembers}>
+                Tentar novamente
+              </Button>
+            </div>
+          </Card>
         ) : isMobile ? (
           /* Mobile: Cards */
           <div className="space-y-4">

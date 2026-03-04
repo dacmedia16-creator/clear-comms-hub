@@ -43,7 +43,8 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
     setError(null);
 
     try {
-      const allData: any[] = [];
+      // Step 1: Fetch user_roles without joins (avoids N+1 RLS on condo_members)
+      const allRoles: any[] = [];
       let offset = 0;
       const batchSize = 1000;
       let hasMore = true;
@@ -51,30 +52,7 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
       while (hasMore) {
         let query = supabase
           .from("user_roles")
-          .select(`
-            id,
-            user_id,
-            member_id,
-            role,
-            block,
-            unit,
-            is_approved,
-            created_at,
-            list_id,
-            profiles:user_id (
-              id,
-              full_name,
-              email,
-              phone
-            ),
-            condo_members:member_id (
-              id,
-              full_name,
-              email,
-              phone,
-              phone_secondary
-            )
-          `)
+          .select("id, user_id, member_id, role, block, unit, is_approved, created_at, list_id")
           .eq("condominium_id", condoId);
 
         if (listId) {
@@ -86,12 +64,37 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
           .range(offset, offset + batchSize - 1);
 
         if (fetchError) throw fetchError;
-        allData.push(...(data || []));
+        allRoles.push(...(data || []));
         hasMore = (data?.length || 0) === batchSize;
         offset += batchSize;
       }
 
-      const formattedMembers: CondoMember[] = allData.map((item: any) => ({
+      // Step 2: Batch-fetch condo_members by IDs
+      const memberIdSet = [...new Set(allRoles.filter(r => r.member_id).map(r => r.member_id as string))];
+      const condoMembersMap = new Map<string, any>();
+      for (let i = 0; i < memberIdSet.length; i += batchSize) {
+        const batch = memberIdSet.slice(i, i + batchSize);
+        const { data } = await supabase
+          .from("condo_members")
+          .select("id, full_name, email, phone, phone_secondary")
+          .in("id", batch);
+        (data || []).forEach((cm: any) => condoMembersMap.set(cm.id, cm));
+      }
+
+      // Step 3: Batch-fetch profiles by IDs
+      const userIdSet = [...new Set(allRoles.filter(r => r.user_id).map(r => r.user_id as string))];
+      const profilesMap = new Map<string, any>();
+      for (let i = 0; i < userIdSet.length; i += batchSize) {
+        const batch = userIdSet.slice(i, i + batchSize);
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, phone")
+          .in("id", batch);
+        (data || []).forEach((p: any) => profilesMap.set(p.id, p));
+      }
+
+      // Step 4: Merge in memory
+      const formattedMembers: CondoMember[] = allRoles.map((item: any) => ({
         id: item.id,
         user_id: item.user_id,
         member_id: item.member_id,
@@ -100,8 +103,8 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
         unit: item.unit,
         is_approved: item.is_approved,
         created_at: item.created_at,
-        profile: item.profiles,
-        condo_member: item.condo_members,
+        profile: item.user_id ? profilesMap.get(item.user_id) || null : null,
+        condo_member: item.member_id ? condoMembersMap.get(item.member_id) || null : null,
       }));
 
       setMembers(formattedMembers);

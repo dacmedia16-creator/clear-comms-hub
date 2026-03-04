@@ -279,6 +279,8 @@ export function WhatsAppMonitor({
     ? "Concluído"
     : isPaused
     ? "Pausado"
+    : isStalled
+    ? "Envio travado"
     : "Enviando...";
 
   return (

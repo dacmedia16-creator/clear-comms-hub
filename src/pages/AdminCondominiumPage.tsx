@@ -767,21 +767,11 @@ export default function AdminCondominiumPage() {
                               Lista de membros
                             </Label>
                             {recipientType === "list" && (
-                              <Select
-                                value={selectedListId || ""}
-                                onValueChange={(v) => setSelectedListId(v)}
-                              >
-                                <SelectTrigger className="mt-2 bg-card">
-                                  <SelectValue placeholder="Selecione uma lista..." />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card">
-                                  {memberLists.map((list) => (
-                                    <SelectItem key={list.id} value={list.id}>
-                                      {list.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <MemberListSearchSelect
+                                lists={memberLists}
+                                selectedIds={selectedListIds}
+                                onSelectionChange={setSelectedListIds}
+                              />
                             )}
                           </div>
                         </div>

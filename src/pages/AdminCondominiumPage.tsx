@@ -754,8 +754,8 @@ export default function AdminCondominiumPage() {
                       value={recipientType === "all" || recipientType === "specific" || recipientType === "list" ? recipientType : "all"}
                       onValueChange={(v) => {
                         setRecipientType(v as "all" | "specific" | "list");
-                        if (v === "all") { setSelectedMemberIds([]); setSelectedListIds([]); }
-                        if (v === "specific") setSelectedListIds([]);
+                        if (v === "all") { setSelectedMemberIds([]); setSelectedListIds([]); setSelectedListMemberIds([]); }
+                        if (v === "specific") { setSelectedListIds([]); setSelectedListMemberIds([]); }
                         if (v === "list") setSelectedMemberIds([]);
                       }}
                       className="space-y-3"

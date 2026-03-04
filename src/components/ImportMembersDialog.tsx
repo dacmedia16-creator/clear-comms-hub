@@ -223,9 +223,9 @@ export function ImportMembersDialog({
       : `${terms.unit} (opcional)`;
 
     const ws = XLSX.utils.aoa_to_sheet([
-      ["Nome (opcional)", "Telefone", "Email (opcional)", blockHeader, unitHeader, "Função", "Telefone 2 (opcional)"],
-      ["João da Silva", "11999999999", "joao@email.com", "A", "101", getRoleLabel("resident", terms).toLowerCase(), ""],
-      ["Maria Santos", "11988888888", "maria@email.com", "B", "202", getRoleLabel("resident", terms).toLowerCase(), "11977777777"],
+      ["Nome (opcional)", "Telefone", "Telefone 2 (opcional)", "Email (opcional)", blockHeader, unitHeader, "Função"],
+      ["João da Silva", "11999999999", "", "joao@email.com", "A", "101", getRoleLabel("resident", terms).toLowerCase()],
+      ["Maria Santos", "11988888888", "11977777777", "maria@email.com", "B", "202", getRoleLabel("resident", terms).toLowerCase()],
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, terms.memberPlural);

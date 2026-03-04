@@ -43,31 +43,17 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
     setError(null);
 
     try {
-      // Step 1: Fetch user_roles without joins (avoids N+1 RLS on condo_members)
-      const allRoles: any[] = [];
-      let offset = 0;
+      // Step 1: Fetch user_roles via RPC (bypasses per-row RLS, checks permission once)
       const batchSize = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        let query = supabase
-          .from("user_roles")
-          .select("id, user_id, member_id, role, block, unit, is_approved, created_at, list_id")
-          .eq("condominium_id", condoId);
-
-        if (listId) {
-          query = query.eq("list_id", listId);
+      const { data: allRoles, error: fetchError } = await supabase.rpc(
+        'get_condominium_user_roles',
+        {
+          _condominium_id: condoId,
+          _list_id: listId || null,
         }
+      );
 
-        const { data, error: fetchError } = await query
-          .order("created_at", { ascending: false })
-          .range(offset, offset + batchSize - 1);
-
-        if (fetchError) throw fetchError;
-        allRoles.push(...(data || []));
-        hasMore = (data?.length || 0) === batchSize;
-        offset += batchSize;
-      }
+      if (fetchError) throw fetchError;
 
       // Step 2: Batch-fetch condo_members by IDs
       const memberIdSet = [...new Set(allRoles.filter(r => r.member_id).map(r => r.member_id as string))];

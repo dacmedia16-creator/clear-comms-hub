@@ -931,6 +931,20 @@ export type Database = {
       can_create_announcement: { Args: { cond_id: string }; Returns: boolean }
       can_manage_condominium: { Args: { cond_id: string }; Returns: boolean }
       generate_unique_slug: { Args: { base_name: string }; Returns: string }
+      get_condominium_user_roles: {
+        Args: { _condominium_id: string; _list_id?: string }
+        Returns: {
+          block: string
+          created_at: string
+          id: string
+          is_approved: boolean
+          list_id: string
+          member_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          unit: string
+          user_id: string
+        }[]
+      }
       has_condominium_role: {
         Args: {
           _role?: Database["public"]["Enums"]["app_role"]

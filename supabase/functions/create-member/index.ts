@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     console.log("Authenticated user:", userId);
 
     const body: CreateMemberRequest = await req.json();
-    const { condominiumId, fullName, phone, email, block, unit, role, listId } = body;
+    const { condominiumId, fullName, phone, phoneSecondary, email, block, unit, role, listId } = body;
 
     if (!condominiumId || !role) {
       return new Response(

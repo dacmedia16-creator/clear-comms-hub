@@ -167,6 +167,15 @@ serve(async (req) => {
         return entries;
       });
 
+    // Deduplicate by phone (in case secondary equals another primary)
+    const seenPhones = new Set<string>();
+    members = members.filter(m => {
+      const normalized = m.phone.replace(/\D/g, '');
+      if (seenPhones.has(normalized)) return false;
+      seenPhones.add(normalized);
+      return true;
+    });
+
     // Apply targeting filters
     const hasBlockFilter = announcement.target_blocks && announcement.target_blocks.length > 0;
     const hasUnitFilter = announcement.target_units && announcement.target_units.length > 0;

@@ -173,6 +173,14 @@ async function fetchAndFilterMembers(
       return entries;
     });
 
+  // Deduplicate by phone (in case secondary equals another primary)
+  const seenPhones = new Set<string>();
+  members = members.filter(m => {
+    if (seenPhones.has(m.phone)) return false;
+    seenPhones.add(m.phone);
+    return true;
+  });
+
   const hasBlockFilter = announcement.target_blocks && announcement.target_blocks.length > 0;
   const hasUnitFilter = announcement.target_units && announcement.target_units.length > 0;
 

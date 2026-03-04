@@ -43,27 +43,34 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
     setError(null);
 
     try {
-      // Step 1: Fetch user_roles via RPC (bypasses per-row RLS, checks permission once)
+      // Step 1: Fetch user_roles via RPC with pagination (bypasses per-row RLS)
       const batchSize = 1000;
-      const { data: allRoles, error: fetchError } = await supabase.rpc(
-        'get_condominium_user_roles',
-        {
-          _condominium_id: condoId,
-          _list_id: listId || null,
-        }
-      );
+      const allRoles: any[] = [];
+      let offset = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error: fetchError } = await supabase.rpc(
+          'get_condominium_user_roles',
+          {
+            _condominium_id: condoId,
+            _list_id: listId || null,
+          }
+        ).range(offset, offset + batchSize - 1);
 
-      if (fetchError) throw fetchError;
+        if (fetchError) throw fetchError;
+        allRoles.push(...(data || []));
+        hasMore = (data?.length || 0) === batchSize;
+        offset += batchSize;
+      }
 
-      // Step 2: Batch-fetch condo_members by IDs
+      // Step 2: Batch-fetch condo_members via RPC (bypasses per-row RLS)
       const memberIdSet = [...new Set(allRoles.filter(r => r.member_id).map(r => r.member_id as string))];
       const condoMembersMap = new Map<string, any>();
       for (let i = 0; i < memberIdSet.length; i += batchSize) {
         const batch = memberIdSet.slice(i, i + batchSize);
-        const { data } = await supabase
-          .from("condo_members")
-          .select("id, full_name, email, phone, phone_secondary")
-          .in("id", batch);
+        const { data } = await supabase.rpc('get_condo_members_by_ids', {
+          _member_ids: batch,
+        });
         (data || []).forEach((cm: any) => condoMembersMap.set(cm.id, cm));
       }
 

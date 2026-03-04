@@ -65,7 +65,8 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
             id,
             full_name,
             email,
-            phone
+            phone,
+            phone_secondary
           )
         `)
         .eq("condominium_id", condoId);

@@ -349,6 +349,7 @@ export function ImportMembersDialog({
                       <TableHead>{terms.block}</TableHead>
                       <TableHead>{terms.unit}</TableHead>
                       <TableHead>Função</TableHead>
+                      <TableHead>Tel 2</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

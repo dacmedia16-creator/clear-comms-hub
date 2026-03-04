@@ -36,28 +36,37 @@ export function useAllAnnouncements() {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from("announcements")
-        .select(`
-          id,
-          title,
-          summary,
-          category,
-          is_urgent,
-          is_pinned,
-          published_at,
-          created_at,
-          condominiums:condominium_id (
+      const allData: any[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error: fetchError } = await supabase
+          .from("announcements")
+          .select(`
             id,
-            name,
-            slug
-          )
-        `)
-        .order("published_at", { ascending: false });
+            title,
+            summary,
+            category,
+            is_urgent,
+            is_pinned,
+            published_at,
+            created_at,
+            condominiums:condominium_id (
+              id,
+              name,
+              slug
+            )
+          `)
+          .order("published_at", { ascending: false })
+          .range(offset, offset + batchSize - 1);
+        if (fetchError) throw fetchError;
+        allData.push(...(data || []));
+        hasMore = (data?.length || 0) === batchSize;
+        offset += batchSize;
+      }
 
-      if (fetchError) throw fetchError;
-
-      const formattedAnnouncements: AnnouncementWithCondo[] = (data || []).map((item: any) => ({
+      const formattedAnnouncements: AnnouncementWithCondo[] = allData.map((item: any) => ({
         id: item.id,
         title: item.title,
         summary: item.summary,

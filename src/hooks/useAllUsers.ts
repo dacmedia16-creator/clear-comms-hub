@@ -93,7 +93,7 @@ export function useAllUsers() {
         }
       }
 
-      const usersWithRoles = (profiles || []).map(profile => ({
+      const usersWithRoles = allProfiles.map(profile => ({
         ...profile,
         is_super_admin: superAdminIds.has(profile.id),
         roles: rolesByUser[profile.id] || [],

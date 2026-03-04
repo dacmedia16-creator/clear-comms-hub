@@ -45,6 +45,8 @@ export function WhatsAppMonitor({
   const [loading, setLoading] = useState(true);
   const [broadcastStatus, setBroadcastStatus] = useState<string | null>(null);
   const [togglingPause, setTogglingPause] = useState(false);
+  const [lastLogTime, setLastLogTime] = useState<number>(Date.now());
+  const [isStalled, setIsStalled] = useState(false);
 
   const isPaused = broadcastStatus === 'paused';
   const isCompleted = broadcastStatus === 'completed';
@@ -86,6 +88,62 @@ export function WhatsAppMonitor({
       supabase.removeChannel(channel);
     };
   }, [broadcastId]);
+
+  // Stall detection: no new logs for 60s while processing
+  useEffect(() => {
+    if (!broadcastId || isPaused || isCompleted) {
+      setIsStalled(false);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - lastLogTime) / 1000;
+      setIsStalled(broadcastStatus === 'processing' && elapsed > 60 && logs.length > 0);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [broadcastId, broadcastStatus, isPaused, isCompleted, lastLogTime, logs.length]);
+
+  const handleResume = async () => {
+    if (!broadcastId) return;
+    setTogglingPause(true);
+    try {
+      await supabase
+        .from('whatsapp_broadcasts')
+        .update({ status: 'processing', updated_at: new Date().toISOString() })
+        .eq('id', broadcastId);
+
+      const { data: ann } = await supabase
+        .from('announcements')
+        .select('id, title, summary, category, target_blocks, target_units, target_member_ids')
+        .eq('id', announcementId)
+        .single();
+
+      const { data: condo } = await supabase
+        .from('condominiums')
+        .select('id, name, slug')
+        .eq('id', condominiumId)
+        .single();
+
+      if (ann && condo) {
+        await supabase.functions.invoke('send-whatsapp', {
+          body: {
+            announcement: ann,
+            condominium: condo,
+            baseUrl: window.location.origin,
+            existingBroadcastId: broadcastId,
+          },
+        });
+        setIsStalled(false);
+        setLastLogTime(Date.now());
+        toast({ title: "Envio retomado", description: "O disparo de WhatsApp foi retomado." });
+      }
+    } catch (err) {
+      console.error("Error resuming:", err);
+    } finally {
+      setTogglingPause(false);
+    }
+  };
 
   const handleTogglePause = async () => {
     if (!broadcastId) return;
@@ -146,6 +204,9 @@ export function WhatsAppMonitor({
       .order("sent_at", { ascending: true });
 
     if (!error && data) {
+      if (data.length > logs.length) {
+        setLastLogTime(Date.now());
+      }
       setLogs(data);
     }
     setLoading(false);
@@ -179,6 +240,7 @@ export function WhatsAppMonitor({
         },
         (payload) => {
           const newLog = payload.new as WhatsAppLog;
+          setLastLogTime(Date.now());
           setLogs((prev) => {
             if (prev.some((l) => l.id === newLog.id)) return prev;
             return [...prev, newLog];
@@ -217,6 +279,8 @@ export function WhatsAppMonitor({
     ? "Concluído"
     : isPaused
     ? "Pausado"
+    : isStalled
+    ? "Envio travado"
     : "Enviando...";
 
   return (
@@ -238,7 +302,7 @@ export function WhatsAppMonitor({
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">{statusText}</span>
-              {broadcastId && !isAllDone && (
+              {broadcastId && !isAllDone && !isStalled && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -252,6 +316,18 @@ export function WhatsAppMonitor({
                   ) : (
                     <Pause className="w-4 h-4 text-yellow-600" />
                   )}
+                </Button>
+              )}
+              {isStalled && broadcastId && !isAllDone && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={handleResume}
+                  disabled={togglingPause}
+                >
+                  <Play className="w-3 h-3 mr-1" />
+                  Retomar envio
                 </Button>
               )}
             </div>
@@ -274,6 +350,12 @@ export function WhatsAppMonitor({
             <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800">
               <Pause className="w-3 h-3 mr-1" />
               Pausado
+            </Badge>
+          )}
+          {isStalled && (
+            <Badge className="bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800">
+              <XCircle className="w-3 h-3 mr-1" />
+              Envio travado
             </Badge>
           )}
           {totalExpected && processed < totalExpected && !isPaused && (

@@ -148,6 +148,7 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
           condominiumId: condoId,
           fullName: memberData.fullName,
           phone: memberData.phone,
+          phoneSecondary: memberData.phoneSecondary || null,
           email: memberData.email,
           block: memberData.block,
           unit: memberData.unit,

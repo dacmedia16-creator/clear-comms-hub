@@ -12,6 +12,7 @@ const VISITA_TEMPLATE_IDENTIFIER = 'visita_prova_envio';
 const VIP7_TEMPLATE_IDENTIFIER = 'vip7_captacao';
 const VIP7_2_TEMPLATE_IDENTIFIER = 'vip7_captacao2';
 const VIP7_3_TEMPLATE_IDENTIFIER = 'vip7_captacao3';
+const VISITA3_TEMPLATE_IDENTIFIER = 'visita_prova_envio3';
 const TEMPLATE_LANGUAGE = 'pt_BR';
 
 interface RequestBody {

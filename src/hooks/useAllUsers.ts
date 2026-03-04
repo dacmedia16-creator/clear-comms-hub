@@ -31,30 +31,49 @@ export function useAllUsers() {
     setError(null);
     
     try {
-      // Fetch all profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (profilesError) throw profilesError;
+      // Fetch all profiles (paginated)
+      const allProfiles: any[] = [];
+      let profileOffset = 0;
+      const batchSize = 1000;
+      let hasMoreProfiles = true;
+      while (hasMoreProfiles) {
+        const { data, error: profilesError } = await supabase
+          .from("profiles")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(profileOffset, profileOffset + batchSize - 1);
+        if (profilesError) throw profilesError;
+        allProfiles.push(...(data || []));
+        hasMoreProfiles = (data?.length || 0) === batchSize;
+        profileOffset += batchSize;
+      }
 
       // Fetch super admin list
       const { data: superAdmins, error: saError } = await supabase
         .from("super_admins")
         .select("user_id");
 
-      // Fetch user roles with condominium names (including is_approved)
-      const { data: userRoles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select(`
-          id,
-          user_id,
-          role,
-          condominium_id,
-          is_approved,
-          condominiums (name)
-        `);
+      // Fetch user roles with condominium names (paginated)
+      const allUserRoles: any[] = [];
+      let rolesOffset = 0;
+      let hasMoreRoles = true;
+      while (hasMoreRoles) {
+        const { data, error: rolesError } = await supabase
+          .from("user_roles")
+          .select(`
+            id,
+            user_id,
+            role,
+            condominium_id,
+            is_approved,
+            condominiums (name)
+          `)
+          .range(rolesOffset, rolesOffset + batchSize - 1);
+        if (rolesError) throw rolesError;
+        allUserRoles.push(...(data || []));
+        hasMoreRoles = (data?.length || 0) === batchSize;
+        rolesOffset += batchSize;
+      }
 
       const superAdminIds = new Set(superAdmins?.map(sa => sa.user_id) || []);
       

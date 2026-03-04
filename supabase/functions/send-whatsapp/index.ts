@@ -56,6 +56,7 @@ interface ContactInfo {
   phone: string | null;
   full_name: string | null;
   email: string | null;
+  phone_secondary?: string | null;
 }
 
 interface MemberRow {

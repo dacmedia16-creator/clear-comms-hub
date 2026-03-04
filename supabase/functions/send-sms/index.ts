@@ -143,17 +143,29 @@ serve(async (req) => {
 
     // Unify members from both sources, filtering those with valid phone numbers
     let members: UnifiedMember[] = filteredRows
-      .map(role => {
+      .flatMap(role => {
         const source = role.profiles || role.condo_members;
-        if (!source || !source.phone) return null;
-        return {
-          phone: source.phone,
-          full_name: source.full_name,
-          block: role.block,
-          unit: role.unit,
-        };
-      })
-      .filter((m): m is UnifiedMember => m !== null);
+        if (!source) return [];
+        const entries: UnifiedMember[] = [];
+        if (source.phone) {
+          entries.push({
+            phone: source.phone,
+            full_name: source.full_name,
+            block: role.block,
+            unit: role.unit,
+          });
+        }
+        // Add secondary phone for condo_members
+        if (role.condo_members?.phone_secondary) {
+          entries.push({
+            phone: role.condo_members.phone_secondary,
+            full_name: source.full_name,
+            block: role.block,
+            unit: role.unit,
+          });
+        }
+        return entries;
+      });
 
     // Apply targeting filters
     const hasBlockFilter = announcement.target_blocks && announcement.target_blocks.length > 0;

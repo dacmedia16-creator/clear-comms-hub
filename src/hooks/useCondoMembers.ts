@@ -43,43 +43,55 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
     setError(null);
 
     try {
-      let query = supabase
-        .from("user_roles")
-        .select(`
-          id,
-          user_id,
-          member_id,
-          role,
-          block,
-          unit,
-          is_approved,
-          created_at,
-          list_id,
-          profiles:user_id (
-            id,
-            full_name,
-            email,
-            phone
-          ),
-          condo_members:member_id (
-            id,
-            full_name,
-            email,
-            phone,
-            phone_secondary
-          )
-        `)
-        .eq("condominium_id", condoId);
+      const allData: any[] = [];
+      let offset = 0;
+      const batchSize = 1000;
+      let hasMore = true;
 
-      if (listId) {
-        query = query.eq("list_id", listId);
+      while (hasMore) {
+        let query = supabase
+          .from("user_roles")
+          .select(`
+            id,
+            user_id,
+            member_id,
+            role,
+            block,
+            unit,
+            is_approved,
+            created_at,
+            list_id,
+            profiles:user_id (
+              id,
+              full_name,
+              email,
+              phone
+            ),
+            condo_members:member_id (
+              id,
+              full_name,
+              email,
+              phone,
+              phone_secondary
+            )
+          `)
+          .eq("condominium_id", condoId);
+
+        if (listId) {
+          query = query.eq("list_id", listId);
+        }
+
+        const { data, error: fetchError } = await query
+          .order("created_at", { ascending: false })
+          .range(offset, offset + batchSize - 1);
+
+        if (fetchError) throw fetchError;
+        allData.push(...(data || []));
+        hasMore = (data?.length || 0) === batchSize;
+        offset += batchSize;
       }
 
-      const { data, error: fetchError } = await query.order("created_at", { ascending: false });
-
-      if (fetchError) throw fetchError;
-
-      const formattedMembers: CondoMember[] = (data || []).map((item: any) => ({
+      const formattedMembers: CondoMember[] = allData.map((item: any) => ({
         id: item.id,
         user_id: item.user_id,
         member_id: item.member_id,

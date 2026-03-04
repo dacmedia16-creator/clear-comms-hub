@@ -302,7 +302,7 @@ export function WhatsAppMonitor({
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">{statusText}</span>
-              {broadcastId && !isAllDone && (
+              {broadcastId && !isAllDone && !isStalled && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -316,6 +316,18 @@ export function WhatsAppMonitor({
                   ) : (
                     <Pause className="w-4 h-4 text-yellow-600" />
                   )}
+                </Button>
+              )}
+              {isStalled && broadcastId && !isAllDone && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={handleResume}
+                  disabled={togglingPause}
+                >
+                  <Play className="w-3 h-3 mr-1" />
+                  Retomar envio
                 </Button>
               )}
             </div>

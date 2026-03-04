@@ -29,6 +29,7 @@ import {
 export interface UpdateMemberData {
   fullName?: string;
   phone?: string;
+  phoneSecondary?: string;
   email?: string;
   block: string;
   unit: string;

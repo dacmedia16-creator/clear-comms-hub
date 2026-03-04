@@ -32,6 +32,7 @@ import {
 export interface ParsedMember {
   fullName: string;
   phone: string;
+  phoneSecondary: string;
   email: string;
   block: string;
   unit: string;

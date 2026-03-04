@@ -1,88 +1,78 @@
 
 
-## Adicionar Pause/Resume nos envios de WhatsApp
+## Fix: Statement timeout on large organizations
 
-### Problema
-Atualmente nao existe forma de pausar um disparo de WhatsApp em andamento. Uma vez iniciado, o processo roda ate o fim sem controle do usuario.
+### Root Cause (confirmed)
 
-### Arquitetura da solucao
-A Edge Function `send-whatsapp` usa self-invocation em lotes de 10. Para implementar pause/resume, precisamos de um flag no banco que a Edge Function consulta antes de cada lote. Quando pausado, ela para de se auto-invocar. Quando despausado, o frontend dispara a retomada.
+The `View roles` RLS policy on `user_roles` evaluates `can_manage_condominium(condominium_id)` **for every row**. This function internally calls 4 subqueries (is_condominium_owner, has_condominium_role ×2, is_super_admin). With 4616 rows, that's ~18,000 subqueries per page load, causing a PostgreSQL statement timeout.
 
-### Alteracoes
+The split-query approach we already implemented doesn't help because the timeout happens at the database level, before results reach the client.
 
-#### 1. Migracoes de banco de dados
+### Solution: SECURITY DEFINER function to bypass per-row RLS
 
-Criar tabela `whatsapp_broadcasts` para rastrear o estado de cada disparo:
+Create a database function `get_condominium_user_roles` that:
+1. Checks permission **once** (is user a manager/owner/super_admin?)
+2. If authorized, returns all `user_roles` for that condominium directly (bypassing the per-row RLS check)
+
+#### Migration SQL
 
 ```sql
-CREATE TABLE public.whatsapp_broadcasts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  announcement_id UUID NOT NULL REFERENCES public.announcements(id),
-  condominium_id UUID NOT NULL,
-  status TEXT NOT NULL DEFAULT 'processing', -- processing, paused, completed
-  total_members INT NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+CREATE OR REPLACE FUNCTION public.get_condominium_user_roles(
+  _condominium_id uuid,
+  _list_id uuid DEFAULT NULL
+)
+RETURNS TABLE(
+  id uuid,
+  user_id uuid,
+  member_id uuid,
+  role app_role,
+  block text,
+  unit text,
+  is_approved boolean,
+  created_at timestamptz,
+  list_id uuid
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Check permission ONCE
+  IF NOT (
+    can_manage_condominium(_condominium_id) 
+    OR is_super_admin()
+  ) THEN
+    RAISE EXCEPTION 'Access denied';
+  END IF;
 
-ALTER TABLE public.whatsapp_broadcasts ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Authenticated users can view broadcasts"
-  ON public.whatsapp_broadcasts FOR SELECT
-  TO authenticated USING (true);
-
-CREATE POLICY "Authenticated users can update broadcasts"
-  ON public.whatsapp_broadcasts FOR UPDATE
-  TO authenticated USING (true);
-
-CREATE POLICY "Service role can insert broadcasts"
-  ON public.whatsapp_broadcasts FOR INSERT
-  TO authenticated WITH CHECK (true);
-
-ALTER PUBLICATION supabase_realtime ADD TABLE public.whatsapp_broadcasts;
+  -- Return rows without per-row RLS
+  RETURN QUERY
+    SELECT ur.id, ur.user_id, ur.member_id, ur.role, 
+           ur.block, ur.unit, ur.is_approved, ur.created_at, ur.list_id
+    FROM user_roles ur
+    WHERE ur.condominium_id = _condominium_id
+      AND (_list_id IS NULL OR ur.list_id = _list_id)
+    ORDER BY ur.created_at DESC;
+END;
+$$;
 ```
 
-#### 2. `supabase/functions/send-whatsapp/index.ts`
+#### Code change: `src/hooks/useCondoMembers.ts`
 
-- No inicio do processamento (primeira invocacao), criar um registro em `whatsapp_broadcasts` com `status = 'processing'` e `total_members = members.length`
-- Retornar o `broadcast_id` na resposta inicial ao frontend
-- Na funcao `processBatch`, antes de processar cada lote e antes de cada self-invoke:
-  - Consultar `whatsapp_broadcasts` pelo `announcement_id`
-  - Se `status === 'paused'`, nao processar o lote e nao fazer self-invoke (encerrar silenciosamente)
-- Passar o `broadcast_id` no payload de self-invocacao
-- Ao terminar todos os lotes, atualizar `status = 'completed'`
+Replace the paginated `user_roles` SELECT with a single RPC call:
 
-#### 3. `src/components/WhatsAppMonitor.tsx`
+```typescript
+// Instead of: supabase.from("user_roles").select(...)
+const { data, error } = await supabase.rpc('get_condominium_user_roles', {
+  _condominium_id: condoId,
+  _list_id: listId || null,
+});
+```
 
-- Receber prop opcional `broadcastId`
-- Adicionar estado `isPaused` sincronizado com `whatsapp_broadcasts.status`
-- Usar Realtime subscription na tabela `whatsapp_broadcasts` para atualizar o estado em tempo real
-- Adicionar botao Pause/Play ao lado do texto "Enviando..." / "Pausado":
-  - Pause: faz `UPDATE whatsapp_broadcasts SET status = 'paused'` e mostra icone Play
-  - Play: faz `UPDATE whatsapp_broadcasts SET status = 'processing'` e re-invoca a Edge Function `send-whatsapp` com os mesmos parametros do announcement para retomar (a funcao vai buscar membros novamente, desduplicando os ja enviados)
-- Quando pausado, exibir "Pausado" no texto de status e badge amarelo
+This checks permission once, then returns all rows in a single efficient query. The existing batch-fetch logic for `condo_members` and `profiles` remains unchanged.
 
-#### 4. `src/hooks/useSendWhatsApp.ts`
-
-- Extrair `broadcast_id` da resposta da Edge Function e expor via `lastBroadcastId`
-- Passar para o `WhatsAppMonitor` ao abri-lo
-
-#### 5. `src/pages/AdminCondominiumPage.tsx`
-
-- Passar `broadcastId` ao `WhatsAppMonitor`
-
-### Fluxo
-
-1. Usuario dispara envio -> Edge Function cria registro em `whatsapp_broadcasts` com `status = 'processing'`
-2. Monitor exibe botao de Pause
-3. Usuario clica Pause -> frontend atualiza `status = 'paused'`
-4. Edge Function, ao tentar processar proximo lote, ve `status = 'paused'` e para
-5. Usuario clica Play -> frontend atualiza `status = 'processing'` e re-invoca a Edge Function
-6. Edge Function busca membros novamente, deduplica pelos ja enviados, e continua de onde parou
-
-### Detalhes tecnicos
-
-- A deduplicacao ja existente (linhas 186-198 do send-whatsapp) garante que ao retomar, membros ja enviados sao ignorados automaticamente
-- Nenhum dado de payload precisa ser persistido; a retomada refaz o fetch de membros com deduplicacao
-- O intervalo entre lotes (15-30s) da tempo suficiente para a verificacao de pausa
+### Files to change
+- **Database migration**: Create `get_condominium_user_roles` function
+- **`src/hooks/useCondoMembers.ts`**: Replace paginated user_roles query with RPC call
 

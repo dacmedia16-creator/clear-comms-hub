@@ -159,6 +159,7 @@ export function ImportMembersDialog({
     return {
       fullName,
       phone,
+      phoneSecondary,
       email,
       block,
       unit: rawUnit,

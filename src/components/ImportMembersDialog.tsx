@@ -345,11 +345,11 @@ export function ImportMembersDialog({
                       <TableHead className="w-10">Status</TableHead>
                       <TableHead>Nome</TableHead>
                       <TableHead>Telefone</TableHead>
+                      <TableHead>Tel 2</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>{terms.block}</TableHead>
                       <TableHead>{terms.unit}</TableHead>
                       <TableHead>Função</TableHead>
-                      <TableHead>Tel 2</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

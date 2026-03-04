@@ -43,7 +43,7 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
     setError(null);
 
     try {
-      // Step 1: Fetch user_roles via RPC with pagination (bypasses per-row RLS)
+      // Step 1: Fetch user_roles via RPC with SQL-level pagination (bypasses per-row RLS + PostgREST row limit)
       const batchSize = 1000;
       const allRoles: any[] = [];
       let offset = 0;
@@ -54,8 +54,10 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
           {
             _condominium_id: condoId,
             _list_id: listId || null,
+            _limit: batchSize,
+            _offset: offset,
           }
-        ).range(offset, offset + batchSize - 1);
+        );
 
         if (fetchError) throw fetchError;
         allRoles.push(...(data || []));

@@ -941,20 +941,40 @@ export type Database = {
           phone_secondary: string
         }[]
       }
-      get_condominium_user_roles: {
-        Args: { _condominium_id: string; _list_id?: string }
-        Returns: {
-          block: string
-          created_at: string
-          id: string
-          is_approved: boolean
-          list_id: string
-          member_id: string
-          role: Database["public"]["Enums"]["app_role"]
-          unit: string
-          user_id: string
-        }[]
-      }
+      get_condominium_user_roles:
+        | {
+            Args: { _condominium_id: string; _list_id?: string }
+            Returns: {
+              block: string
+              created_at: string
+              id: string
+              is_approved: boolean
+              list_id: string
+              member_id: string
+              role: Database["public"]["Enums"]["app_role"]
+              unit: string
+              user_id: string
+            }[]
+          }
+        | {
+            Args: {
+              _condominium_id: string
+              _limit?: number
+              _list_id?: string
+              _offset?: number
+            }
+            Returns: {
+              block: string
+              created_at: string
+              id: string
+              is_approved: boolean
+              list_id: string
+              member_id: string
+              role: Database["public"]["Enums"]["app_role"]
+              unit: string
+              user_id: string
+            }[]
+          }
       has_condominium_role: {
         Args: {
           _role?: Database["public"]["Enums"]["app_role"]

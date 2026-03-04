@@ -1,88 +1,74 @@
 
 
-## Adicionar Pause/Resume nos envios de WhatsApp
+## Auditoria: Queries sem paginação que podem exceder 1000 registros
 
-### Problema
-Atualmente nao existe forma de pausar um disparo de WhatsApp em andamento. Uma vez iniciado, o processo roda ate o fim sem controle do usuario.
+Analisei todas as queries do projeto. Abaixo está a classificação completa.
 
-### Arquitetura da solucao
-A Edge Function `send-whatsapp` usa self-invocation em lotes de 10. Para implementar pause/resume, precisamos de um flag no banco que a Edge Function consulta antes de cada lote. Quando pausado, ela para de se auto-invocar. Quando despausado, o frontend dispara a retomada.
+---
 
-### Alteracoes
+### Queries JA CORRIGIDAS (com paginação ou RPC)
 
-#### 1. Migracoes de banco de dados
+| Arquivo | Tabela | Correção |
+|---------|--------|----------|
+| `useCondoMembers.ts` | `user_roles` | RPC `get_condominium_user_roles` + batch fetch |
+| `useCondoMembers.ts` | `condo_members`, `profiles` | Batch `.in()` com lotes de 1000 |
+| `MemberSearchSelect.tsx` | `user_roles` | Loop paginado com `.range()` |
+| `MemberListSearchSelect.tsx` | `user_roles` | Loop paginado com `.range()` |
 
-Criar tabela `whatsapp_broadcasts` para rastrear o estado de cada disparo:
+---
 
-```sql
-CREATE TABLE public.whatsapp_broadcasts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  announcement_id UUID NOT NULL REFERENCES public.announcements(id),
-  condominium_id UUID NOT NULL,
-  status TEXT NOT NULL DEFAULT 'processing', -- processing, paused, completed
-  total_members INT NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+### Queries que PRECISAM de correção (podem exceder 1000)
 
-ALTER TABLE public.whatsapp_broadcasts ENABLE ROW LEVEL SECURITY;
+| # | Arquivo | Tabela | Risco | Severidade |
+|---|---------|--------|-------|------------|
+| 1 | `useAllUsers.ts:48` | `user_roles` | Busca TODOS os roles sem `.range()`. Com 4616+ membros em um condo + outros, facilmente >1000 | **Alta** |
+| 2 | `useAllUsers.ts:35` | `profiles` | Busca TODOS os perfis sem `.range()`. Cresce com a base de usuários | **Media** |
+| 3 | `useAllAnnouncements.ts:39` | `announcements` | Busca TODOS os avisos sem `.range()`. Cresce linearmente | **Media** |
+| 4 | `AdminCondominiumPage.tsx:186` | `announcements` | Avisos de um condo sem limite. Improvável >1000 por condo no curto prazo | **Baixa** |
+| 5 | `AdminCondominiumPage.tsx:241` | `user_roles` | Membros por list_id, sem `.range()`. Improvável >1000 por lista | **Baixa** |
+| 6 | `TimelinePage.tsx:140` | `announcements` | Avisos de um condo (público). Mesmo cenário do item 4 | **Baixa** |
 
-CREATE POLICY "Authenticated users can view broadcasts"
-  ON public.whatsapp_broadcasts FOR SELECT
-  TO authenticated USING (true);
+---
 
-CREATE POLICY "Authenticated users can update broadcasts"
-  ON public.whatsapp_broadcasts FOR UPDATE
-  TO authenticated USING (true);
+### Queries SEGURAS (sem risco de >1000)
 
-CREATE POLICY "Service role can insert broadcasts"
-  ON public.whatsapp_broadcasts FOR INSERT
-  TO authenticated WITH CHECK (true);
+- `useProfile.ts` — filtra por `user_id` (1 registro)
+- `useAllCondominiums.ts` — quantidade de condos cresce lentamente
+- `useMemberLists.ts` — listas por condo, quantidade baixa
+- `CondominiumSettingsPage.tsx` — `.single()`
+- `useOrganizationTerms.ts` — `.single()`
+- `super_admins` — quantidade inerentemente pequena
+- Queries de logs (whatsapp_logs, email_logs, sms_logs) — filtradas por condo, mas podem precisar de atenção futura
 
-ALTER PUBLICATION supabase_realtime ADD TABLE public.whatsapp_broadcasts;
+---
+
+### Plano de correção (3 itens prioritários)
+
+#### 1. `useAllUsers.ts` — `user_roles` (Alta prioridade)
+Adicionar loop paginado com `.range()` na query de `user_roles` (linha 48):
+```typescript
+const allRoles: any[] = [];
+let offset = 0;
+const batchSize = 1000;
+let hasMore = true;
+while (hasMore) {
+  const { data } = await supabase
+    .from("user_roles")
+    .select(`id, user_id, role, condominium_id, is_approved, condominiums (name)`)
+    .range(offset, offset + batchSize - 1);
+  allRoles.push(...(data || []));
+  hasMore = (data?.length || 0) === batchSize;
+  offset += batchSize;
+}
 ```
 
-#### 2. `supabase/functions/send-whatsapp/index.ts`
+#### 2. `useAllUsers.ts` — `profiles` (Media prioridade)
+Mesmo padrão de loop paginado na query de `profiles` (linha 35).
 
-- No inicio do processamento (primeira invocacao), criar um registro em `whatsapp_broadcasts` com `status = 'processing'` e `total_members = members.length`
-- Retornar o `broadcast_id` na resposta inicial ao frontend
-- Na funcao `processBatch`, antes de processar cada lote e antes de cada self-invoke:
-  - Consultar `whatsapp_broadcasts` pelo `announcement_id`
-  - Se `status === 'paused'`, nao processar o lote e nao fazer self-invoke (encerrar silenciosamente)
-- Passar o `broadcast_id` no payload de self-invocacao
-- Ao terminar todos os lotes, atualizar `status = 'completed'`
+#### 3. `useAllAnnouncements.ts` — `announcements` (Media prioridade)
+Mesmo padrão de loop paginado na query de `announcements` (linha 39).
 
-#### 3. `src/components/WhatsAppMonitor.tsx`
-
-- Receber prop opcional `broadcastId`
-- Adicionar estado `isPaused` sincronizado com `whatsapp_broadcasts.status`
-- Usar Realtime subscription na tabela `whatsapp_broadcasts` para atualizar o estado em tempo real
-- Adicionar botao Pause/Play ao lado do texto "Enviando..." / "Pausado":
-  - Pause: faz `UPDATE whatsapp_broadcasts SET status = 'paused'` e mostra icone Play
-  - Play: faz `UPDATE whatsapp_broadcasts SET status = 'processing'` e re-invoca a Edge Function `send-whatsapp` com os mesmos parametros do announcement para retomar (a funcao vai buscar membros novamente, desduplicando os ja enviados)
-- Quando pausado, exibir "Pausado" no texto de status e badge amarelo
-
-#### 4. `src/hooks/useSendWhatsApp.ts`
-
-- Extrair `broadcast_id` da resposta da Edge Function e expor via `lastBroadcastId`
-- Passar para o `WhatsAppMonitor` ao abri-lo
-
-#### 5. `src/pages/AdminCondominiumPage.tsx`
-
-- Passar `broadcastId` ao `WhatsAppMonitor`
-
-### Fluxo
-
-1. Usuario dispara envio -> Edge Function cria registro em `whatsapp_broadcasts` com `status = 'processing'`
-2. Monitor exibe botao de Pause
-3. Usuario clica Pause -> frontend atualiza `status = 'paused'`
-4. Edge Function, ao tentar processar proximo lote, ve `status = 'paused'` e para
-5. Usuario clica Play -> frontend atualiza `status = 'processing'` e re-invoca a Edge Function
-6. Edge Function busca membros novamente, deduplica pelos ja enviados, e continua de onde parou
-
-### Detalhes tecnicos
-
-- A deduplicacao ja existente (linhas 186-198 do send-whatsapp) garante que ao retomar, membros ja enviados sao ignorados automaticamente
-- Nenhum dado de payload precisa ser persistido; a retomada refaz o fetch de membros com deduplicacao
-- O intervalo entre lotes (15-30s) da tempo suficiente para a verificacao de pausa
+### Arquivos a alterar
+- `src/hooks/useAllUsers.ts` — Paginar `profiles` e `user_roles`
+- `src/hooks/useAllAnnouncements.ts` — Paginar `announcements`
 

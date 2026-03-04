@@ -204,6 +204,9 @@ export function WhatsAppMonitor({
       .order("sent_at", { ascending: true });
 
     if (!error && data) {
+      if (data.length > logs.length) {
+        setLastLogTime(Date.now());
+      }
       setLogs(data);
     }
     setLoading(false);

@@ -130,7 +130,7 @@ export default function AdminCondominiumPage() {
   const [selectedBlocks, setSelectedBlocks] = useState<string[]>([]);
   const [targetUnits, setTargetUnits] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
-  const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
 
   // Member lists for generic orgs
   const { lists: memberLists } = useMemberLists(condoId);

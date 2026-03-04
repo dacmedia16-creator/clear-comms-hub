@@ -45,6 +45,8 @@ export function WhatsAppMonitor({
   const [loading, setLoading] = useState(true);
   const [broadcastStatus, setBroadcastStatus] = useState<string | null>(null);
   const [togglingPause, setTogglingPause] = useState(false);
+  const [lastLogTime, setLastLogTime] = useState<number>(Date.now());
+  const [isStalled, setIsStalled] = useState(false);
 
   const isPaused = broadcastStatus === 'paused';
   const isCompleted = broadcastStatus === 'completed';

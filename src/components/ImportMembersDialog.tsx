@@ -372,6 +372,9 @@ export function ImportMembersDialog({
                           {member.phone || <span className="text-destructive">—</span>}
                         </TableCell>
                         <TableCell>
+                          {member.phoneSecondary || <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell>
                           {member.email || <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell>
@@ -381,9 +384,6 @@ export function ImportMembersDialog({
                           {member.unit || <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="capitalize">{getRoleLabel(member.role, terms)}</TableCell>
-                        <TableCell>
-                          {member.phoneSecondary || <span className="text-muted-foreground">—</span>}
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

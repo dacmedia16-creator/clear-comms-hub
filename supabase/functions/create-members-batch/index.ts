@@ -9,6 +9,7 @@ const corsHeaders = {
 interface MemberInput {
   fullName: string;
   phone: string;
+  phoneSecondary: string;
   email: string;
   block: string;
   unit: string;

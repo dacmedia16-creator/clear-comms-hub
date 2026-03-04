@@ -7,6 +7,7 @@ export const VIP7_TEMPLATE_IDENTIFIER = 'vip7_captacao';
 export const VIP7_2_TEMPLATE_IDENTIFIER = 'vip7_captacao2';
 export const VIP7_3_TEMPLATE_IDENTIFIER = 'vip7_captacao3';
 export const VISITA3_TEMPLATE_IDENTIFIER = 'visita_prova_envio3';
+export const VISITA4_TEMPLATE_IDENTIFIER = 'visita_prova_envio4';
 export const TEMPLATE_LANGUAGE = 'pt_BR';
 
 // Preview text — simula o template da Meta para exibição local

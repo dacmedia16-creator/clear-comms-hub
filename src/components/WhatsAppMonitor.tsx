@@ -89,6 +89,62 @@ export function WhatsAppMonitor({
     };
   }, [broadcastId]);
 
+  // Stall detection: no new logs for 60s while processing
+  useEffect(() => {
+    if (!broadcastId || isPaused || isCompleted) {
+      setIsStalled(false);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - lastLogTime) / 1000;
+      setIsStalled(broadcastStatus === 'processing' && elapsed > 60 && logs.length > 0);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [broadcastId, broadcastStatus, isPaused, isCompleted, lastLogTime, logs.length]);
+
+  const handleResume = async () => {
+    if (!broadcastId) return;
+    setTogglingPause(true);
+    try {
+      await supabase
+        .from('whatsapp_broadcasts')
+        .update({ status: 'processing', updated_at: new Date().toISOString() })
+        .eq('id', broadcastId);
+
+      const { data: ann } = await supabase
+        .from('announcements')
+        .select('id, title, summary, category, target_blocks, target_units, target_member_ids')
+        .eq('id', announcementId)
+        .single();
+
+      const { data: condo } = await supabase
+        .from('condominiums')
+        .select('id, name, slug')
+        .eq('id', condominiumId)
+        .single();
+
+      if (ann && condo) {
+        await supabase.functions.invoke('send-whatsapp', {
+          body: {
+            announcement: ann,
+            condominium: condo,
+            baseUrl: window.location.origin,
+            existingBroadcastId: broadcastId,
+          },
+        });
+        setIsStalled(false);
+        setLastLogTime(Date.now());
+        toast({ title: "Envio retomado", description: "O disparo de WhatsApp foi retomado." });
+      }
+    } catch (err) {
+      console.error("Error resuming:", err);
+    } finally {
+      setTogglingPause(false);
+    }
+  };
+
   const handleTogglePause = async () => {
     if (!broadcastId) return;
     setTogglingPause(true);

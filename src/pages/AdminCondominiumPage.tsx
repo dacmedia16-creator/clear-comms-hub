@@ -62,6 +62,7 @@ import { Badge } from "@/components/ui/badge";
 import { useOrganizationBehavior } from "@/hooks/useOrganizationBehavior";
 import { getOrganizationBehavior } from "@/lib/organization-types";
 import { MemberSearchSelect } from "@/components/MemberSearchSelect";
+import { MemberListSearchSelect } from "@/components/MemberListSearchSelect";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { linkifyText, linkifyTextWithButtons } from "@/lib/utils";
 import { WhatsAppMonitor } from "@/components/WhatsAppMonitor";

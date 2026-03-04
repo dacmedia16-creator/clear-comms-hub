@@ -196,8 +196,22 @@ export function WhatsAppMonitor({
   const failed = logs.filter((l) => l.status === "failed").length;
   const total = totalExpected || logs.length;
   const processed = sent + failed;
+  const remaining = total - processed;
   const progressPercent = total > 0 ? Math.round((processed / total) * 100) : 0;
   const isAllDone = totalExpected ? processed >= totalExpected : isCompleted;
+
+  const formatEstimate = (seconds: number): string => {
+    if (seconds < 60) return `~${seconds}s restantes`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `~${minutes} min restante${minutes !== 1 ? "s" : ""}`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMin = minutes % 60;
+    return remainingMin > 0 ? `~${hours}h ${remainingMin}min` : `~${hours}h`;
+  };
+
+  const estimatedTimeText = remaining > 0 && !isAllDone && !isPaused
+    ? formatEstimate(remaining * 21)
+    : null;
 
   const statusText = isAllDone
     ? "Concluído"

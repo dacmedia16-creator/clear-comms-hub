@@ -931,6 +931,16 @@ export type Database = {
       can_create_announcement: { Args: { cond_id: string }; Returns: boolean }
       can_manage_condominium: { Args: { cond_id: string }; Returns: boolean }
       generate_unique_slug: { Args: { base_name: string }; Returns: string }
+      get_condo_members_by_ids: {
+        Args: { _member_ids: string[] }
+        Returns: {
+          email: string
+          full_name: string
+          id: string
+          phone: string
+          phone_secondary: string
+        }[]
+      }
       get_condominium_user_roles: {
         Args: { _condominium_id: string; _list_id?: string }
         Returns: {

@@ -232,19 +232,20 @@ export default function AdminCondominiumPage() {
       let targetMemberIdsArray: string[] | null = null;
       if (recipientType === "specific" && selectedMemberIds.length > 0) {
         targetMemberIdsArray = selectedMemberIds;
-      } else if (recipientType === "list" && selectedListId) {
-        // Fetch member IDs from the selected list
+      } else if (recipientType === "list" && selectedListIds.length > 0) {
+        // Fetch member IDs from all selected lists
         const { data: listMembers, error: listError } = await supabase
           .from("user_roles")
           .select("member_id")
           .eq("condominium_id", condominium.id)
-          .eq("list_id", selectedListId)
+          .in("list_id", selectedListIds)
           .not("member_id", "is", null);
 
         if (listError) throw listError;
-        targetMemberIdsArray = listMembers?.map(m => m.member_id!).filter(Boolean) || null;
-        if (targetMemberIdsArray && targetMemberIdsArray.length === 0) {
-          toast({ title: "Lista vazia", description: "A lista selecionada não possui membros.", variant: "destructive" });
+        const uniqueIds = [...new Set(listMembers?.map(m => m.member_id!).filter(Boolean) || [])];
+        targetMemberIdsArray = uniqueIds.length > 0 ? uniqueIds : null;
+        if (!targetMemberIdsArray) {
+          toast({ title: "Listas vazias", description: "As listas selecionadas não possuem membros.", variant: "destructive" });
           setCreating(false);
           return;
         }

@@ -380,6 +380,12 @@ export function getMemberPhone(member: CondoMember): string | null {
   return null;
 }
 
+// Helper function to get secondary phone from a member
+export function getMemberPhoneSecondary(member: CondoMember): string | null {
+  if (member.condo_member?.phone_secondary) return member.condo_member.phone_secondary;
+  return null;
+}
+
 // Helper function to get formatted location (block + unit)
 export function getMemberLocation(member: CondoMember): string {
   const parts: string[] = [];

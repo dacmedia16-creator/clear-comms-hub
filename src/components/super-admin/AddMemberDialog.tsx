@@ -191,6 +191,7 @@ export function AddMemberDialog({
     const result = await onCreateNew({
       fullName: fullName.trim(),
       phone: phone.trim(),
+      phoneSecondary: phoneSecondary.trim(),
       email: email.trim(),
       block: block.trim(),
       unit: unit.trim(),

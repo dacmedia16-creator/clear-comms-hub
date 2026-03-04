@@ -54,6 +54,7 @@ export function EditMemberDialog({
 }: EditMemberDialogProps) {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneSecondary, setPhoneSecondary] = useState("");
   const [email, setEmail] = useState("");
   const [block, setBlock] = useState("");
   const [unit, setUnit] = useState("");

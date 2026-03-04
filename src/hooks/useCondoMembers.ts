@@ -298,6 +298,7 @@ export function useCondoMembers(condoId: string, listId?: string | null) {
     updates: {
       fullName?: string;
       phone?: string;
+      phoneSecondary?: string;
       email?: string;
       block: string;
       unit: string;

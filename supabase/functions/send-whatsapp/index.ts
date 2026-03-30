@@ -49,6 +49,8 @@ interface RequestBody {
   templateIdentifier?: string;
   broadcastId?: string;
   existingBroadcastId?: string;
+  buttonConfig?: string;
+  hasNomeParam?: boolean;
 }
 
 interface ContactInfo {
@@ -386,6 +388,8 @@ async function processBatch(
           authHeader,
           templateIdentifier,
           broadcastId,
+          buttonConfig,
+          hasNomeParam,
         }),
       });
       const resText = await res.text();
@@ -413,7 +417,7 @@ serve(async (req) => {
 
   try {
     const body: RequestBody = await req.json();
-    const { announcement, condominium, batchOffset = 0, membersPayload, authHeader: passedAuthHeader, templateIdentifier: passedTemplateIdentifier, broadcastId: passedBroadcastId, existingBroadcastId } = body;
+    const { announcement, condominium, batchOffset = 0, membersPayload, authHeader: passedAuthHeader, templateIdentifier: passedTemplateIdentifier, broadcastId: passedBroadcastId, existingBroadcastId, buttonConfig: passedButtonConfig, hasNomeParam: passedHasNomeParam } = body;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -425,7 +429,7 @@ serve(async (req) => {
       console.log(`[Continuation] Batch offset=${batchOffset}, members=${membersPayload.length}`);
 
       EdgeRuntime.waitUntil(
-        processBatch(membersPayload, batchOffset, passedAuthHeader, announcement, condominium, supabase, passedTemplateIdentifier ?? TEMPLATE_IDENTIFIER, passedBroadcastId)
+        processBatch(membersPayload, batchOffset, passedAuthHeader, announcement, condominium, supabase, passedTemplateIdentifier ?? TEMPLATE_IDENTIFIER, passedBroadcastId, passedButtonConfig ?? 'two_buttons', passedHasNomeParam ?? true)
       );
 
       return new Response(
@@ -498,7 +502,7 @@ serve(async (req) => {
 
     // Start first batch in background
     EdgeRuntime.waitUntil(
-      processBatch(members, 0, senderInfo.authHeader, announcement, condominium, supabase, templateIdentifier, broadcastId)
+      processBatch(members, 0, senderInfo.authHeader, announcement, condominium, supabase, templateIdentifier, broadcastId, senderInfo.buttonConfig, senderInfo.hasNomeParam)
     );
 
     return new Response(

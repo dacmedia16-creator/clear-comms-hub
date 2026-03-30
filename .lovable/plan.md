@@ -1,27 +1,49 @@
 
 
-## Excluir todos os contatos da lista "Corretores - SP"
+## Correção definitiva: mapeamento de botões configurável por template
 
-A lista **"Corretores - SP"** (ID: `643e6e70-b3b1-4486-bf87-6791e2f8e8f0`) possui **4.028 membros** no condomínio `8a02e332-706a-4129-93be-0794b4a17786`.
+### Problema raiz
 
-### Operações necessárias
+O template `visita_prova_envio2` retorna status 201 do Zion Talk mas a mensagem não chega ao WhatsApp. Isso acontece porque o mapeamento de botões dinâmicos está **hardcoded** nas Edge Functions (`send-whatsapp` e `test-whatsapp`), e `visita_prova_envio2` não está em nenhuma das listas especiais -- caindo no branch padrão de 2 botões, que provavelmente não corresponde à estrutura real desse template na Meta.
 
-1. **Criar edge function temporária** `delete-list-members` que:
-   - Recebe `list_id` no body
-   - Usa service role para buscar todos `member_id` da `user_roles` com esse `list_id`
-   - Deleta os registros de `user_roles` (vínculos)
-   - Deleta os registros de `condo_members` correspondentes (dados dos contatos)
-   - Processa em lotes de 500 para evitar timeouts
+Hoje existem 3 categorias hardcoded:
+- `singleButtonIdx0Templates` → vip7_captacao2, vip7_captacao3
+- `singleButtonIdx1Templates` → visita_prova_envio, visita_prova_envio4, vip7_captacao
+- Default (else) → 2 botões (slug + optout)
 
-2. **Executar** a function com o `list_id` da lista "Corretores - SP"
+Cada novo template exige edição manual do código. Templates como `visita_prova_envio2` e `visita_prova_envio6` ficam sem mapeamento correto.
 
-3. **Opcionalmente excluir a lista** (`member_lists`) se desejado
+### Solução
 
-4. **Remover a edge function temporária** após conclusão
+Adicionar uma coluna `button_config` à tabela `whatsapp_senders` que define a estrutura de botões do template. A Edge Function lê essa config do DB em vez de usar listas hardcoded.
+
+### Valores possíveis de `button_config`
+
+| Valor | Comportamento | Templates |
+|-------|--------------|-----------|
+| `two_buttons` | btn[0]=slug, btn[1]=optout | aviso_pro_confirma_3, visita_prova_envio3 |
+| `single_button_idx0` | btn[0]=optout, sem nome | vip7_captacao2, vip7_captacao3 |
+| `single_button_idx1` | btn[1]=optout | visita_prova_envio, visita_prova_envio4, vip7_captacao |
+| `no_buttons` | Nenhum botão dinâmico | Templates sem botão |
+
+### Alterações
+
+1. **Migração SQL**: Adicionar coluna `button_config text not null default 'two_buttons'` à tabela `whatsapp_senders`. Adicionar coluna `has_nome_param boolean not null default true` (para controlar se envia `bodyParams[nome]`).
+
+2. **Edge Function `send-whatsapp`**: Ler `button_config` e `has_nome_param` do sender (já buscado na `resolveAuthHeader`). Substituir as listas hardcoded por lógica baseada nesses campos.
+
+3. **Edge Function `test-whatsapp`**: Mesma lógica -- ler config do sender e usar para montar o payload de teste.
+
+4. **UI do sender (AddWhatsAppSenderDialog + EditWhatsAppSenderDialog)**: Adicionar select para `button_config` e checkbox para `has_nome_param`, com descrições claras.
+
+5. **WhatsAppSendersCard**: Exibir a config de botões na tabela.
+
+6. **Atualizar sender atual**: UPDATE do registro "Visita Prova" com o `button_config` correto para `visita_prova_envio2` (precisa saber qual é -- provavelmente `single_button_idx1` baseado no padrão dos outros templates "visita_prova").
 
 ### Detalhes técnicos
 
-- A exclusão segue a ordem: primeiro `user_roles` (que referencia `member_id`), depois `condo_members`
-- Membros que existam em outras listas **não** serão excluídos da `condo_members` (verificação antes de deletar)
-- Total estimado: ~4.028 registros em `user_roles` + correspondentes em `condo_members`
+- A coluna `button_config` substitui completamente as listas hardcoded `singleButtonIdx0Templates` e `singleButtonIdx1Templates`
+- A coluna `has_nome_param` substitui a lista hardcoded `noNomeTemplates`
+- Fallback para `two_buttons` e `has_nome_param=true` mantém compatibilidade com templates existentes
+- Nenhuma alteração na lógica de deduplicação, pause/resume ou broadcast
 

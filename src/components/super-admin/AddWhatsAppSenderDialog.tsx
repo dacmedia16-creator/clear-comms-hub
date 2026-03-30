@@ -14,6 +14,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CreateWhatsAppSender } from "@/hooks/useWhatsAppSenders";
 
 interface AddWhatsAppSenderDialogProps {
@@ -28,6 +35,13 @@ function formatPhoneBR(value: string): string {
   return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
 }
 
+const BUTTON_CONFIG_OPTIONS = [
+  { value: "two_buttons", label: "2 Botões (link + optout)", description: "btn[0]=slug, btn[1]=optout" },
+  { value: "single_button_idx0", label: "1 Botão (idx 0)", description: "btn[0]=optout, sem nome" },
+  { value: "single_button_idx1", label: "1 Botão (idx 1)", description: "btn[1]=optout" },
+  { value: "no_buttons", label: "Sem botões", description: "Nenhum botão dinâmico" },
+];
+
 export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -37,6 +51,8 @@ export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps)
   const [isActive, setIsActive] = useState(true);
   const [isDefault, setIsDefault] = useState(false);
   const [templateIdentifier, setTemplateIdentifier] = useState("");
+  const [buttonConfig, setButtonConfig] = useState("two_buttons");
+  const [hasNomeParam, setHasNomeParam] = useState(true);
 
   const resetForm = () => {
     setName("");
@@ -45,6 +61,8 @@ export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps)
     setIsActive(true);
     setIsDefault(false);
     setTemplateIdentifier("");
+    setButtonConfig("two_buttons");
+    setHasNomeParam(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,6 +78,8 @@ export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps)
       is_active: isActive,
       is_default: isDefault,
       template_identifier: templateIdentifier.trim() || null,
+      button_config: buttonConfig,
+      has_nome_param: hasNomeParam,
     });
 
     setSaving(false);
@@ -80,7 +100,7 @@ export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps)
           Adicionar Número
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Adicionar Número de WhatsApp</DialogTitle>
@@ -138,6 +158,36 @@ export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps)
               <p className="text-xs text-muted-foreground">
                 Copie o identificador exato do template no painel Zion Talk. Vazio = template padrão.
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Configuração de Botões</Label>
+              <Select value={buttonConfig} onValueChange={setButtonConfig}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUTTON_CONFIG_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Define como os botões dinâmicos do template são mapeados no payload.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="hasNomeParam"
+                checked={hasNomeParam}
+                onCheckedChange={(checked) => setHasNomeParam(checked === true)}
+              />
+              <Label htmlFor="hasNomeParam" className="text-sm font-normal cursor-pointer">
+                Template usa variável <code className="text-xs bg-muted px-1 rounded">nome</code>
+              </Label>
             </div>
 
             <div className="flex items-center justify-between">

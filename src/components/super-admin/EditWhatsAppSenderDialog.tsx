@@ -13,6 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { WhatsAppSender, CreateWhatsAppSender } from "@/hooks/useWhatsAppSenders";
 
 interface EditWhatsAppSenderDialogProps {
@@ -30,6 +37,13 @@ function formatPhoneBR(value: string): string {
   return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
 }
 
+const BUTTON_CONFIG_OPTIONS = [
+  { value: "two_buttons", label: "2 Botões (link + optout)" },
+  { value: "single_button_idx0", label: "1 Botão (idx 0)" },
+  { value: "single_button_idx1", label: "1 Botão (idx 1)" },
+  { value: "no_buttons", label: "Sem botões" },
+];
+
 export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate }: EditWhatsAppSenderDialogProps) {
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
@@ -38,6 +52,8 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
   const [isActive, setIsActive] = useState(true);
   const [isDefault, setIsDefault] = useState(false);
   const [templateIdentifier, setTemplateIdentifier] = useState("");
+  const [buttonConfig, setButtonConfig] = useState("two_buttons");
+  const [hasNomeParam, setHasNomeParam] = useState(true);
 
   useEffect(() => {
     if (sender) {
@@ -47,6 +63,8 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
       setIsActive(sender.is_active);
       setIsDefault(sender.is_default);
       setTemplateIdentifier(sender.template_identifier ?? "");
+      setButtonConfig(sender.button_config ?? "two_buttons");
+      setHasNomeParam(sender.has_nome_param ?? true);
     }
   }, [sender]);
 
@@ -63,6 +81,8 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
       is_active: isActive,
       is_default: isDefault,
       template_identifier: templateIdentifier.trim() || null,
+      button_config: buttonConfig,
+      has_nome_param: hasNomeParam,
     };
 
     // Only update API key if provided
@@ -80,7 +100,7 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Editar Número de WhatsApp</DialogTitle>
@@ -137,6 +157,36 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
               <p className="text-xs text-muted-foreground">
                 Copie o identificador exato do template no painel Zion Talk. Vazio = template padrão.
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Configuração de Botões</Label>
+              <Select value={buttonConfig} onValueChange={setButtonConfig}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUTTON_CONFIG_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Define como os botões dinâmicos do template são mapeados no payload.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="editHasNomeParam"
+                checked={hasNomeParam}
+                onCheckedChange={(checked) => setHasNomeParam(checked === true)}
+              />
+              <Label htmlFor="editHasNomeParam" className="text-sm font-normal cursor-pointer">
+                Template usa variável <code className="text-xs bg-muted px-1 rounded">nome</code>
+              </Label>
             </div>
 
             <div className="flex items-center justify-between">

@@ -88,11 +88,13 @@ function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader: string; senderPhone: string; senderName: string; templateIdentifier: string | null } | null> {
+async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader: string; senderPhone: string; senderName: string; templateIdentifier: string | null; buttonConfig: string; hasNomeParam: boolean } | null> {
   let apiKey = Deno.env.get('ZIONTALK_API_KEY');
   let senderPhone = 'ENV_DEFAULT';
   let senderName = 'ENV_DEFAULT';
   let templateIdentifier: string | null = null;
+  let buttonConfig = 'two_buttons';
+  let hasNomeParam = true;
 
   const { data: senders, error: sendersError } = await supabase
     .from('whatsapp_senders')
@@ -109,13 +111,15 @@ async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader
     senderPhone = sender.phone;
     senderName = sender.name;
     templateIdentifier = sender.template_identifier ?? null;
-    console.log(`Using sender: ${sender.name} (${senderPhone}), template_identifier: ${templateIdentifier ?? 'default'}`);
+    buttonConfig = sender.button_config ?? 'two_buttons';
+    hasNomeParam = sender.has_nome_param ?? true;
+    console.log(`Using sender: ${sender.name} (${senderPhone}), template_identifier: ${templateIdentifier ?? 'default'}, button_config: ${buttonConfig}, has_nome_param: ${hasNomeParam}`);
   } else {
     console.log("No active senders found, using ENV fallback");
   }
 
   if (!apiKey) return null;
-  return { authHeader: 'Basic ' + encode(`${apiKey}:`), senderPhone, senderName, templateIdentifier };
+  return { authHeader: 'Basic ' + encode(`${apiKey}:`), senderPhone, senderName, templateIdentifier, buttonConfig, hasNomeParam };
 }
 
 async function fetchAndFilterMembers(
@@ -292,19 +296,20 @@ async function processBatch(
       formData.append('mobile_phone', member.phone);
       formData.append('template_identifier', templateIdentifier);
       formData.append('language', TEMPLATE_LANGUAGE);
-      const noNomeTemplates = ['vip7_captacao2', 'vip7_captacao3'];
-      if (!noNomeTemplates.includes(templateIdentifier)) {
+      if (hasNomeParam) {
         formData.append('bodyParams[nome]', member.full_name || 'morador(a)');
       }
       formData.append('bodyParams[aviso]', announcement.title);
       formData.append('bodyParams[lembrete]', lembrete);
-      const singleButtonIdx0Templates = ['vip7_captacao2', 'vip7_captacao3'];
-      const singleButtonIdx1Templates = ['visita_prova_envio', 'visita_prova_envio4', 'vip7_captacao'];
-      if (singleButtonIdx0Templates.includes(templateIdentifier)) {
+
+      if (buttonConfig === 'single_button_idx0') {
         formData.append('buttonUrlDynamicParams[0]', `${optoutToken}`);
-      } else if (singleButtonIdx1Templates.includes(templateIdentifier)) {
+      } else if (buttonConfig === 'single_button_idx1') {
         formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
+      } else if (buttonConfig === 'no_buttons') {
+        // No dynamic button params
       } else {
+        // two_buttons (default)
         formData.append('buttonUrlDynamicParams[0]', `c/${condominium.slug}`);
         formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
       }

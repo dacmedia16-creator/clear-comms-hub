@@ -39,6 +39,8 @@ serve(async (req) => {
     let senderName = 'ENV_DEFAULT';
 
     let senderTemplateIdentifier: string | null = null;
+    let buttonConfig = 'two_buttons';
+    let hasNomeParam = true;
 
     const { data: senders, error: sendersError } = await supabase
       .from('whatsapp_senders')
@@ -54,8 +56,10 @@ serve(async (req) => {
       apiKey = sender.api_key;
       senderName = sender.name;
       senderTemplateIdentifier = sender.template_identifier ?? null;
+      buttonConfig = sender.button_config ?? 'two_buttons';
+      hasNomeParam = sender.has_nome_param ?? true;
       apiSource = `DB: ${sender.name} (${sender.phone})`;
-      console.log(`Using sender from database: ${sender.name} (${sender.phone}), template_identifier: ${senderTemplateIdentifier ?? 'default'}`);
+      console.log(`Using sender from database: ${sender.name} (${sender.phone}), template_identifier: ${senderTemplateIdentifier ?? 'default'}, button_config: ${buttonConfig}, has_nome_param: ${hasNomeParam}`);
     } else {
       console.log("No active senders found, using ENV fallback");
     }
@@ -115,23 +119,20 @@ serve(async (req) => {
     formData.append('language', TEMPLATE_LANGUAGE);
 
     // bodyParams conforme template
-    const noNomeTemplates = [VIP7_2_TEMPLATE_IDENTIFIER, VIP7_3_TEMPLATE_IDENTIFIER];
-    if (!noNomeTemplates.includes(templateToUse)) {
+    if (hasNomeParam) {
       formData.append('bodyParams[nome]', 'Teste');
     }
     formData.append('bodyParams[aviso]', 'Mensagem de teste do sistema');
     formData.append('bodyParams[lembrete]', 'Se você recebeu esta mensagem, a integração está funcionando corretamente!');
 
-    const singleButtonIdx0Templates = [VIP7_2_TEMPLATE_IDENTIFIER, VIP7_3_TEMPLATE_IDENTIFIER];
-    const singleButtonIdx1Templates = [VISITA_TEMPLATE_IDENTIFIER, VISITA4_TEMPLATE_IDENTIFIER, VIP7_TEMPLATE_IDENTIFIER];
-    if (singleButtonIdx0Templates.includes(templateToUse)) {
-      // vip7_captacao2/3: botão único no índice [0]
+    if (buttonConfig === 'single_button_idx0') {
       formData.append('buttonUrlDynamicParams[0]', 'test-demo');
-    } else if (singleButtonIdx1Templates.includes(templateToUse)) {
-      // 1 botão dinâmico no índice [1] (optout token)
+    } else if (buttonConfig === 'single_button_idx1') {
       formData.append('buttonUrlDynamicParams[1]', 'test-demo');
+    } else if (buttonConfig === 'no_buttons') {
+      // No dynamic button params
     } else {
-      // 2 botões dinâmicos: slug do condo + optout token
+      // two_buttons (default)
       formData.append('buttonUrlDynamicParams[0]', 'c/demo');
       formData.append('buttonUrlDynamicParams[1]', 'test-demo');
     }

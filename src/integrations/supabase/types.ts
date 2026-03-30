@@ -887,7 +887,9 @@ export type Database = {
       whatsapp_senders: {
         Row: {
           api_key: string
+          button_config: string
           created_at: string | null
+          has_nome_param: boolean
           id: string
           is_active: boolean | null
           is_default: boolean | null
@@ -899,7 +901,9 @@ export type Database = {
         }
         Insert: {
           api_key: string
+          button_config?: string
           created_at?: string | null
+          has_nome_param?: boolean
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
@@ -911,7 +915,9 @@ export type Database = {
         }
         Update: {
           api_key?: string
+          button_config?: string
           created_at?: string | null
+          has_nome_param?: boolean
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null

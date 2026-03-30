@@ -63,8 +63,8 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
       setIsActive(sender.is_active);
       setIsDefault(sender.is_default);
       setTemplateIdentifier(sender.template_identifier ?? "");
-      setButtonConfig((sender as any).button_config ?? "two_buttons");
-      setHasNomeParam((sender as any).has_nome_param ?? true);
+      setButtonConfig(sender.button_config ?? "two_buttons");
+      setHasNomeParam(sender.has_nome_param ?? true);
     }
   }, [sender]);
 

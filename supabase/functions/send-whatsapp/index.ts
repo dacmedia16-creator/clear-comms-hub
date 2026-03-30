@@ -245,7 +245,9 @@ async function processBatch(
   condominium: Condominium,
   supabase: SupabaseClient,
   templateIdentifier: string,
-  broadcastId?: string
+  broadcastId?: string,
+  buttonConfig: string = 'two_buttons',
+  hasNomeParam: boolean = true
 ) {
   // Check if broadcast is paused before processing
   if (broadcastId) {

@@ -395,7 +395,14 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-col gap-2">
-                      {canManageAnnouncements(condo.userRole) ? (
+                      {condo.organization_type === 'real_estate' && canManageAnnouncements(condo.userRole) ? (
+                        <Button asChild className="w-full touch-target">
+                          <Link to={`/imobiliaria/${condo.id}`}>
+                            <Building2 className="w-4 h-4 mr-2" />
+                            Abrir CRM Imobiliário
+                          </Link>
+                        </Button>
+                      ) : canManageAnnouncements(condo.userRole) ? (
                         <Button asChild className="w-full touch-target">
                           <Link to={`/admin/${condo.id}`}>
                             <FileText className="w-4 h-4 mr-2" />

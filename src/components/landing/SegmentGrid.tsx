@@ -6,6 +6,7 @@ import {
   Church, 
   Store,
   GraduationCap,
+  Home,
   Sparkles
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -73,6 +74,14 @@ const segments: Segment[] = [
     terms: { manager: "Diretor", member: "Aluno" },
     isNew: true,
     link: "/escolas",
+  },
+  {
+    icon: Home,
+    label: "Imobiliárias",
+    description: "Captação de imóveis e corretores",
+    terms: { manager: "Diretor", member: "Corretor" },
+    isNew: true,
+    link: "/imobiliarias",
   },
 ];
 

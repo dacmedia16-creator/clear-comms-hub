@@ -37,6 +37,14 @@ import AssociacoesLandingPage from "./pages/AssociacoesLandingPage";
 import IgrejasLandingPage from "./pages/IgrejasLandingPage";
 import FranquiasLandingPage from "./pages/FranquiasLandingPage";
 import EscolasLandingPage from "./pages/EscolasLandingPage";
+import ImobiliariasLandingPage from "./pages/ImobiliariasLandingPage";
+import RealEstateDashboard from "./pages/real-estate/RealEstateDashboard";
+import PropertiesListPage from "./pages/real-estate/PropertiesListPage";
+import PropertyFormPage from "./pages/real-estate/PropertyFormPage";
+import PropertyDetailPage from "./pages/real-estate/PropertyDetailPage";
+import LeadsPage from "./pages/real-estate/LeadsPage";
+import TasksPage from "./pages/real-estate/TasksPage";
+import TemplatesPage from "./pages/real-estate/TemplatesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

@@ -26,7 +26,7 @@ interface Props {
 export function RealEstateLayout({ children, title, description, actions }: Props) {
   const { condoId } = useParams<{ condoId: string }>();
   const { user } = useAuth();
-  const { isSuperAdmin } = useSuperAdmin();
+  const { isSuperAdmin, loading: saLoading } = useSuperAdmin();
   const navigate = useNavigate();
   const location = useLocation();
   const [orgName, setOrgName] = useState<string>("");
@@ -37,6 +37,7 @@ export function RealEstateLayout({ children, title, description, actions }: Prop
   useEffect(() => {
     async function check() {
       if (!condoId) return;
+      if (saLoading) return;
       const { data: cond } = await supabase
         .from("condominiums")
         .select("name, organization_type, auth_owner_id")
@@ -69,7 +70,7 @@ export function RealEstateLayout({ children, title, description, actions }: Prop
       setLoading(false);
     }
     check();
-  }, [condoId, user, isSuperAdmin, navigate]);
+  }, [condoId, user, isSuperAdmin, saLoading, navigate]);
 
   const navItems = [
     { to: `/imobiliaria/${condoId}`, label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -82,7 +83,7 @@ export function RealEstateLayout({ children, title, description, actions }: Prop
   const isActive = (to: string, exact?: boolean) =>
     exact ? location.pathname === to : location.pathname.startsWith(to);
 
-  if (loading) {
+  if (loading || saLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />

@@ -87,6 +87,16 @@ const configMap: Record<OrganizationType, Partial<SignupFormConfig>> = {
     managerTitle: "Cadastro de Diretor",
     managerDescription: "Solicite acesso como diretor de uma escola existente",
   },
+  real_estate: {
+    memberTitle: "Cadastro de Corretor",
+    memberDescription: "Entre com o código da sua imobiliária para se cadastrar",
+    unitLabel: "Equipe e Tipo",
+    unitPlaceholder: "ex: Captação, Apartamento",
+    codeLabel: "Código da Imobiliária",
+    codeDescription: "Solicite ao diretor",
+    managerTitle: "Cadastro de Diretor",
+    managerDescription: "Solicite acesso como diretor de uma imobiliária existente",
+  },
   generic: {
     memberTitle: "Cadastro de Membro",
     memberDescription: "Entre com o código da sua organização para se cadastrar",

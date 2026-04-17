@@ -7,6 +7,7 @@ import {
   Store,
   GraduationCap,
   Layers,
+  Home,
   LucideIcon,
 } from "lucide-react";
 
@@ -18,6 +19,7 @@ export type OrganizationType =
   | "church"
   | "franchise"
   | "school"
+  | "real_estate"
   | "generic";
 
 export interface OrganizationTerms {
@@ -218,6 +220,30 @@ export const ORGANIZATION_TYPES: Record<OrganizationType, OrganizationTypeConfig
       showLocationTargeting: false,
     },
   },
+  real_estate: {
+    label: "Imobiliária",
+    description: "CRM de captação de imóveis e corretores",
+    examples: "Imobiliárias, corretores autônomos",
+    icon: Home,
+    terms: {
+      organization: "Imobiliária",
+      organizationPlural: "Imobiliárias",
+      manager: "Diretor",
+      member: "Corretor",
+      memberPlural: "Corretores",
+      block: "Equipe",
+      blockPlural: "Equipes",
+      unit: "Tipo",
+      unitPlural: "Tipos",
+    },
+    behavior: {
+      requiresLocation: false,
+      blockValidation: "flexible",
+      unitValidation: "flexible",
+      showLocationInTimeline: false,
+      showLocationTargeting: false,
+    },
+  },
   generic: {
     label: "Genérico",
     description: "Organizações sem segmento específico",
@@ -318,6 +344,7 @@ export function getLocationPlaceholders(type?: OrganizationType | string | null)
     community: { block: "Diretoria, Esportes", unit: "Presidente, Sócio" },
     franchise: { block: "Sul, Norte", unit: "Loja 01, Loja 02" },
     school: { block: "1º Ano, 2º Ano", unit: "Turma A, Turma B" },
+    real_estate: { block: "Captação, Locação", unit: "Apartamento, Casa" },
     generic: { block: "Grupo 1, Grupo 2", unit: "Categoria A, Categoria B" },
   };
   

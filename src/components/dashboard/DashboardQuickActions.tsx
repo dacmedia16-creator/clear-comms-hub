@@ -64,6 +64,12 @@ const actionsByType: Record<OrganizationType, QuickAction[]> = {
     { icon: Bell, label: "Comunicado", description: "Aviso da diretoria", color: "text-blue-600" },
     { icon: DollarSign, label: "Financeiro", description: "Matrículas e taxas", color: "text-emerald-600" },
   ],
+  real_estate: [
+    { icon: Bell, label: "Captação", description: "Novo lead de imóvel", color: "text-blue-600" },
+    { icon: Users, label: "Corretores", description: "Captação de corretores", color: "text-purple-600" },
+    { icon: Calendar, label: "Visita", description: "Agendar visita", color: "text-indigo-600" },
+    { icon: DollarSign, label: "Comercial", description: "Aviso comercial", color: "text-emerald-600" },
+  ],
   generic: [
     { icon: Bell, label: "Comunicado", description: "Comunicado geral", color: "text-blue-600" },
     { icon: Calendar, label: "Evento", description: "Agendar evento", color: "text-indigo-600" },

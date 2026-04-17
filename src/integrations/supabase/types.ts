@@ -168,6 +168,146 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_profile_id: string | null
+          after: Json | null
+          before: Json | null
+          condominium_id: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_profile_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          condominium_id: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_profile_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          condominium_id?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      capture_leads: {
+        Row: {
+          assigned_to_profile_id: string | null
+          condominium_id: string
+          converted_at: string | null
+          converted_to_id: string | null
+          converted_to_type: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          full_name: string
+          id: string
+          lead_type: string
+          metadata: Json
+          notes: string | null
+          phone: string | null
+          source: string | null
+          stage_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to_profile_id?: string | null
+          condominium_id: string
+          converted_at?: string | null
+          converted_to_id?: string | null
+          converted_to_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          lead_type: string
+          metadata?: Json
+          notes?: string | null
+          phone?: string | null
+          source?: string | null
+          stage_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to_profile_id?: string | null
+          condominium_id?: string
+          converted_at?: string | null
+          converted_to_id?: string | null
+          converted_to_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          lead_type?: string
+          metadata?: Json
+          notes?: string | null
+          phone?: string | null
+          source?: string | null
+          stage_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capture_leads_assigned_to_profile_id_fkey"
+            columns: ["assigned_to_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capture_leads_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capture_leads_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capture_leads_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       condo_members: {
         Row: {
           created_at: string
@@ -336,6 +476,63 @@ export type Database = {
           },
         ]
       }
+      interactions: {
+        Row: {
+          channel: string
+          condominium_id: string
+          content: string | null
+          created_at: string
+          created_by: string | null
+          direction: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json
+          subject: string | null
+        }
+        Insert: {
+          channel: string
+          condominium_id: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          metadata?: Json
+          subject?: string | null
+        }
+        Update: {
+          channel?: string
+          condominium_id?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          metadata?: Json
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interactions_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interactions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_lists: {
         Row: {
           condominium_id: string
@@ -364,6 +561,142 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "member_lists_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_templates: {
+        Row: {
+          body: string
+          channel: string
+          condominium_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          subject: string | null
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          body: string
+          channel: string
+          condominium_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          subject?: string | null
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          body?: string
+          channel?: string
+          condominium_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          subject?: string | null
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_templates_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipeline_stages: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_terminal: boolean
+          name: string
+          pipeline_id: string
+          position: number
+          sla_days: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_terminal?: boolean
+          name: string
+          pipeline_id: string
+          position?: number
+          sla_days?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_terminal?: boolean
+          name?: string
+          pipeline_id?: string
+          position?: number
+          sla_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipelines: {
+        Row: {
+          condominium_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          lead_type: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          condominium_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          lead_type: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          condominium_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          lead_type?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipelines_condominium_id_fkey"
             columns: ["condominium_id"]
             isOneToOne: false
             referencedRelation: "condominiums"
@@ -448,6 +781,141 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      properties: {
+        Row: {
+          address: string | null
+          area_m2: number | null
+          bathrooms: number | null
+          bedrooms: number | null
+          captured_at: string | null
+          city: string | null
+          code: string | null
+          condo_fee: number | null
+          condominium_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          iptu: number | null
+          listing_agent_member_id: string | null
+          metadata: Json
+          neighborhood: string | null
+          owner_member_id: string | null
+          parking: number | null
+          photos: Json
+          price: number | null
+          property_type: string | null
+          published_at: string | null
+          stage_id: string | null
+          state: string | null
+          status: string
+          title: string
+          transaction_type: string | null
+          updated_at: string
+          zip_code: string | null
+        }
+        Insert: {
+          address?: string | null
+          area_m2?: number | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          captured_at?: string | null
+          city?: string | null
+          code?: string | null
+          condo_fee?: number | null
+          condominium_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          iptu?: number | null
+          listing_agent_member_id?: string | null
+          metadata?: Json
+          neighborhood?: string | null
+          owner_member_id?: string | null
+          parking?: number | null
+          photos?: Json
+          price?: number | null
+          property_type?: string | null
+          published_at?: string | null
+          stage_id?: string | null
+          state?: string | null
+          status?: string
+          title: string
+          transaction_type?: string | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string | null
+          area_m2?: number | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          captured_at?: string | null
+          city?: string | null
+          code?: string | null
+          condo_fee?: number | null
+          condominium_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          iptu?: number | null
+          listing_agent_member_id?: string | null
+          metadata?: Json
+          neighborhood?: string | null
+          owner_member_id?: string | null
+          parking?: number | null
+          photos?: Json
+          price?: number | null
+          property_type?: string | null
+          published_at?: string | null
+          stage_id?: string | null
+          state?: string | null
+          status?: string
+          title?: string
+          transaction_type?: string | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "properties_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_listing_agent_member_id_fkey"
+            columns: ["listing_agent_member_id"]
+            isOneToOne: false
+            referencedRelation: "condo_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_owner_member_id_fkey"
+            columns: ["owner_member_id"]
+            isOneToOne: false
+            referencedRelation: "condo_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sms_logs: {
         Row: {
@@ -590,6 +1058,79 @@ export type Database = {
           whatsapp_sent?: boolean | null
         }
         Relationships: []
+      }
+      tasks: {
+        Row: {
+          assigned_to_profile_id: string | null
+          completed_at: string | null
+          condominium_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to_profile_id?: string | null
+          completed_at?: string | null
+          condominium_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to_profile_id?: string | null
+          completed_at?: string | null
+          condominium_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_to_profile_id_fkey"
+            columns: ["assigned_to_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_condominium_id_fkey"
+            columns: ["condominium_id"]
+            isOneToOne: false
+            referencedRelation: "condominiums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -990,6 +1531,17 @@ export type Database = {
       }
       is_condominium_owner: { Args: { cond_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      write_audit_log: {
+        Args: {
+          _action: string
+          _after?: Json
+          _before?: Json
+          _condominium_id: string
+          _entity_id: string
+          _entity_type: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       announcement_category:
@@ -1024,6 +1576,7 @@ export type Database = {
         | "community"
         | "franchise"
         | "generic"
+        | "real_estate"
       plan_type: "free" | "starter" | "pro"
     }
     CompositeTypes: {
@@ -1185,6 +1738,7 @@ export const Constants = {
         "community",
         "franchise",
         "generic",
+        "real_estate",
       ],
       plan_type: ["free", "starter", "pro"],
     },

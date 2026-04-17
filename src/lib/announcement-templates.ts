@@ -563,6 +563,63 @@ Diretoria`,
       isUrgent: false,
     },
   ],
+  real_estate: [
+    {
+      id: "real-estate-new-property",
+      name: "Anúncio de Novo Imóvel",
+      title: "Novo imóvel disponível",
+      summary: "Confira o imóvel recém-captado.",
+      content: `Olá,
+
+Acabamos de captar um novo imóvel:
+
+🏠 [TIPO] em [BAIRRO/CIDADE]
+🛏 [QUARTOS] quartos | 🛁 [BANHEIROS] banheiros | 🚗 [VAGAS]
+📐 [ÁREA] m² | 💰 R$ [PREÇO]
+
+Quer agendar uma visita? Responda esta mensagem.
+
+Atenciosamente,
+[CORRETOR RESPONSÁVEL]`,
+      category: "informativo",
+      isUrgent: false,
+    },
+    {
+      id: "real-estate-broker-onboarding",
+      name: "Boas-vindas ao Corretor",
+      title: "Bem-vindo(a) à imobiliária!",
+      summary: "Mensagem de boas-vindas para corretores aprovados.",
+      content: `Olá [NOME],
+
+Seja muito bem-vindo(a) à nossa equipe!
+
+📋 Próximos passos:
+1. [PASSO 1]
+2. [PASSO 2]
+3. [PASSO 3]
+
+Qualquer dúvida, fale com a Direção.
+
+Boas captações!`,
+      category: "informativo",
+      isUrgent: false,
+    },
+    {
+      id: "real-estate-followup",
+      name: "Follow-up de Captação",
+      title: "Continuamos interessados no seu imóvel",
+      summary: "Mensagem de follow-up para proprietários.",
+      content: `Olá [PROPRIETÁRIO],
+
+Tudo bem? Aqui é da [IMOBILIÁRIA].
+
+Continuamos interessados em captar seu imóvel em [BAIRRO]. Podemos conversar essa semana?
+
+Aguardo seu retorno.`,
+      category: "informativo",
+      isUrgent: false,
+    },
+  ],
   generic: [
     {
       id: "generic-general",

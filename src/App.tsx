@@ -96,6 +96,15 @@ const App = () => (
             <Route path="/igrejas" element={<IgrejasLandingPage />} />
             <Route path="/franquias" element={<FranquiasLandingPage />} />
             <Route path="/escolas" element={<EscolasLandingPage />} />
+            <Route path="/imobiliarias" element={<ImobiliariasLandingPage />} />
+            <Route path="/imobiliaria/:condoId" element={<RealEstateDashboard />} />
+            <Route path="/imobiliaria/:condoId/imoveis" element={<PropertiesListPage />} />
+            <Route path="/imobiliaria/:condoId/imoveis/novo" element={<PropertyFormPage />} />
+            <Route path="/imobiliaria/:condoId/imoveis/:propertyId" element={<PropertyDetailPage />} />
+            <Route path="/imobiliaria/:condoId/imoveis/:propertyId/editar" element={<PropertyFormPage />} />
+            <Route path="/imobiliaria/:condoId/leads" element={<LeadsPage />} />
+            <Route path="/imobiliaria/:condoId/tarefas" element={<TasksPage />} />
+            <Route path="/imobiliaria/:condoId/templates" element={<TemplatesPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

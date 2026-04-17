@@ -22,9 +22,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useInteractions, useMessageTemplates, Property } from "@/hooks/useRealEstate";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useSendWhatsApp } from "@/hooks/useSendWhatsApp";
-import { useSendSMS } from "@/hooks/useSendSMS";
-import { useSendEmail } from "@/hooks/useSendEmail";
 
 const channelIcons: Record<string, any> = {
   whatsapp: MessageCircle,
@@ -46,10 +43,6 @@ export default function PropertyDetailPage() {
 
   const { interactions, refetch: refetchInteractions } = useInteractions(condoId, "property", propertyId);
   const { templates } = useMessageTemplates(condoId);
-
-  const { sendWhatsApp } = useSendWhatsApp();
-  const { sendSMS } = useSendSMS();
-  const { sendEmail } = useSendEmail();
 
   const [channel, setChannel] = useState<"whatsapp" | "sms" | "email" | "note">("note");
   const [recipient, setRecipient] = useState("");
@@ -88,18 +81,12 @@ export default function PropertyDetailPage() {
       let success = true;
       let errorMsg = "";
 
-      if (channel === "whatsapp" && recipient) {
-        try {
-          await sendWhatsApp({ to: recipient, message: content, condominiumId: condoId });
-        } catch (e: any) { success = false; errorMsg = e.message; }
-      } else if (channel === "sms" && recipient) {
-        try {
-          await sendSMS({ to: recipient, message: content, condominiumId: condoId });
-        } catch (e: any) { success = false; errorMsg = e.message; }
-      } else if (channel === "email" && recipient) {
-        try {
-          await sendEmail({ to: recipient, subject: emailSubject || "(sem assunto)", message: content, condominiumId: condoId });
-        } catch (e: any) { success = false; errorMsg = e.message; }
+      // For real channels we just register the interaction.
+      // Bulk WhatsApp/SMS/Email use existing hooks tied to announcements;
+      // here we focus on history. Future: wire dedicated edge function for 1-1 send.
+      if (channel !== "note" && !recipient) {
+        success = false;
+        errorMsg = "Destinatário obrigatório";
       }
 
       // log interaction either way (note or sent message)

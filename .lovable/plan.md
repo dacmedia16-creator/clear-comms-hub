@@ -1,52 +1,37 @@
 
 
-User está vendo o sender REMAX (`remax_corretor`) na lista e quer confirmar a configuração: botão 1 estático (sem param), botão 2 dinâmico (com param do token).
+## Pedido
 
-Na imagem, o badge mostra `two_buttons` — config errada para esse template. Precisa virar `single_button_idx1`.
+Pausar/cancelar o envio em andamento do template `remax_corretor` (broadcast `a018f308-3391-409a-ad8a-4935b32d5eb0`, 28 membros, ~8 já enviados pelos logs).
 
-Já fiz esse update antes em `whatsapp_sender_templates` (registro do template). Mas a UI mostra `two_buttons` porque o badge está lendo de `whatsapp_senders.button_config` (coluna do sender), não do template.
+## Como funciona o pause hoje
 
-Vou checar via DB pra confirmar antes de propor.
+A `send-whatsapp` checa `whatsapp_broadcasts.status = 'paused'`:
+- Antes de cada batch
+- Antes de cada mensagem dentro do batch
+- Antes de auto-invocar o próximo batch
 
-## Diagnóstico
+Basta atualizar o status do broadcast atual para `paused` no DB → a função para sozinha no próximo check (em até ~30s, antes da próxima mensagem).
 
-A imagem é da linha do **sender** REMAX no card "Números de WhatsApp". O badge `two_buttons` vem de `whatsapp_senders.button_config`. Para alinhar:
+## Ação
 
-1. Atualizar `whatsapp_senders` da REMAX → `button_config = 'single_button_idx1'`
-2. Garantir que o template `remax_corretor` em `whatsapp_sender_templates` também esteja `single_button_idx1` (já feito antes, vou reconfirmar)
-
-## Mudança proposta
+UPDATE no broadcast em execução:
 
 ```sql
--- Sender REMAX
-UPDATE public.whatsapp_senders 
-SET button_config = 'single_button_idx1', updated_at = now() 
-WHERE name ILIKE '%remax%';
-
--- Garantir template (idempotente)
-UPDATE public.whatsapp_sender_templates 
-SET button_config = 'single_button_idx1', updated_at = now() 
-WHERE identifier = 'remax_corretor';
+UPDATE public.whatsapp_broadcasts 
+SET status = 'paused', updated_at = now() 
+WHERE id = 'a018f308-3391-409a-ad8a-4935b32d5eb0' 
+  AND status = 'processing';
 ```
 
-### Resultado esperado
+## Resultado
 
-Payload enviado pela `send-whatsapp` e `test-whatsapp` para REMAX:
+- Em até ~30s a função para de enviar
+- Mensagens já enviadas ficam em `whatsapp_logs` com `status='sent'` (não dá para "des-enviar" no WhatsApp)
+- Se quiser retomar depois: o `WhatsAppMonitor` permite resume usando `existingBroadcastId` (a dedup por `whatsapp_logs.sent` evita reenvio para quem já recebeu)
+- Se quiser cancelar definitivo: deixar como `paused` e ignorar; nenhum dado novo será criado
 
-```
-template_identifier: remax_corretor
-bodyParams[nome]: <nome>
-bodyParams[aviso]: <título>
-bodyParams[lembrete]: <resumo>
-buttonUrlDynamicParams[1]: <token-optout>
-```
+## Confirmação rápida
 
-Sem `buttonUrlDynamicParams[0]` (botão 1 estático). Badge na UI vai passar a mostrar `single_button_idx1`.
-
-## Ações
-1. Rodar os 2 UPDATEs
-2. Você recarrega a página → badge muda para `single_button_idx1`
-3. Testar pelo botão Testar do sender e do template
-
-Sem alteração de código.
+Quer **pausar este broadcast específico** (id acima)? Se sim, aprovo e executo o UPDATE. Se for outro broadcast ativo, me diga qual.
 

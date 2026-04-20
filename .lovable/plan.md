@@ -1,44 +1,40 @@
 
 
-User wants the `remax_corretor` template to be a selectable option for the existing "Aviso Pro" sender (15 99831-2112), instead of (or in addition to) creating a separate Re/Max sender.
+User just typed "a" — likely accidental or means "continue with option A" from my previous diagnostic message (submit `remax_corretor` for approval in the Aviso Pro WABA).
 
-Currently the schema is **1 template per sender** (`whatsapp_senders.template_identifier` is a single column). The send flow picks ONE sender (default or first active) and uses ITS template. There's no way today to choose a template at send time.
+Since 201 from Zion Talk = aceito mas não entregue, e o template padrão `aviso_pro_confirma_3` chega normal pelo mesmo canal, o problema é Meta-side: `remax_corretor` não está aprovado no WABA do número 15998312112.
 
-To make `remax_corretor` an "option" for the Aviso Pro sender, I need to:
-1. Allow a sender to have multiple templates
-2. Let the user pick which template to use when sending an announcement
+Não há mudança de código a fazer. É ação externa (Meta/Zion Talk).
 
-## Plan: Multi-template support per sender
+## Plano: destravar entrega do `remax_corretor`
 
-### Schema change
-New table `whatsapp_sender_templates`:
-- `id`, `sender_id` (FK whatsapp_senders), `identifier` (ex: `aviso_pro_confirma_3`, `remax_corretor`), `label` (ex: "Padrão Aviso Pro", "Re/Max Corretor"), `button_config`, `has_nome_param`, `is_default` (per sender)
+### Causa raiz confirmada
+- Zion Talk retorna `status=201` (request aceito)
+- Mensagem nunca chega no WhatsApp do destino
+- Template padrão `aviso_pro_confirma_3` chega normal pelo mesmo canal/api_key
+- Conclusão: `remax_corretor` **não existe / não está aprovado no WABA do canal Aviso Pro (15998312112)**. Templates Meta são vinculados ao WABA — não dá para usar um template aprovado em outro WABA.
 
-Migrate existing `whatsapp_senders.template_identifier` / `button_config` / `has_nome_param` into this table as the default template per sender. Keep old columns for backwards compat (read fallback).
+### Ação (fora do código)
 
-Seed: insert `remax_corretor` template linked to "Aviso Pro" sender, `button_config=two_buttons`, `has_nome_param=true`.
+1. **Verificar no painel Zion Talk** o log da mensagem para `+5515981788214` enviada às 02:36 com template `remax_corretor` — confirmar se aparece como `failed/rejected` (provável motivo: template not found).
 
-### UI — Super Admin
-In `WhatsAppSendersCard`: expand row to list templates of that sender, with "Adicionar template" / edit / delete / set default.
+2. **Verificar no Meta Business Manager** → WhatsApp Manager → Templates: o `remax_corretor` aparece aprovado em qual WABA?
+   - Se está em outro WABA: precisa **submeter o mesmo template para aprovação no WABA do Aviso Pro** (mesmo nome, mesma estrutura, mesma categoria). Aprovação leva ~minutos a horas.
+   - Se não existe em lugar nenhum: criar e submeter pela primeira vez.
 
-### UI — Send announcement
-In `SendWhatsAppButton` (and the announcement send dialog): add a template dropdown showing templates of the chosen sender. Defaults to the sender's default template.
+3. Após aprovação Meta, **nenhuma mudança no código é necessária** — o sender Aviso Pro com o template `remax_corretor` já está cadastrado corretamente no banco. O envio passa a funcionar automaticamente.
 
-### Edge function `send-whatsapp`
-Accept optional `template_id` in the request body. Resolve `(template_identifier, button_config, has_nome_param)` from `whatsapp_sender_templates` if provided, else fall back to sender defaults.
+### Alternativa imediata (se não quiser esperar aprovação Meta)
+Cadastrar um sender separado **Re/Max** no Super Admin com:
+- api_key + número do canal Zion Talk que **realmente tem** `remax_corretor` aprovado no seu WABA
+- Vincular o template `remax_corretor` a esse novo sender
+- No envio, escolher sender "Re/Max"
 
-### Backwards compatibility
-Old calls without `template_id` keep working (use sender's default template, which is the migrated row).
+### Mudanças de código no projeto
+**Nenhuma.** Sistema está correto. Falha está 100% na camada Meta/WABA.
 
-### Files touched
-- migration: new table + seed
-- `supabase/functions/send-whatsapp/index.ts`: read template by id
-- `src/hooks/useWhatsAppSenders.ts`: expose templates
-- new `src/hooks/useWhatsAppSenderTemplates.ts`
-- `src/components/super-admin/WhatsAppSendersCard.tsx`: render templates sub-list
-- new `src/components/super-admin/AddSenderTemplateDialog.tsx` + edit
-- `src/components/SendWhatsAppButton.tsx`: template selector
-
-### Pré-requisito
-Confirmar `button_config` real do template `remax_corretor` aprovado na Meta (assumindo `two_buttons` + `nome` igual ao Aviso Pro padrão).
+### O que preciso de você para destravar
+- Print do painel Zion Talk com o status real (delivered/failed/rejected) da mensagem de teste, **ou**
+- Confirmação de em qual WABA o `remax_corretor` foi aprovado, **ou**
+- api_key + número do canal Zion Talk que tem o template aprovado (para cadastrar sender separado)
 

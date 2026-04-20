@@ -1,48 +1,44 @@
 
 
-## Adicionar template `remax_corretor` como novo WhatsApp Sender
+User wants the `remax_corretor` template to be a selectable option for the existing "Aviso Pro" sender (15 99831-2112), instead of (or in addition to) creating a separate Re/Max sender.
 
-Já temos toda a infra: a tabela `whatsapp_senders` aceita `template_identifier`, `button_config`, `has_nome_param` por sender, e as edge functions `send-whatsapp` / `test-whatsapp` já leem esses campos. Não precisa criar nada novo — basta cadastrar o sender.
+Currently the schema is **1 template per sender** (`whatsapp_senders.template_identifier` is a single column). The send flow picks ONE sender (default or first active) and uses ITS template. There's no way today to choose a template at send time.
 
-### Decisões confirmadas
-- Novo sender Re/Max (independente)
-- Template Meta: `remax_corretor` (mesmo padrão: `nome` + `aviso` + `lembrete` + 2 botões dinâmicos `[0]=link slug, [1]=optout token`)
-- Disponível para todas as organizações (aparece como opção no Super Admin)
+To make `remax_corretor` an "option" for the Aviso Pro sender, I need to:
+1. Allow a sender to have multiple templates
+2. Let the user pick which template to use when sending an announcement
 
-### Passos
+## Plan: Multi-template support per sender
 
-**1. Abrir o dialog "Adicionar WhatsApp Sender" no Super Admin** (`/super-admin` → WhatsApp Senders → Adicionar)
+### Schema change
+New table `whatsapp_sender_templates`:
+- `id`, `sender_id` (FK whatsapp_senders), `identifier` (ex: `aviso_pro_confirma_3`, `remax_corretor`), `label` (ex: "Padrão Aviso Pro", "Re/Max Corretor"), `button_config`, `has_nome_param`, `is_default` (per sender)
 
-Preencher:
-- **Nome**: `Re/Max`
-- **Telefone**: número do canal Re/Max na Zion Talk (formato `15XXXXXXXXX`, sem `+`)
-- **API Key**: api_key da Zion Talk para esse canal
-- **Template Identifier**: `remax_corretor`
-- **Button Config**: `2 Botões (link + optout)`
-- **Has Nome Param**: ✅ ativo
-- **Is Active**: ✅ ativo
-- **Is Default**: ❌ (deixar `Aviso Pro` como default)
+Migrate existing `whatsapp_senders.template_identifier` / `button_config` / `has_nome_param` into this table as the default template per sender. Keep old columns for backwards compat (read fallback).
 
-**2. Validar com edge function `test-whatsapp`** enviando para um número de teste seu, escolhendo o sender Re/Max — confirma que a Zion Talk aceita (`status=201`) com o template aprovado.
+Seed: insert `remax_corretor` template linked to "Aviso Pro" sender, `button_config=two_buttons`, `has_nome_param=true`.
 
-**3. (Opcional) Atualizar `src/lib/whatsapp-templates.ts`** adicionando uma constante de referência para preview local:
-```ts
-export const REMAX_TEMPLATE_IDENTIFIER = 'remax_corretor';
-```
-Isso é só documental — o envio real já usa o `template_identifier` do banco.
+### UI — Super Admin
+In `WhatsAppSendersCard`: expand row to list templates of that sender, with "Adicionar template" / edit / delete / set default.
 
-### O que NÃO precisa mudar
-- Schema da tabela (já tem todas as colunas)
-- Edge functions `send-whatsapp` / `test-whatsapp` (já são genéricas)
-- RLS (Super Admin já gerencia senders)
+### UI — Send announcement
+In `SendWhatsAppButton` (and the announcement send dialog): add a template dropdown showing templates of the chosen sender. Defaults to the sender's default template.
 
-### Pré-requisitos do usuário
-Para eu cadastrar via SQL (ou você cadastrar pela UI), preciso:
-- **Telefone Re/Max** (do canal Zion Talk)
-- **API Key Re/Max** (do painel Zion Talk)
+### Edge function `send-whatsapp`
+Accept optional `template_id` in the request body. Resolve `(template_identifier, button_config, has_nome_param)` from `whatsapp_sender_templates` if provided, else fall back to sender defaults.
 
-### Pergunta antes de implementar
-Quer que eu:
-- **(a)** Cadastre o sender Re/Max diretamente via INSERT no banco assim que você passar telefone + api_key, **ou**
-- **(b)** Apenas adicione a constante `REMAX_TEMPLATE_IDENTIFIER` no código e você mesmo cadastra pela UI do Super Admin?
+### Backwards compatibility
+Old calls without `template_id` keep working (use sender's default template, which is the migrated row).
+
+### Files touched
+- migration: new table + seed
+- `supabase/functions/send-whatsapp/index.ts`: read template by id
+- `src/hooks/useWhatsAppSenders.ts`: expose templates
+- new `src/hooks/useWhatsAppSenderTemplates.ts`
+- `src/components/super-admin/WhatsAppSendersCard.tsx`: render templates sub-list
+- new `src/components/super-admin/AddSenderTemplateDialog.tsx` + edit
+- `src/components/SendWhatsAppButton.tsx`: template selector
+
+### Pré-requisito
+Confirmar `button_config` real do template `remax_corretor` aprovado na Meta (assumindo `two_buttons` + `nome` igual ao Aviso Pro padrão).
 

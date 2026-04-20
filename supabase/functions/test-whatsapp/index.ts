@@ -41,27 +41,68 @@ serve(async (req) => {
     let senderTemplateIdentifier: string | null = null;
     let buttonConfig = 'two_buttons';
     let hasNomeParam = true;
+    let senderIdResolved: string | null = null;
 
-    const { data: senders, error: sendersError } = await supabase
-      .from('whatsapp_senders')
-      .select('*')
-      .eq('is_active', true)
-      .order('is_default', { ascending: false })
-      .limit(1);
+    // Parse body early (only for non-GET) to check templateId
+    let bodyData: { phone?: string; condominiumId?: string; templateId?: string } = {};
+    if (req.method !== 'GET') {
+      try {
+        bodyData = await req.json();
+      } catch {
+        bodyData = {};
+      }
+    }
+    const requestedTemplateId = bodyData.templateId;
 
-    if (sendersError) {
-      console.error("Error fetching whatsapp_senders:", sendersError);
-    } else if (senders && senders.length > 0) {
-      const sender = senders[0];
-      apiKey = sender.api_key;
-      senderName = sender.name;
-      senderTemplateIdentifier = sender.template_identifier ?? null;
-      buttonConfig = sender.button_config ?? 'two_buttons';
-      hasNomeParam = sender.has_nome_param ?? true;
-      apiSource = `DB: ${sender.name} (${sender.phone})`;
-      console.log(`Using sender from database: ${sender.name} (${sender.phone}), template_identifier: ${senderTemplateIdentifier ?? 'default'}, button_config: ${buttonConfig}, has_nome_param: ${hasNomeParam}`);
-    } else {
-      console.log("No active senders found, using ENV fallback");
+    // If templateId provided, fetch the template + its sender directly
+    if (requestedTemplateId) {
+      const { data: tpl, error: tplError } = await supabase
+        .from('whatsapp_sender_templates')
+        .select('*, whatsapp_senders(*)')
+        .eq('id', requestedTemplateId)
+        .maybeSingle();
+
+      if (tplError) console.error('Error fetching template:', tplError);
+
+      if (tpl && tpl.whatsapp_senders) {
+        const s = tpl.whatsapp_senders as any;
+        apiKey = s.api_key;
+        senderName = s.name;
+        senderIdResolved = s.id;
+        senderTemplateIdentifier = tpl.identifier;
+        buttonConfig = tpl.button_config ?? 'two_buttons';
+        hasNomeParam = tpl.has_nome_param ?? true;
+        apiSource = `DB (template): ${tpl.label} via ${s.name}`;
+        console.log(`Using template ${tpl.label} (${tpl.identifier}) from sender ${s.name}, button_config: ${buttonConfig}, has_nome_param: ${hasNomeParam}`);
+      } else {
+        console.warn(`Template ${requestedTemplateId} not found, falling back to default sender`);
+      }
+    }
+
+    const { data: senders, error: sendersError } = senderIdResolved
+      ? { data: null, error: null }
+      : await supabase
+          .from('whatsapp_senders')
+          .select('*')
+          .eq('is_active', true)
+          .order('is_default', { ascending: false })
+          .limit(1);
+
+    if (!senderIdResolved) {
+      if (sendersError) {
+        console.error("Error fetching whatsapp_senders:", sendersError);
+      } else if (senders && senders.length > 0) {
+        const sender = senders[0];
+        apiKey = sender.api_key;
+        senderName = sender.name;
+        senderTemplateIdentifier = sender.template_identifier ?? null;
+        buttonConfig = sender.button_config ?? 'two_buttons';
+        hasNomeParam = sender.has_nome_param ?? true;
+        apiSource = `DB: ${sender.name} (${sender.phone})`;
+        console.log(`Using sender from database: ${sender.name} (${sender.phone}), template_identifier: ${senderTemplateIdentifier ?? 'default'}, button_config: ${buttonConfig}, has_nome_param: ${hasNomeParam}`);
+      } else {
+        console.log("No active senders found, using ENV fallback");
+      }
     }
 
     // GET: check config status
@@ -90,7 +131,7 @@ serve(async (req) => {
 
     const templateToUse = senderTemplateIdentifier ?? TEMPLATE_IDENTIFIER;
     console.log(`Using template: ${templateToUse} (sender: ${senderName})`);
-    const { phone, condominiumId }: RequestBody = await req.json();
+    const { phone, condominiumId } = bodyData;
 
     if (!phone) {
       return new Response(

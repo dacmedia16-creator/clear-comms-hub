@@ -18,7 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Star, Trash2 } from "lucide-react";
+import { Loader2, Plus, Send, Star, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 import {
   useWhatsAppSenderTemplates,
   WhatsAppSenderTemplate,
@@ -49,6 +51,37 @@ export function SenderTemplatesDialog({ sender, open, onOpenChange }: SenderTemp
   const [hasNomeParam, setHasNomeParam] = useState(true);
   const [isDefault, setIsDefault] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testPhone, setTestPhone] = useState("");
+
+  const handleTest = async (t: WhatsAppSenderTemplate) => {
+    const phone = window.prompt(
+      `Testar template "${t.label}"\nDigite o telefone (com DDD, ex: 11999998888):`,
+      testPhone
+    );
+    if (!phone) return;
+    setTestPhone(phone);
+    setTestingId(t.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("test-whatsapp", {
+        body: { phone, templateId: t.id },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast({ title: "Mensagem enviada", description: `Template ${t.label} enviado para ${data.phone}` });
+      } else {
+        toast({
+          title: "Falha no envio",
+          description: data?.error?.substring(0, 200) || "Erro desconhecido",
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err?.message || "Erro inesperado", variant: "destructive" });
+    } finally {
+      setTestingId(null);
+    }
+  };
 
   const reset = () => {
     setIdentifier("");
@@ -126,6 +159,21 @@ export function SenderTemplatesDialog({ sender, open, onOpenChange }: SenderTemp
                     </div>
                   </div>
                   <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleTest(t)}
+                      disabled={testingId === t.id}
+                    >
+                      {testingId === t.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Send className="w-3 h-3 mr-1" />
+                          Testar
+                        </>
+                      )}
+                    </Button>
                     {!t.is_default && (
                       <Button
                         variant="ghost"

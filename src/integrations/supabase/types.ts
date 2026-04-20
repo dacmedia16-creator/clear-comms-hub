@@ -1425,6 +1425,53 @@ export type Database = {
           },
         ]
       }
+      whatsapp_sender_templates: {
+        Row: {
+          button_config: string
+          created_at: string
+          has_nome_param: boolean
+          id: string
+          identifier: string
+          is_default: boolean
+          label: string
+          param_style: string
+          sender_id: string
+          updated_at: string
+        }
+        Insert: {
+          button_config?: string
+          created_at?: string
+          has_nome_param?: boolean
+          id?: string
+          identifier: string
+          is_default?: boolean
+          label: string
+          param_style?: string
+          sender_id: string
+          updated_at?: string
+        }
+        Update: {
+          button_config?: string
+          created_at?: string
+          has_nome_param?: boolean
+          id?: string
+          identifier?: string
+          is_default?: boolean
+          label?: string
+          param_style?: string
+          sender_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_sender_templates_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_senders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_senders: {
         Row: {
           api_key: string

@@ -66,6 +66,7 @@ import { MemberListSearchSelect } from "@/components/MemberListSearchSelect";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { linkifyText, linkifyTextWithButtons } from "@/lib/utils";
 import { WhatsAppMonitor } from "@/components/WhatsAppMonitor";
+import { ActiveBroadcastsBanner } from "@/components/ActiveBroadcastsBanner";
 import { useMemberLists } from "@/hooks/useMemberLists";
 
 interface Announcement {
@@ -906,6 +907,18 @@ export default function AdminCondominiumPage() {
             </DialogContent>
           </Dialog>
         </div>
+
+        {/* Active broadcasts banner — persists across reloads */}
+        {condoId && (
+          <ActiveBroadcastsBanner
+            condominiumId={condoId}
+            onOpenMonitor={({ announcementId, broadcastId, total }) => {
+              setMonitorAnnouncementId(announcementId);
+              setMonitorBroadcastId(broadcastId);
+              setMonitorTotal(total);
+            }}
+          />
+        )}
 
         {/* WhatsApp Monitor */}
         {monitorAnnouncementId && condoId && (

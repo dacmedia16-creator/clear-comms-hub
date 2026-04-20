@@ -1,40 +1,43 @@
 
 
-User está dizendo que o template `remax_corretor` aprovado tem **Botão 1 estático** (URL fixa, sem variável) e **Botão 2 dinâmico** (com `{{1}}` recebendo o token de optout).
+User corrigindo: Botão 1 estático, Botão 2 **dinâmico** (com `{{1}}`). Releitura da imagem confirma — "Bloquear Contato" provavelmente tem URL `https://avisopro.com.br/optout?t={{1}}` recebendo o token, igual ao template padrão.
 
-Hoje o código suporta `button_config`:
-- `two_buttons` → manda dynamic param em `[0]` e `[1]` (não serve, pois botão 1 é estático)
-- `single_button_idx0` → só `[0]`
-- `single_button_idx1` → só `[1]` ✓ **é exatamente isso que precisamos**
-- `no_buttons`
+Então a config correta É `single_button_idx1` (que já apliquei no `whatsapp_sender_templates` para `remax_corretor`). O problema é que o teste pelo Super Admin usa `test-whatsapp`, que lê do **sender** (não do template).
 
-Solução: atualizar o registro do template `remax_corretor` em `whatsapp_sender_templates` para `button_config = 'single_button_idx1'`. Edge function já trata esse caso corretamente (linhas 296-298 de send-whatsapp/index.ts).
+## Diagnóstico real
 
-Nenhuma mudança de código. Só uma migração SQL de UPDATE.
+Logs mais recentes mostraram `button_config: two_buttons` no envio de teste — porque a função `test-whatsapp` lê `whatsapp_senders.button_config`, ignorando o template selecionado.
 
-## Plano
+Duas opções para fazer o teste do `remax_corretor` funcionar:
 
-### Mudança única
-UPDATE em `whatsapp_sender_templates` setando `button_config = 'single_button_idx1'` para o template com `identifier = 'remax_corretor'` vinculado ao sender Aviso Pro (15 99831-2112).
+**Opção A — corrigir test-whatsapp** (correto a longo prazo)
+Modificar `test-whatsapp/index.ts` para aceitar `templateId` opcional no body e ler config de `whatsapp_sender_templates` quando passado, igual à `send-whatsapp`. Atualizar UI do `SenderTemplatesDialog` (ou onde está o botão Testar do template) para passar `templateId`.
 
-### Por que funciona
-A edge function `send-whatsapp` já tem o branch:
-```ts
-} else if (buttonConfig === 'single_button_idx1') {
-  formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
-}
-```
-Isso envia apenas o parâmetro dinâmico do botão 2 (token de optout), e o botão 1 fica com a URL estática que você definiu na Meta.
+**Opção B — envio real via SendWhatsAppButton**
+Não mexer no código. Criar um anúncio de teste e enviar pelo botão do anúncio escolhendo `remax_corretor` no dropdown — esse fluxo (`send-whatsapp`) já lê config do template corretamente.
 
-### Pré-requisito
-Confirmar que o template `remax_corretor` realmente já está aprovado no WABA do canal Aviso Pro (você sinalizou que sim ao descrever a estrutura dos botões).
+## Recomendação: Opção A
 
-### Após o update
-Testar novamente o envio pelo Super Admin escolhendo template `remax_corretor`. Deve chegar.
+Sem ela, todo template novo com config diferente do sender vai falhar no teste e gerar confusão. Mudança pequena e isolada.
 
-### Ações
-1. Migração SQL: UPDATE `whatsapp_sender_templates` SET `button_config = 'single_button_idx1'` WHERE `identifier = 'remax_corretor'`.
-2. Testar envio.
+## Mudanças
 
-Nenhum arquivo de código alterado.
+1. **`supabase/functions/test-whatsapp/index.ts`**
+   - Aceitar `templateId?: string` no body
+   - Se `templateId` presente: buscar `whatsapp_sender_templates` por id, sobrescrever `templateToUse`, `buttonConfig`, `hasNomeParam`, `param_style`
+   - Manter fallback atual (sender defaults) quando não vier `templateId`
+
+2. **UI do botão Testar de template** (provavelmente `src/components/super-admin/SenderTemplatesDialog.tsx`)
+   - Passar `templateId` no invoke do `test-whatsapp`
+
+3. Verificar se a função respeita `param_style` (named vs positional) — campo já existe na tabela mas pode não estar sendo usado. Confirmar antes de mexer.
+
+## Pré-requisito
+Confirmar onde está o botão "Testar" do template (vou ler `SenderTemplatesDialog.tsx` na próxima loop).
+
+## Ações
+1. Ler `SenderTemplatesDialog.tsx` para localizar botão Testar
+2. Editar `test-whatsapp/index.ts` (aceitar `templateId`)
+3. Editar UI do botão Testar (passar `templateId`)
+4. Você testa novamente o `remax_corretor` pelo botão Testar do template
 

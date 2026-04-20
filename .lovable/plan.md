@@ -1,40 +1,40 @@
 
 
-User just typed "a" — likely accidental or means "continue with option A" from my previous diagnostic message (submit `remax_corretor` for approval in the Aviso Pro WABA).
+User está dizendo que o template `remax_corretor` aprovado tem **Botão 1 estático** (URL fixa, sem variável) e **Botão 2 dinâmico** (com `{{1}}` recebendo o token de optout).
 
-Since 201 from Zion Talk = aceito mas não entregue, e o template padrão `aviso_pro_confirma_3` chega normal pelo mesmo canal, o problema é Meta-side: `remax_corretor` não está aprovado no WABA do número 15998312112.
+Hoje o código suporta `button_config`:
+- `two_buttons` → manda dynamic param em `[0]` e `[1]` (não serve, pois botão 1 é estático)
+- `single_button_idx0` → só `[0]`
+- `single_button_idx1` → só `[1]` ✓ **é exatamente isso que precisamos**
+- `no_buttons`
 
-Não há mudança de código a fazer. É ação externa (Meta/Zion Talk).
+Solução: atualizar o registro do template `remax_corretor` em `whatsapp_sender_templates` para `button_config = 'single_button_idx1'`. Edge function já trata esse caso corretamente (linhas 296-298 de send-whatsapp/index.ts).
 
-## Plano: destravar entrega do `remax_corretor`
+Nenhuma mudança de código. Só uma migração SQL de UPDATE.
 
-### Causa raiz confirmada
-- Zion Talk retorna `status=201` (request aceito)
-- Mensagem nunca chega no WhatsApp do destino
-- Template padrão `aviso_pro_confirma_3` chega normal pelo mesmo canal/api_key
-- Conclusão: `remax_corretor` **não existe / não está aprovado no WABA do canal Aviso Pro (15998312112)**. Templates Meta são vinculados ao WABA — não dá para usar um template aprovado em outro WABA.
+## Plano
 
-### Ação (fora do código)
+### Mudança única
+UPDATE em `whatsapp_sender_templates` setando `button_config = 'single_button_idx1'` para o template com `identifier = 'remax_corretor'` vinculado ao sender Aviso Pro (15 99831-2112).
 
-1. **Verificar no painel Zion Talk** o log da mensagem para `+5515981788214` enviada às 02:36 com template `remax_corretor` — confirmar se aparece como `failed/rejected` (provável motivo: template not found).
+### Por que funciona
+A edge function `send-whatsapp` já tem o branch:
+```ts
+} else if (buttonConfig === 'single_button_idx1') {
+  formData.append('buttonUrlDynamicParams[1]', `${optoutToken}`);
+}
+```
+Isso envia apenas o parâmetro dinâmico do botão 2 (token de optout), e o botão 1 fica com a URL estática que você definiu na Meta.
 
-2. **Verificar no Meta Business Manager** → WhatsApp Manager → Templates: o `remax_corretor` aparece aprovado em qual WABA?
-   - Se está em outro WABA: precisa **submeter o mesmo template para aprovação no WABA do Aviso Pro** (mesmo nome, mesma estrutura, mesma categoria). Aprovação leva ~minutos a horas.
-   - Se não existe em lugar nenhum: criar e submeter pela primeira vez.
+### Pré-requisito
+Confirmar que o template `remax_corretor` realmente já está aprovado no WABA do canal Aviso Pro (você sinalizou que sim ao descrever a estrutura dos botões).
 
-3. Após aprovação Meta, **nenhuma mudança no código é necessária** — o sender Aviso Pro com o template `remax_corretor` já está cadastrado corretamente no banco. O envio passa a funcionar automaticamente.
+### Após o update
+Testar novamente o envio pelo Super Admin escolhendo template `remax_corretor`. Deve chegar.
 
-### Alternativa imediata (se não quiser esperar aprovação Meta)
-Cadastrar um sender separado **Re/Max** no Super Admin com:
-- api_key + número do canal Zion Talk que **realmente tem** `remax_corretor` aprovado no seu WABA
-- Vincular o template `remax_corretor` a esse novo sender
-- No envio, escolher sender "Re/Max"
+### Ações
+1. Migração SQL: UPDATE `whatsapp_sender_templates` SET `button_config = 'single_button_idx1'` WHERE `identifier = 'remax_corretor'`.
+2. Testar envio.
 
-### Mudanças de código no projeto
-**Nenhuma.** Sistema está correto. Falha está 100% na camada Meta/WABA.
-
-### O que preciso de você para destravar
-- Print do painel Zion Talk com o status real (delivered/failed/rejected) da mensagem de teste, **ou**
-- Confirmação de em qual WABA o `remax_corretor` foi aprovado, **ou**
-- api_key + número do canal Zion Talk que tem o template aprovado (para cadastrar sender separado)
+Nenhum arquivo de código alterado.
 

@@ -1,37 +1,52 @@
 
 
-User quer aplicar a configuração correta no template `remax_corretor`: botão 1 estático (não envia parâmetro), botão 2 dinâmico (envia token).
+User está vendo o sender REMAX (`remax_corretor`) na lista e quer confirmar a configuração: botão 1 estático (sem param), botão 2 dinâmico (com param do token).
 
-## Mudança
+Na imagem, o badge mostra `two_buttons` — config errada para esse template. Precisa virar `single_button_idx1`.
 
-Update único no DB:
+Já fiz esse update antes em `whatsapp_sender_templates` (registro do template). Mas a UI mostra `two_buttons` porque o badge está lendo de `whatsapp_senders.button_config` (coluna do sender), não do template.
+
+Vou checar via DB pra confirmar antes de propor.
+
+## Diagnóstico
+
+A imagem é da linha do **sender** REMAX no card "Números de WhatsApp". O badge `two_buttons` vem de `whatsapp_senders.button_config`. Para alinhar:
+
+1. Atualizar `whatsapp_senders` da REMAX → `button_config = 'single_button_idx1'`
+2. Garantir que o template `remax_corretor` em `whatsapp_sender_templates` também esteja `single_button_idx1` (já feito antes, vou reconfirmar)
+
+## Mudança proposta
 
 ```sql
+-- Sender REMAX
+UPDATE public.whatsapp_senders 
+SET button_config = 'single_button_idx1', updated_at = now() 
+WHERE name ILIKE '%remax%';
+
+-- Garantir template (idempotente)
 UPDATE public.whatsapp_sender_templates 
 SET button_config = 'single_button_idx1', updated_at = now() 
 WHERE identifier = 'remax_corretor';
 ```
 
-Resultado: a função `send-whatsapp` (e o `test-whatsapp` via botão Testar do template) vai parar de enviar `buttonUrlDynamicParams[0]` e mandar só `buttonUrlDynamicParams[1]: <token>`.
+### Resultado esperado
 
-### Payload final esperado para `remax_corretor`
+Payload enviado pela `send-whatsapp` e `test-whatsapp` para REMAX:
 
 ```
-mobile_phone: +55XXXXXXXXXXX
 template_identifier: remax_corretor
-language: pt_BR
 bodyParams[nome]: <nome>
 bodyParams[aviso]: <título>
 bodyParams[lembrete]: <resumo>
 buttonUrlDynamicParams[1]: <token-optout>
 ```
 
-(sem `buttonUrlDynamicParams[0]` — botão 1 é estático)
+Sem `buttonUrlDynamicParams[0]` (botão 1 estático). Badge na UI vai passar a mostrar `single_button_idx1`.
 
 ## Ações
-1. Executar UPDATE no `whatsapp_sender_templates` (via insert tool)
-2. Você testa pelo botão **Testar** do template `remax_corretor` no Super Admin
-3. Conferir se o WhatsApp chega corretamente
+1. Rodar os 2 UPDATEs
+2. Você recarrega a página → badge muda para `single_button_idx1`
+3. Testar pelo botão Testar do sender e do template
 
-Nenhuma mudança de código — infra já suporta `single_button_idx1`.
+Sem alteração de código.
 

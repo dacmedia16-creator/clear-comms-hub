@@ -18,7 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Star, Trash2 } from "lucide-react";
+import { Loader2, Plus, Send, Star, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 import {
   useWhatsAppSenderTemplates,
   WhatsAppSenderTemplate,
@@ -126,6 +128,21 @@ export function SenderTemplatesDialog({ sender, open, onOpenChange }: SenderTemp
                     </div>
                   </div>
                   <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleTest(t)}
+                      disabled={testingId === t.id}
+                    >
+                      {testingId === t.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Send className="w-3 h-3 mr-1" />
+                          Testar
+                        </>
+                      )}
+                    </Button>
                     {!t.is_default && (
                       <Button
                         variant="ghost"

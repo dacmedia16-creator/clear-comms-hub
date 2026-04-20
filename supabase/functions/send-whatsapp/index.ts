@@ -42,6 +42,8 @@ interface RequestBody {
   announcement: Announcement;
   condominium: Condominium;
   baseUrl?: string;
+  // Optional: pick a specific template (from whatsapp_sender_templates) for this send
+  templateId?: string;
   // Batch params (used in self-invocation)
   batchOffset?: number;
   membersPayload?: UnifiedMember[];
@@ -90,13 +92,42 @@ function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader: string; senderPhone: string; senderName: string; templateIdentifier: string | null; buttonConfig: string; hasNomeParam: boolean } | null> {
+async function resolveAuthHeader(
+  supabase: SupabaseClient,
+  templateId?: string
+): Promise<{ authHeader: string; senderPhone: string; senderName: string; templateIdentifier: string | null; buttonConfig: string; hasNomeParam: boolean } | null> {
   let apiKey = Deno.env.get('ZIONTALK_API_KEY');
   let senderPhone = 'ENV_DEFAULT';
   let senderName = 'ENV_DEFAULT';
   let templateIdentifier: string | null = null;
   let buttonConfig = 'two_buttons';
   let hasNomeParam = true;
+
+  // If templateId provided, use that template's sender + override config
+  if (templateId) {
+    const { data: tpl, error: tplErr } = await supabase
+      .from('whatsapp_sender_templates')
+      .select('*, whatsapp_senders!inner(*)')
+      .eq('id', templateId)
+      .single();
+
+    if (tplErr || !tpl) {
+      console.error("Error fetching template by id:", tplErr);
+    } else {
+      const sender = (tpl as any).whatsapp_senders;
+      if (sender?.is_active) {
+        apiKey = sender.api_key;
+        senderPhone = sender.phone;
+        senderName = sender.name;
+        templateIdentifier = (tpl as any).identifier;
+        buttonConfig = (tpl as any).button_config ?? 'two_buttons';
+        hasNomeParam = (tpl as any).has_nome_param ?? true;
+        console.log(`Using template "${templateIdentifier}" via sender ${senderName}`);
+        if (!apiKey) return null;
+        return { authHeader: 'Basic ' + encode(`${apiKey}:`), senderPhone, senderName, templateIdentifier, buttonConfig, hasNomeParam };
+      }
+    }
+  }
 
   const { data: senders, error: sendersError } = await supabase
     .from('whatsapp_senders')
@@ -115,7 +146,23 @@ async function resolveAuthHeader(supabase: SupabaseClient): Promise<{ authHeader
     templateIdentifier = sender.template_identifier ?? null;
     buttonConfig = sender.button_config ?? 'two_buttons';
     hasNomeParam = sender.has_nome_param ?? true;
-    console.log(`Using sender: ${sender.name} (${senderPhone}), template_identifier: ${templateIdentifier ?? 'default'}, button_config: ${buttonConfig}, has_nome_param: ${hasNomeParam}`);
+
+    // Try to load default template from whatsapp_sender_templates
+    const { data: defTpl } = await supabase
+      .from('whatsapp_sender_templates')
+      .select('*')
+      .eq('sender_id', sender.id)
+      .eq('is_default', true)
+      .maybeSingle();
+
+    if (defTpl) {
+      templateIdentifier = (defTpl as any).identifier;
+      buttonConfig = (defTpl as any).button_config ?? buttonConfig;
+      hasNomeParam = (defTpl as any).has_nome_param ?? hasNomeParam;
+      console.log(`Using default template "${templateIdentifier}" for sender ${senderName}`);
+    } else {
+      console.log(`Using sender column template "${templateIdentifier ?? 'default'}" for ${senderName}`);
+    }
   } else {
     console.log("No active senders found, using ENV fallback");
   }
@@ -417,7 +464,7 @@ serve(async (req) => {
 
   try {
     const body: RequestBody = await req.json();
-    const { announcement, condominium, batchOffset = 0, membersPayload, authHeader: passedAuthHeader, templateIdentifier: passedTemplateIdentifier, broadcastId: passedBroadcastId, existingBroadcastId, buttonConfig: passedButtonConfig, hasNomeParam: passedHasNomeParam } = body;
+    const { announcement, condominium, templateId, batchOffset = 0, membersPayload, authHeader: passedAuthHeader, templateIdentifier: passedTemplateIdentifier, broadcastId: passedBroadcastId, existingBroadcastId, buttonConfig: passedButtonConfig, hasNomeParam: passedHasNomeParam } = body;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -441,7 +488,7 @@ serve(async (req) => {
     // First invocation: resolve sender, fetch members, return immediate response
     console.log(`[Initial] Processing announcement ${announcement.id} in condominium ${condominium.id}`);
 
-    const senderInfo = await resolveAuthHeader(supabase);
+    const senderInfo = await resolveAuthHeader(supabase, templateId);
     if (!senderInfo) {
       return new Response(
         JSON.stringify({ error: "API key não configurada. Cadastre um número de WhatsApp na Central de Notificações." }),

@@ -35,7 +35,8 @@ export function useSendWhatsApp() {
   const sendToMembers = async (
     announcement: AnnouncementWithTargeting,
     condominium: CondominiumForShare & { id: string },
-    baseUrl: string
+    baseUrl: string,
+    templateId?: string
   ): Promise<SendWhatsAppResponse> => {
     setSending(true);
     setLastResult(null);
@@ -59,6 +60,7 @@ export function useSendWhatsApp() {
             slug: condominium.slug,
           },
           baseUrl,
+          templateId: templateId || undefined,
         },
       });
 

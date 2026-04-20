@@ -22,10 +22,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertCircle, Loader2, MessageSquare, Pencil, Star, Trash2 } from "lucide-react";
+import { AlertCircle, FileText, Loader2, MessageSquare, Pencil, Star, Trash2 } from "lucide-react";
 import { useWhatsAppSenders, WhatsAppSender } from "@/hooks/useWhatsAppSenders";
 import { AddWhatsAppSenderDialog } from "./AddWhatsAppSenderDialog";
 import { EditWhatsAppSenderDialog } from "./EditWhatsAppSenderDialog";
+import { SenderTemplatesDialog } from "./SenderTemplatesDialog";
 
 function formatPhoneDisplay(phone: string): string {
   if (phone.length === 11) {
@@ -44,6 +45,13 @@ export function WhatsAppSendersCard() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [senderToDelete, setSenderToDelete] = useState<WhatsAppSender | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [templatesSender, setTemplatesSender] = useState<WhatsAppSender | null>(null);
+  const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false);
+
+  const handleManageTemplates = (sender: WhatsAppSender) => {
+    setTemplatesSender(sender);
+    setTemplatesDialogOpen(true);
+  };
 
   const handleEdit = (sender: WhatsAppSender) => {
     setEditingSender(sender);
@@ -181,6 +189,14 @@ export function WhatsAppSendersCard() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => handleManageTemplates(sender)}
+                          title="Gerenciar templates"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleEdit(sender)}
                         >
                           <Pencil className="w-4 h-4" />
@@ -209,6 +225,13 @@ export function WhatsAppSendersCard() {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         onUpdate={updateSender}
+      />
+
+      {/* Templates Dialog */}
+      <SenderTemplatesDialog
+        sender={templatesSender}
+        open={templatesDialogOpen}
+        onOpenChange={setTemplatesDialogOpen}
       />
 
       {/* Delete Confirmation Dialog */}

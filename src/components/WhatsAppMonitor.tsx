@@ -160,6 +160,8 @@ export function WhatsAppMonitor({
             announcement: ann,
             condominium: condo,
             baseUrl: window.location.origin,
+            senderId: broadcastDetails?.sender_id ?? undefined,
+            templateId: broadcastDetails?.template_id ?? undefined,
             existingBroadcastId: broadcastId,
           },
         });
@@ -205,6 +207,8 @@ export function WhatsAppMonitor({
               announcement: ann,
               condominium: condo,
               baseUrl: window.location.origin,
+              senderId: broadcastDetails?.sender_id ?? undefined,
+              templateId: broadcastDetails?.template_id ?? undefined,
               existingBroadcastId: broadcastId,
             },
           });

@@ -1,76 +1,86 @@
 
 ## Objetivo
 
-Fazer o canal `REMAX 2` usar a configuração de botões `single_button_idx1`.
+Fazer o canal `REMAX 2` enviar usando o template sem o parâmetro `nome`.
 
-## Estado atual identificado
+## Diagnóstico confirmado
 
-- O sender `REMAX 2` existe em `whatsapp_senders`
-- Hoje ele está com:
-  - `button_config = 'two_buttons'`
-  - `template_identifier = 'remax_corretor2'`
-- Já existe um template `remax_corretor` em `whatsapp_sender_templates` com:
-  - `button_config = 'single_button_idx1'`
-- Esse template `remax_corretor` está ligado a outro sender, não ao `REMAX 2`
+Hoje o `REMAX 2` está configurado no nível do canal com:
+- `template_identifier = remax_corretor2`
+- `button_config = single_button_idx1`
+- `has_nome_param = true`
+
+Como não existe template padrão vinculado em `whatsapp_sender_templates` para esse sender, o envio está usando os parâmetros do próprio canal. Por isso a função `send-whatsapp` ainda monta:
+
+```text
+bodyParams[nome]
+bodyParams[aviso]
+bodyParams[lembrete]
+buttonUrlDynamicParams[1]
+```
+
+Se o template `remax_corretor2` não aceita `nome`, essa flag precisa ser corrigida para `false`.
 
 ## O que vou ajustar
 
 ### 1. Corrigir a configuração do canal `REMAX 2`
 Atualizar o registro do sender `REMAX 2` para:
-- `button_config = 'single_button_idx1'`
+- `has_nome_param = false`
 
-Isso garante que, quando o envio usar a configuração do próprio canal, o payload coloque o token no botão índice 1.
+Isso fará a função parar de enviar `bodyParams[nome]` para esse canal.
 
-### 2. Validar o template padrão do canal
-Revisar se o `REMAX 2` deve continuar usando `template_identifier = 'remax_corretor2'`.
+### 2. Manter os demais parâmetros do canal
+Preservar a configuração já correta:
+- `template_identifier = remax_corretor2`
+- `button_config = single_button_idx1`
 
-Se a intenção for manter o template atual:
-- deixar `remax_corretor2`
-- apenas alinhar o `button_config` do canal para `single_button_idx1`
+Assim a mudança fica restrita apenas ao que está errado no payload.
 
-Se a intenção for usar exatamente o template `remax_corretor`:
-- também atualizar o identificador/template padrão do canal para esse template
-- ou cadastrar esse template dentro dos templates do próprio sender `REMAX 2`
+### 3. Melhorar a leitura da interface
+Ajustar a card/listagem dos números para mostrar o indicador `sem nome` com base na configuração efetiva do envio:
+- se existir template padrão do sender, usar `default_template_has_nome_param`
+- senão usar `has_nome_param` do próprio número
 
-### 3. Melhorar a consistência da UI
-Ajustar a interface de Super Admin para reduzir confusão entre:
-- configuração do canal (`whatsapp_senders.button_config`)
-- configuração do template (`whatsapp_sender_templates.button_config`)
+Hoje a tela pode induzir erro porque parte da UI olha só para o campo do número, mesmo quando existe lógica de precedência por template.
 
-Melhoria proposta:
-- exibir claramente quando o envio usa configuração do número vs. do template
-- mostrar o template padrão real do sender
-- evitar a impressão de que um template de outro sender está sendo usado pelo `REMAX 2`
+### 4. Validar consistência com o teste de WhatsApp
+Revisar o fluxo de teste (`test-whatsapp`) para garantir que ele também respeita `has_nome_param = false` no `REMAX 2`, evitando divergência entre teste e envio real.
 
 ## Implementação técnica
 
 ### Banco / dados
 Aplicar atualização no sender `REMAX 2`:
 - tabela `whatsapp_senders`
-- campo `button_config = 'single_button_idx1'`
-
-Opcionalmente, se confirmado no fluxo:
-- ajustar `template_identifier`
-- criar/editar template default do sender `REMAX 2` em `whatsapp_sender_templates`
+- campo `has_nome_param = false`
 
 ### Código
-Revisar estes pontos para manter coerência:
-- `src/hooks/useWhatsAppSenders.ts`
-- `src/components/super-admin/WhatsAppSendersCard.tsx`
-- `src/components/super-admin/EditWhatsAppSenderDialog.tsx`
-- `src/components/super-admin/SenderTemplatesDialog.tsx`
-- `supabase/functions/send-whatsapp/index.ts`
+Revisar estes pontos:
+- `supabase/functions/send-whatsapp/index.ts`  
+  Confirmar que com `hasNomeParam = false` o campo `bodyParams[nome]` não é enviado.
+- `supabase/functions/test-whatsapp/index.ts`  
+  Confirmar que o teste usa a mesma regra.
+- `src/hooks/useWhatsAppSenders.ts`  
+  Garantir que a UI receba os campos efetivos de template/número.
+- `src/components/super-admin/WhatsAppSendersCard.tsx`  
+  Exibir corretamente o badge `sem nome` com base na configuração efetiva.
 
 ## Resultado esperado
 
-Depois da correção:
-- o canal `REMAX 2` passa a operar com `single_button_idx1`
-- o envio deixa de usar o mapeamento visual antigo de `two_buttons`
-- a tela de administração fica mais clara sobre qual configuração está valendo
+Depois da correção, o canal `REMAX 2` passará a enviar:
+```text
+bodyParams[aviso]
+bodyParams[lembrete]
+buttonUrlDynamicParams[1]
+```
+
+E deixará de enviar:
+```text
+bodyParams[nome]
+```
 
 ## Ordem de execução
 
-1. Atualizar `REMAX 2` para `single_button_idx1`
-2. Verificar se o template padrão correto é `remax_corretor2` ou `remax_corretor`
-3. Ajustar a UI para refletir melhor a origem da configuração
-4. Validar um disparo de teste com o canal `REMAX 2`
+1. Atualizar `REMAX 2` para `has_nome_param = false`
+2. Validar que `send-whatsapp` já respeita essa flag
+3. Ajustar a UI para refletir o estado efetivo do canal
+4. Validar com envio de teste do `REMAX 2`

@@ -26,6 +26,15 @@ interface WhatsAppLog {
   sent_at: string | null;
 }
 
+interface BroadcastDetails {
+  sender_id: string | null;
+  sender_name_snapshot: string | null;
+  sender_phone_snapshot: string | null;
+  template_id: string | null;
+  template_label_snapshot: string | null;
+  template_identifier_snapshot: string | null;
+}
+
 interface WhatsAppMonitorProps {
   announcementId: string;
   condominiumId: string;
@@ -44,6 +53,7 @@ export function WhatsAppMonitor({
   const [logs, setLogs] = useState<WhatsAppLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [broadcastStatus, setBroadcastStatus] = useState<string | null>(null);
+  const [broadcastDetails, setBroadcastDetails] = useState<BroadcastDetails | null>(null);
   const [togglingPause, setTogglingPause] = useState(false);
   const [lastLogTime, setLastLogTime] = useState<number>(Date.now());
   const [isStalled, setIsStalled] = useState(false);
@@ -58,10 +68,20 @@ export function WhatsAppMonitor({
     const fetchStatus = async () => {
       const { data } = await supabase
         .from('whatsapp_broadcasts')
-        .select('status')
+        .select('status, sender_id, sender_name_snapshot, sender_phone_snapshot, template_id, template_label_snapshot, template_identifier_snapshot')
         .eq('id', broadcastId)
         .single();
-      if (data) setBroadcastStatus(data.status);
+      if (data) {
+        setBroadcastStatus(data.status);
+        setBroadcastDetails({
+          sender_id: data.sender_id ?? null,
+          sender_name_snapshot: data.sender_name_snapshot ?? null,
+          sender_phone_snapshot: data.sender_phone_snapshot ?? null,
+          template_id: data.template_id ?? null,
+          template_label_snapshot: data.template_label_snapshot ?? null,
+          template_identifier_snapshot: data.template_identifier_snapshot ?? null,
+        });
+      }
     };
 
     fetchStatus();
@@ -78,8 +98,17 @@ export function WhatsAppMonitor({
           filter: `id=eq.${broadcastId}`,
         },
         (payload) => {
-          const newStatus = (payload.new as any).status;
+          const next = payload.new as any;
+          const newStatus = next.status;
           setBroadcastStatus(newStatus);
+          setBroadcastDetails({
+            sender_id: next.sender_id ?? null,
+            sender_name_snapshot: next.sender_name_snapshot ?? null,
+            sender_phone_snapshot: next.sender_phone_snapshot ?? null,
+            template_id: next.template_id ?? null,
+            template_label_snapshot: next.template_label_snapshot ?? null,
+            template_identifier_snapshot: next.template_identifier_snapshot ?? null,
+          });
         }
       )
       .subscribe();
@@ -288,7 +317,7 @@ export function WhatsAppMonitor({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="font-display text-base flex items-center gap-2">
-            <MessageCircle className="w-5 h-5 text-green-600" />
+            <MessageCircle className="w-5 h-5 text-primary" />
             Monitor de Envios WhatsApp
           </CardTitle>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
@@ -297,6 +326,23 @@ export function WhatsAppMonitor({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {broadcastDetails && (broadcastDetails.sender_name_snapshot || broadcastDetails.sender_phone_snapshot || broadcastDetails.template_label_snapshot || broadcastDetails.template_identifier_snapshot) && (
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm space-y-1">
+            {(broadcastDetails.sender_name_snapshot || broadcastDetails.sender_phone_snapshot) && (
+              <p>
+                <span className="font-medium">Número:</span>{" "}
+                {[broadcastDetails.sender_name_snapshot, broadcastDetails.sender_phone_snapshot].filter(Boolean).join(" · ")}
+              </p>
+            )}
+            {(broadcastDetails.template_label_snapshot || broadcastDetails.template_identifier_snapshot) && (
+              <p>
+                <span className="font-medium">Template:</span>{" "}
+                {broadcastDetails.template_label_snapshot || broadcastDetails.template_identifier_snapshot}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Progress */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">

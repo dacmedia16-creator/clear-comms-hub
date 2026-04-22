@@ -98,8 +98,28 @@ serve(async (req) => {
         senderTemplateIdentifier = sender.template_identifier ?? null;
         buttonConfig = sender.button_config ?? 'two_buttons';
         hasNomeParam = sender.has_nome_param ?? true;
-        apiSource = `DB: ${sender.name} (${sender.phone})`;
-        console.log(`Using sender from database: ${sender.name} (${sender.phone}), template_identifier: ${senderTemplateIdentifier ?? 'default'}, button_config: ${buttonConfig}, has_nome_param: ${hasNomeParam}`);
+
+        const { data: defaultTemplate, error: defaultTemplateError } = await supabase
+          .from('whatsapp_sender_templates')
+          .select('identifier, label, button_config, has_nome_param')
+          .eq('sender_id', sender.id)
+          .eq('is_default', true)
+          .maybeSingle();
+
+        if (defaultTemplateError) {
+          console.error('Error fetching default sender template:', defaultTemplateError);
+        }
+
+        if (defaultTemplate) {
+          senderTemplateIdentifier = defaultTemplate.identifier ?? senderTemplateIdentifier;
+          buttonConfig = defaultTemplate.button_config ?? buttonConfig;
+          hasNomeParam = defaultTemplate.has_nome_param ?? hasNomeParam;
+          apiSource = `DB (template padrão): ${defaultTemplate.label} via ${sender.name} (${sender.phone})`;
+          console.log(`Using default template ${defaultTemplate.label} (${senderTemplateIdentifier}) from sender ${sender.name}, button_config: ${buttonConfig}, has_nome_param: ${hasNomeParam}`);
+        } else {
+          apiSource = `DB: ${sender.name} (${sender.phone})`;
+          console.log(`Using sender from database: ${sender.name} (${sender.phone}), template_identifier: ${senderTemplateIdentifier ?? 'default'}, button_config: ${buttonConfig}, has_nome_param: ${hasNomeParam}`);
+        }
       } else {
         console.log("No active senders found, using ENV fallback");
       }

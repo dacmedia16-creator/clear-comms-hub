@@ -53,7 +53,7 @@ function formatButtonConfigLabel(config: string): string {
 }
 
 function getEffectiveConfigSource(sender: WhatsAppSender): "template" | "sender" {
-  return sender.default_template_button_config ? "template" : "sender";
+  return sender.effective_config_source ?? (sender.default_template_button_config ? "template" : "sender");
 }
 
 export function WhatsAppSendersCard() {
@@ -166,9 +166,9 @@ export function WhatsAppSendersCard() {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     <div className="flex flex-col gap-1">
-                      <span className="font-mono">
-                        {sender.default_template_identifier ?? sender.template_identifier ?? <span className="italic">sem template padrão</span>}
-                      </span>
+                        <span className="font-mono">
+                          {sender.effective_template_identifier ?? <span className="italic">sem template padrão</span>}
+                        </span>
                       <span>
                         {sender.default_template_label
                           ? `Template padrão ativo: ${sender.default_template_label}.`
@@ -182,13 +182,13 @@ export function WhatsAppSendersCard() {
                         <TooltipTrigger asChild>
                           <Badge variant="outline" className="cursor-help text-xs">
                             {formatButtonConfigLabel(
-                              sender.default_template_button_config ?? (sender as any).button_config ?? "two_buttons"
+                              sender.effective_button_config ?? "two_buttons"
                             )}
                           </Badge>
                         </TooltipTrigger>
                         <TooltipContent>
                           <p className="font-mono text-xs">
-                            {sender.default_template_button_config ?? (sender as any).button_config ?? "two_buttons"}
+                            {sender.effective_button_config ?? "two_buttons"}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {getEffectiveConfigSource(sender) === "template"
@@ -200,7 +200,7 @@ export function WhatsAppSendersCard() {
                       <Badge variant="secondary" className="text-xs">
                         {getEffectiveConfigSource(sender) === "template" ? "via template" : "via número"}
                       </Badge>
-                      {(sender as any).has_nome_param === false && (
+                      {sender.effective_has_nome_param === false && (
                         <Badge variant="secondary" className="text-xs">sem nome</Badge>
                       )}
                     </div>

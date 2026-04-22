@@ -34,9 +34,9 @@ interface SenderTemplatesDialogProps {
 }
 
 const BUTTON_CONFIG_OPTIONS = [
-  { value: "two_buttons", label: "2 Botões (link + optout)" },
-  { value: "single_button_idx0", label: "1 Botão (idx 0)" },
-  { value: "single_button_idx1", label: "1 Botão (idx 1)" },
+  { value: "two_buttons", label: "2 botões (link + sair)" },
+  { value: "single_button_idx0", label: "1 botão na posição 1" },
+  { value: "single_button_idx1", label: "1 botão na posição 2" },
   { value: "no_buttons", label: "Sem botões" },
 ];
 
@@ -118,7 +118,7 @@ export function SenderTemplatesDialog({ sender, open, onOpenChange }: SenderTemp
         <DialogHeader>
           <DialogTitle>Templates de {sender?.name}</DialogTitle>
           <DialogDescription>
-            Gerencie os templates Meta disponíveis para este número. O template padrão será usado quando nenhum for selecionado no envio.
+            Gerencie os templates Meta deste número. Quando houver template padrão aqui, a configuração dele prevalece sobre a configuração salva no número.
           </DialogDescription>
         </DialogHeader>
 
@@ -151,8 +151,8 @@ export function SenderTemplatesDialog({ sender, open, onOpenChange }: SenderTemp
                     <code className="text-xs text-muted-foreground font-mono">
                       {t.identifier}
                     </code>
-                    <div className="flex gap-1 mt-1">
-                      <Badge variant="outline" className="text-xs">{t.button_config}</Badge>
+                      <div className="flex gap-1 mt-1">
+                        <Badge variant="outline" className="text-xs">{t.button_config}</Badge>
                       {!t.has_nome_param && (
                         <Badge variant="secondary" className="text-xs">sem nome</Badge>
                       )}

@@ -17,6 +17,10 @@ export interface WhatsAppSender {
   template_identifier: string | null;
   button_config: string;
   has_nome_param: boolean;
+  default_template_identifier?: string | null;
+  default_template_label?: string | null;
+  default_template_button_config?: string | null;
+  default_template_has_nome_param?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -47,7 +51,39 @@ export function useWhatsAppSenders() {
         .order("name");
 
       if (error) throw error;
-      setSenders((data as unknown as WhatsAppSender[]) || []);
+
+      const baseSenders = (data as unknown as WhatsAppSender[]) || [];
+
+      if (baseSenders.length === 0) {
+        setSenders([]);
+        return;
+      }
+
+      const senderIds = baseSenders.map((sender) => sender.id);
+      const { data: defaultTemplates, error: templatesError } = await supabase
+        .from("whatsapp_sender_templates")
+        .select("sender_id, identifier, label, button_config, has_nome_param")
+        .in("sender_id", senderIds)
+        .eq("is_default", true);
+
+      if (templatesError) throw templatesError;
+
+      const templateMap = new Map(
+        (defaultTemplates || []).map((template) => [template.sender_id, template])
+      );
+
+      setSenders(
+        baseSenders.map((sender) => {
+          const defaultTemplate = templateMap.get(sender.id);
+          return {
+            ...sender,
+            default_template_identifier: defaultTemplate?.identifier ?? null,
+            default_template_label: defaultTemplate?.label ?? null,
+            default_template_button_config: defaultTemplate?.button_config ?? null,
+            default_template_has_nome_param: defaultTemplate?.has_nome_param ?? null,
+          };
+        })
+      );
     } catch (error) {
       console.error("Error fetching WhatsApp senders:", error);
       toast({

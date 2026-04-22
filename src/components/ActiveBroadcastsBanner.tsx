@@ -33,7 +33,7 @@ export function ActiveBroadcastsBanner({ condominiumId, onOpenMonitor }: Props) 
     <Card className="border-primary/40 bg-primary/5">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <MessageCircle className="w-4 h-4 text-green-600" />
+          <MessageCircle className="w-4 h-4 text-primary" />
           <h3 className="font-display text-sm font-semibold">
             Envios de WhatsApp em andamento ({broadcasts.length})
           </h3>

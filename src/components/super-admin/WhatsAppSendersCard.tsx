@@ -131,8 +131,8 @@ export function WhatsAppSendersCard() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Telefone</TableHead>
-                  <TableHead>Template</TableHead>
-                  <TableHead>Botões</TableHead>
+                  <TableHead>Template padrão</TableHead>
+                  <TableHead>Configuração</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-center">Padrão</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -141,7 +141,17 @@ export function WhatsAppSendersCard() {
               <TableBody>
                 {senders.map((sender) => (
                   <TableRow key={sender.id}>
-                  <TableCell className="font-medium">{sender.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="space-y-1">
+                      <p>{sender.name}</p>
+                      {sender.is_default && (
+                        <Badge variant="secondary" className="w-fit gap-1">
+                          <Star className="w-3 h-3" />
+                          Remetente padrão
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="font-mono text-sm">
                     {formatPhoneDisplay(sender.phone)}
                   </TableCell>
@@ -149,12 +159,17 @@ export function WhatsAppSendersCard() {
                     {sender.template_identifier ?? <span className="italic">padrão</span>}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-xs font-mono">
-                      {(sender as any).button_config ?? "two_buttons"}
-                    </Badge>
-                    {(sender as any).has_nome_param === false && (
-                      <Badge variant="secondary" className="text-xs ml-1">sem nome</Badge>
-                    )}
+                    <div className="flex flex-wrap gap-1">
+                      <Badge variant="outline" className="text-xs font-mono">
+                        {sender.button_config ?? "two_buttons"}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs font-mono">
+                        {sender.param_style ?? "named"}
+                      </Badge>
+                      {sender.has_nome_param === false && (
+                        <Badge variant="secondary" className="text-xs">sem nome</Badge>
+                      )}
+                    </div>
                   </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center">

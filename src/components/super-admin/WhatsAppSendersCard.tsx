@@ -52,6 +52,10 @@ function formatButtonConfigLabel(config: string): string {
   }
 }
 
+function getEffectiveConfigSource(sender: WhatsAppSender): "template" | "sender" {
+  return sender.default_template_button_config ? "template" : "sender";
+}
+
 export function WhatsAppSendersCard() {
   const { senders, loading, envKeyStatus, hasActiveSenders, createSender, updateSender, deleteSender, setDefault, toggleActive } = useWhatsAppSenders();
   const [editingSender, setEditingSender] = useState<WhatsAppSender | null>(null);
@@ -107,16 +111,16 @@ export function WhatsAppSendersCard() {
         <CardContent className="space-y-4">
           {/* ENV Key Status Alert */}
           {!envKeyStatus.loading && envKeyStatus.hasEnvKey && (
-            <Alert className="border-amber-500/50 bg-amber-500/10">
-              <AlertCircle className="h-4 w-4 text-amber-500" />
-              <AlertTitle className="text-amber-600 dark:text-amber-400">
+            <Alert>
+              <AlertCircle className="h-4 w-4 text-muted-foreground" />
+              <AlertTitle>
                 API Key do Ambiente Detectada
               </AlertTitle>
               <AlertDescription className="text-sm text-muted-foreground">
                 Existe uma configuração via variável de ambiente que será usada como fallback 
                 se nenhum número estiver cadastrado ou ativo.
                 {!hasActiveSenders && (
-                  <Badge variant="secondary" className="ml-2 bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                  <Badge variant="secondary" className="ml-2">
                     Ativo (Fallback)
                   </Badge>
                 )}
@@ -163,10 +167,12 @@ export function WhatsAppSendersCard() {
                   <TableCell className="text-xs text-muted-foreground">
                     <div className="flex flex-col gap-1">
                       <span className="font-mono">
-                        {sender.template_identifier ?? <span className="italic">sem identificador no número</span>}
+                        {sender.default_template_identifier ?? sender.template_identifier ?? <span className="italic">sem template padrão</span>}
                       </span>
                       <span>
-                        O envio usa o template padrão cadastrado em <span className="font-medium">Templates</span> quando existir.
+                        {sender.default_template_label
+                          ? `Template padrão ativo: ${sender.default_template_label}.`
+                          : "Sem template padrão cadastrado para este número."}
                       </span>
                     </div>
                   </TableCell>
@@ -175,14 +181,25 @@ export function WhatsAppSendersCard() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Badge variant="outline" className="cursor-help text-xs">
-                            {formatButtonConfigLabel((sender as any).button_config ?? "two_buttons")}
+                            {formatButtonConfigLabel(
+                              sender.default_template_button_config ?? (sender as any).button_config ?? "two_buttons"
+                            )}
                           </Badge>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="font-mono text-xs">{(sender as any).button_config ?? "two_buttons"}</p>
-                          <p className="text-xs text-muted-foreground">Configuração aplicada quando o envio usar os dados do número.</p>
+                          <p className="font-mono text-xs">
+                            {sender.default_template_button_config ?? (sender as any).button_config ?? "two_buttons"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {getEffectiveConfigSource(sender) === "template"
+                              ? "Em vigor pelo template padrão deste número."
+                              : "Em vigor pela configuração salva no número."}
+                          </p>
                         </TooltipContent>
                       </Tooltip>
+                      <Badge variant="secondary" className="text-xs">
+                        {getEffectiveConfigSource(sender) === "template" ? "via template" : "via número"}
+                      </Badge>
                       {(sender as any).has_nome_param === false && (
                         <Badge variant="secondary" className="text-xs">sem nome</Badge>
                       )}

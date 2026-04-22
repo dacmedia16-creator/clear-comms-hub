@@ -76,6 +76,9 @@ export function useWhatsAppSenders() {
         api_key: sender.api_key,
         is_active: sender.is_active ?? true,
         is_default: sender.is_default ?? false,
+        template_identifier: sender.template_identifier ?? null,
+        button_config: sender.button_config ?? "two_buttons",
+        has_nome_param: sender.has_nome_param ?? true,
       });
 
       if (error) throw error;

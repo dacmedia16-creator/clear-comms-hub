@@ -208,6 +208,9 @@ async function resolveAuthHeader(
       console.log(`Using sender column template "${templateIdentifier ?? 'default'}" for ${senderName}`);
     }
   } else {
+    if (senderId) {
+      throw new Error('O número de WhatsApp selecionado não está ativo ou não foi encontrado.');
+    }
     console.log("No active senders found, using ENV fallback");
   }
 

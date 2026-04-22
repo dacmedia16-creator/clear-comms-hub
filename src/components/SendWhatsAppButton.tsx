@@ -152,7 +152,7 @@ export function SendWhatsAppButton({
       <Button
         variant={variant}
         size={size}
-        onClick={() => handleSend(directSender.id, directTemplates[0]?.id)}
+        onClick={() => handleSend(directSender?.id, directTemplates[0]?.id)}
         disabled={sending}
         title="Enviar via WhatsApp"
       >

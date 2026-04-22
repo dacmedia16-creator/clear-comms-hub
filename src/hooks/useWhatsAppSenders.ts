@@ -31,6 +31,7 @@ export interface CreateWhatsAppSender {
   template_identifier?: string | null;
   button_config?: string;
   has_nome_param?: boolean;
+  param_style?: string;
 }
 
 export function useWhatsAppSenders() {

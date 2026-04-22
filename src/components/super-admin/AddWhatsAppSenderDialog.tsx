@@ -42,6 +42,11 @@ const BUTTON_CONFIG_OPTIONS = [
   { value: "no_buttons", label: "Sem botões", description: "Nenhum botão dinâmico" },
 ];
 
+const PARAM_STYLE_OPTIONS = [
+  { value: "named", label: "Parâmetros nomeados" },
+  { value: "positional", label: "Parâmetros posicionais" },
+];
+
 export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,6 +58,7 @@ export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps)
   const [templateIdentifier, setTemplateIdentifier] = useState("");
   const [buttonConfig, setButtonConfig] = useState("two_buttons");
   const [hasNomeParam, setHasNomeParam] = useState(true);
+  const [paramStyle, setParamStyle] = useState("named");
 
   const resetForm = () => {
     setName("");
@@ -63,6 +69,7 @@ export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps)
     setTemplateIdentifier("");
     setButtonConfig("two_buttons");
     setHasNomeParam(true);
+    setParamStyle("named");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -80,6 +87,7 @@ export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps)
       template_identifier: templateIdentifier.trim() || null,
       button_config: buttonConfig,
       has_nome_param: hasNomeParam,
+      param_style: paramStyle,
     });
 
     setSaving(false);
@@ -177,6 +185,22 @@ export function AddWhatsAppSenderDialog({ onAdd }: AddWhatsAppSenderDialogProps)
               <p className="text-xs text-muted-foreground">
                 Define como os botões dinâmicos do template são mapeados no payload.
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Estilo dos parâmetros</Label>
+              <Select value={paramStyle} onValueChange={setParamStyle}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PARAM_STYLE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex items-center space-x-2">

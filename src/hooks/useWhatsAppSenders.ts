@@ -17,6 +17,7 @@ export interface WhatsAppSender {
   template_identifier: string | null;
   button_config: string;
   has_nome_param: boolean;
+  param_style: string;
   created_at: string;
   updated_at: string;
 }
@@ -30,6 +31,7 @@ export interface CreateWhatsAppSender {
   template_identifier?: string | null;
   button_config?: string;
   has_nome_param?: boolean;
+  param_style?: string;
 }
 
 export function useWhatsAppSenders() {
@@ -76,6 +78,10 @@ export function useWhatsAppSenders() {
         api_key: sender.api_key,
         is_active: sender.is_active ?? true,
         is_default: sender.is_default ?? false,
+        template_identifier: sender.template_identifier ?? null,
+        button_config: sender.button_config ?? "two_buttons",
+        has_nome_param: sender.has_nome_param ?? true,
+        param_style: sender.param_style ?? "named",
       });
 
       if (error) throw error;

@@ -1,77 +1,76 @@
 
 ## Objetivo
 
-Adicionar mais um número de WhatsApp para envio usando a estrutura que já existe no sistema.
+Fazer o canal `REMAX 2` usar a configuração de botões `single_button_idx1`.
 
-## O que já existe hoje
+## Estado atual identificado
 
-O projeto já tem suporte para múltiplos números de WhatsApp:
-- Cadastro de números em `whatsapp_senders`
-- Tela de Super Admin com botão `Adicionar Número`
-- Configuração de número ativo e número padrão
-- Templates por número em `whatsapp_sender_templates`
+- O sender `REMAX 2` existe em `whatsapp_senders`
+- Hoje ele está com:
+  - `button_config = 'two_buttons'`
+  - `template_identifier = 'remax_corretor2'`
+- Já existe um template `remax_corretor` em `whatsapp_sender_templates` com:
+  - `button_config = 'single_button_idx1'`
+- Esse template `remax_corretor` está ligado a outro sender, não ao `REMAX 2`
 
-Arquivos já preparados para isso:
-- `src/components/super-admin/AddWhatsAppSenderDialog.tsx`
-- `src/components/super-admin/WhatsAppSendersCard.tsx`
+## O que vou ajustar
+
+### 1. Corrigir a configuração do canal `REMAX 2`
+Atualizar o registro do sender `REMAX 2` para:
+- `button_config = 'single_button_idx1'`
+
+Isso garante que, quando o envio usar a configuração do próprio canal, o payload coloque o token no botão índice 1.
+
+### 2. Validar o template padrão do canal
+Revisar se o `REMAX 2` deve continuar usando `template_identifier = 'remax_corretor2'`.
+
+Se a intenção for manter o template atual:
+- deixar `remax_corretor2`
+- apenas alinhar o `button_config` do canal para `single_button_idx1`
+
+Se a intenção for usar exatamente o template `remax_corretor`:
+- também atualizar o identificador/template padrão do canal para esse template
+- ou cadastrar esse template dentro dos templates do próprio sender `REMAX 2`
+
+### 3. Melhorar a consistência da UI
+Ajustar a interface de Super Admin para reduzir confusão entre:
+- configuração do canal (`whatsapp_senders.button_config`)
+- configuração do template (`whatsapp_sender_templates.button_config`)
+
+Melhoria proposta:
+- exibir claramente quando o envio usa configuração do número vs. do template
+- mostrar o template padrão real do sender
+- evitar a impressão de que um template de outro sender está sendo usado pelo `REMAX 2`
+
+## Implementação técnica
+
+### Banco / dados
+Aplicar atualização no sender `REMAX 2`:
+- tabela `whatsapp_senders`
+- campo `button_config = 'single_button_idx1'`
+
+Opcionalmente, se confirmado no fluxo:
+- ajustar `template_identifier`
+- criar/editar template default do sender `REMAX 2` em `whatsapp_sender_templates`
+
+### Código
+Revisar estes pontos para manter coerência:
 - `src/hooks/useWhatsAppSenders.ts`
+- `src/components/super-admin/WhatsAppSendersCard.tsx`
+- `src/components/super-admin/EditWhatsAppSenderDialog.tsx`
 - `src/components/super-admin/SenderTemplatesDialog.tsx`
-
-## Plano
-
-1. Usar a tela já existente em **Super Admin > Notificações**
-   - Abrir o card **Números de WhatsApp**
-   - Clicar em **Adicionar Número**
-
-2. Cadastrar o novo número com os campos já suportados
-   - Nome identificador
-   - Telefone com DDD
-   - API Key do provedor
-   - Template principal opcional
-   - Configuração de botões
-   - Se usa parâmetro `nome`
-   - Status ativo
-   - Se será o número padrão ou não
-
-3. Validar o comportamento do novo número
-   - Confirmar que ele aparece na tabela
-   - Confirmar se ficou ativo
-   - Confirmar se deve ou não virar padrão
-   - Se necessário, abrir **Gerenciar templates** para adicionar templates específicos desse número
-
-4. Testar envio
-   - Fazer teste por template via diálogo de templates
-   - Validar se o envio sai com o número novo sem afetar o número atual
+- `supabase/functions/send-whatsapp/index.ts`
 
 ## Resultado esperado
 
-- O sistema passa a ter mais de um número cadastrado para disparo
-- Você pode manter um como padrão e outro como alternativa
-- Cada número pode ter seus próprios templates
+Depois da correção:
+- o canal `REMAX 2` passa a operar com `single_button_idx1`
+- o envio deixa de usar o mapeamento visual antigo de `two_buttons`
+- a tela de administração fica mais clara sobre qual configuração está valendo
 
-## Se houver bloqueio ao cadastrar
+## Ordem de execução
 
-Se o botão existir mas salvar der erro, a próxima implementação deve focar em:
-- validar permissões de Super Admin na tabela `whatsapp_senders`
-- revisar mensagens de erro do `createSender`
-- conferir consistência entre os campos enviados pelo formulário e os campos realmente persistidos
-- opcionalmente adicionar validação melhor de telefone e feedback mais claro para falhas de cadastro
-
-## Detalhes técnicos
-
-Fluxo atual de criação:
-- `AddWhatsAppSenderDialog` envia `name`, `phone`, `api_key`, `is_active`, `is_default`, `template_identifier`, `button_config`, `has_nome_param`
-- `useWhatsAppSenders.createSender()` hoje insere no banco apenas:
-  - `name`
-  - `phone`
-  - `api_key`
-  - `is_active`
-  - `is_default`
-
-Melhoria recomendada na próxima execução:
-- incluir também no `insert`:
-  - `template_identifier`
-  - `button_config`
-  - `has_nome_param`
-
-Assim o novo número já nasce totalmente configurado, sem perder os campos extras do formulário.
+1. Atualizar `REMAX 2` para `single_button_idx1`
+2. Verificar se o template padrão correto é `remax_corretor2` ou `remax_corretor`
+3. Ajustar a UI para refletir melhor a origem da configuração
+4. Validar um disparo de teste com o canal `REMAX 2`

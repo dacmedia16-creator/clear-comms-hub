@@ -21,6 +21,10 @@ export interface WhatsAppSender {
   default_template_label?: string | null;
   default_template_button_config?: string | null;
   default_template_has_nome_param?: boolean | null;
+  effective_template_identifier?: string | null;
+  effective_button_config?: string;
+  effective_has_nome_param?: boolean;
+  effective_config_source?: "template" | "sender";
   created_at: string;
   updated_at: string;
 }
@@ -75,12 +79,17 @@ export function useWhatsAppSenders() {
       setSenders(
         baseSenders.map((sender) => {
           const defaultTemplate = templateMap.get(sender.id);
+          const hasDefaultTemplate = Boolean(defaultTemplate);
           return {
             ...sender,
             default_template_identifier: defaultTemplate?.identifier ?? null,
             default_template_label: defaultTemplate?.label ?? null,
             default_template_button_config: defaultTemplate?.button_config ?? null,
             default_template_has_nome_param: defaultTemplate?.has_nome_param ?? null,
+            effective_template_identifier: defaultTemplate?.identifier ?? sender.template_identifier ?? null,
+            effective_button_config: defaultTemplate?.button_config ?? sender.button_config ?? "two_buttons",
+            effective_has_nome_param: defaultTemplate?.has_nome_param ?? sender.has_nome_param ?? true,
+            effective_config_source: hasDefaultTemplate ? "template" : "sender",
           };
         })
       );

@@ -1121,20 +1121,6 @@ export default function AdminCondominiumPage() {
             isPinned={selectedAnnouncement.is_pinned}
             onTogglePin={() => handleTogglePin(selectedAnnouncement)}
             onDelete={() => handleDelete(selectedAnnouncement.id)}
-            whatsAppAction={
-              <SendWhatsAppButton
-                announcement={{ ...selectedAnnouncement, id: selectedAnnouncement.id }}
-                condominium={{ ...condominium, id: condominium.id }}
-                variant="ghost"
-                size="default"
-                showLabel
-                onSendStarted={(annId, total, broadcastId) => {
-                  setMonitorAnnouncementId(annId);
-                  setMonitorTotal(total);
-                  setMonitorBroadcastId(broadcastId || null);
-                }}
-              />
-            }
             onSendWhatsApp={() => {
               // Trigger WhatsApp send via the existing button logic
               const baseUrl = window.location.origin;

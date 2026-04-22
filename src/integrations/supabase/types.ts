@@ -1297,13 +1297,7 @@ export type Database = {
           condominium_id: string
           created_at: string | null
           id: string
-          sender_id: string | null
-          sender_name_snapshot: string | null
-          sender_phone_snapshot: string | null
           status: string
-          template_id: string | null
-          template_identifier_snapshot: string | null
-          template_label_snapshot: string | null
           total_members: number
           updated_at: string | null
         }
@@ -1312,13 +1306,7 @@ export type Database = {
           condominium_id: string
           created_at?: string | null
           id?: string
-          sender_id?: string | null
-          sender_name_snapshot?: string | null
-          sender_phone_snapshot?: string | null
           status?: string
-          template_id?: string | null
-          template_identifier_snapshot?: string | null
-          template_label_snapshot?: string | null
           total_members?: number
           updated_at?: string | null
         }
@@ -1327,13 +1315,7 @@ export type Database = {
           condominium_id?: string
           created_at?: string | null
           id?: string
-          sender_id?: string | null
-          sender_name_snapshot?: string | null
-          sender_phone_snapshot?: string | null
           status?: string
-          template_id?: string | null
-          template_identifier_snapshot?: string | null
-          template_label_snapshot?: string | null
           total_members?: number
           updated_at?: string | null
         }
@@ -1343,20 +1325,6 @@ export type Database = {
             columns: ["announcement_id"]
             isOneToOne: false
             referencedRelation: "announcements"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "whatsapp_broadcasts_sender_id_fkey"
-            columns: ["sender_id"]
-            isOneToOne: false
-            referencedRelation: "whatsapp_senders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "whatsapp_broadcasts_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "whatsapp_sender_templates"
             referencedColumns: ["id"]
           },
         ]

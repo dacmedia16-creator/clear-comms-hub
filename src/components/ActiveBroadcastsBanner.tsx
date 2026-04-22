@@ -33,7 +33,7 @@ export function ActiveBroadcastsBanner({ condominiumId, onOpenMonitor }: Props) 
     <Card className="border-primary/40 bg-primary/5">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <MessageCircle className="w-4 h-4 text-primary" />
+          <MessageCircle className="w-4 h-4 text-green-600" />
           <h3 className="font-display text-sm font-semibold">
             Envios de WhatsApp em andamento ({broadcasts.length})
           </h3>
@@ -63,20 +63,6 @@ export function ActiveBroadcastsBanner({ condominiumId, onOpenMonitor }: Props) 
                     {b.total_members} destinatários
                   </span>
                 </div>
-                {(b.sender_name_snapshot || b.sender_phone_snapshot || b.template_label_snapshot || b.template_identifier_snapshot) && (
-                  <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                    {(b.sender_name_snapshot || b.sender_phone_snapshot) && (
-                      <p className="truncate">
-                        Número: {[b.sender_name_snapshot, b.sender_phone_snapshot].filter(Boolean).join(" · ")}
-                      </p>
-                    )}
-                    {(b.template_label_snapshot || b.template_identifier_snapshot) && (
-                      <p className="truncate">
-                        Template: {b.template_label_snapshot || b.template_identifier_snapshot}
-                      </p>
-                    )}
-                  </div>
-                )}
               </div>
               <div className="flex items-center gap-2">
                 <Button

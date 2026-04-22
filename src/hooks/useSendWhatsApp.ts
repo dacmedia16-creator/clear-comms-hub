@@ -18,12 +18,6 @@ interface SendWhatsAppResponse {
   error?: string;
   status?: string;
   broadcast_id?: string;
-  sender_id?: string | null;
-  sender_name_snapshot?: string | null;
-  sender_phone_snapshot?: string | null;
-  template_id?: string | null;
-  template_label_snapshot?: string | null;
-  template_identifier_snapshot?: string | null;
 }
 
 interface AnnouncementWithTargeting extends AnnouncementForShare {
@@ -42,8 +36,7 @@ export function useSendWhatsApp() {
     announcement: AnnouncementWithTargeting,
     condominium: CondominiumForShare & { id: string },
     baseUrl: string,
-    templateId?: string,
-    senderId?: string
+    templateId?: string
   ): Promise<SendWhatsAppResponse> => {
     setSending(true);
     setLastResult(null);
@@ -67,7 +60,6 @@ export function useSendWhatsApp() {
             slug: condominium.slug,
           },
           baseUrl,
-          senderId: senderId || undefined,
           templateId: templateId || undefined,
         },
       });

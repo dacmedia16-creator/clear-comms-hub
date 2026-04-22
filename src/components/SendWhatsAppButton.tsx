@@ -1,14 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { MessageCircle, Loader2, ChevronDown, Smartphone } from "lucide-react";
+import { useEffect, useState } from "react";
+import { MessageCircle, Loader2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -31,23 +28,7 @@ interface TemplateOption {
   label: string;
   identifier: string;
   sender_name: string;
-  sender_id: string;
   is_default: boolean;
-}
-
-interface SenderOption {
-  id: string;
-  name: string;
-  phone: string;
-  is_default: boolean;
-  template_identifier: string | null;
-}
-
-function formatPhoneDisplay(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-  if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return phone;
 }
 
 export function SendWhatsAppButton({
@@ -59,42 +40,25 @@ export function SendWhatsAppButton({
   onSendStarted,
 }: SendWhatsAppButtonProps) {
   const { sendToMembers, sending } = useSendWhatsApp();
-  const [senders, setSenders] = useState<SenderOption[]>([]);
   const [templates, setTemplates] = useState<TemplateOption[]>([]);
 
   useEffect(() => {
     const load = async () => {
-      const [sendersResult, templatesResult] = await Promise.all([
-        (supabase as any)
-          .from("whatsapp_senders")
-          .select("id, name, phone, is_default, template_identifier")
-          .eq("is_active", true)
-          .order("is_default", { ascending: false })
-          .order("name"),
-        (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("whatsapp_sender_templates")
-          .select("id, label, identifier, is_default, sender_id, whatsapp_senders!inner(name, is_active)")
-          .eq("whatsapp_senders.is_active", true)
-          .order("is_default", { ascending: false })
-      ]);
+        .select("id, label, identifier, is_default, whatsapp_senders!inner(name, is_active)")
+        .eq("whatsapp_senders.is_active", true)
+        .order("is_default", { ascending: false });
 
-      if (sendersResult.error) {
-        console.error("Failed to load senders", sendersResult.error);
+      if (error) {
+        console.error("Failed to load templates", error);
         return;
       }
 
-      if (templatesResult.error) {
-        console.error("Failed to load templates", templatesResult.error);
-        return;
-      }
-
-      setSenders((sendersResult.data || []) as SenderOption[]);
-
-      const opts: TemplateOption[] = (templatesResult.data || []).map((t: any) => ({
+      const opts: TemplateOption[] = (data || []).map((t: any) => ({
         id: t.id,
         label: t.label,
         identifier: t.identifier,
-        sender_id: t.sender_id,
         sender_name: t.whatsapp_senders?.name || "",
         is_default: t.is_default,
       }));
@@ -103,19 +67,9 @@ export function SendWhatsAppButton({
     load();
   }, []);
 
-  const senderTemplates = useMemo(() => {
-    const map = new Map<string, TemplateOption[]>();
-    templates.forEach((template) => {
-      const current = map.get(template.sender_id) || [];
-      current.push(template);
-      map.set(template.sender_id, current);
-    });
-    return map;
-  }, [templates]);
-
-  const handleSend = async (senderId?: string, templateId?: string) => {
+  const handleSend = async (templateId?: string) => {
     const baseUrl = window.location.origin;
-    const result = await sendToMembers(announcement, condominium, baseUrl, templateId, senderId);
+    const result = await sendToMembers(announcement, condominium, baseUrl, templateId);
 
     if (result.error) {
       toast({ title: "Erro ao enviar", description: result.error, variant: "destructive" });
@@ -143,16 +97,13 @@ export function SendWhatsAppButton({
     }
   };
 
-  const directSender = senders.length === 1 ? senders[0] : senders.find((sender) => sender.is_default) || null;
-  const directTemplates = directSender ? senderTemplates.get(directSender.id) || [] : [];
-  const canSendDirectly = senders.length === 0 || (senders.length <= 1 && directSender && directTemplates.length <= 1);
-
-  if (canSendDirectly) {
+  // If no templates configured (or only one), use simple button
+  if (templates.length <= 1) {
     return (
       <Button
         variant={variant}
         size={size}
-        onClick={() => handleSend(directSender?.id, directTemplates[0]?.id)}
+        onClick={() => handleSend()}
         disabled={sending}
         title="Enviar via WhatsApp"
       >
@@ -162,6 +113,7 @@ export function SendWhatsAppButton({
     );
   }
 
+  // Multiple templates: dropdown to choose
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -176,59 +128,21 @@ export function SendWhatsAppButton({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel>Escolher número</DropdownMenuLabel>
+        <DropdownMenuLabel>Escolher template</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {senders.map((sender) => {
-          const options = senderTemplates.get(sender.id) || [];
-
-          if (options.length <= 1) {
-            return (
-              <DropdownMenuItem key={sender.id} onClick={() => handleSend(sender.id, options[0]?.id)}>
-                <div className="flex flex-col">
-                  <span className="font-medium text-sm flex items-center gap-1">
-                    <Smartphone className="w-3.5 h-3.5" />
-                    {sender.name}
-                    {sender.is_default && <span className="text-xs text-muted-foreground">(padrão)</span>}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatPhoneDisplay(sender.phone)}
-                    {options[0] ? ` · ${options[0].label}` : sender.template_identifier ? ` · ${sender.template_identifier}` : " · template padrão"}
-                  </span>
-                </div>
-              </DropdownMenuItem>
-            );
-          }
-
-          return (
-            <DropdownMenuSub key={sender.id}>
-              <DropdownMenuSubTrigger>
-                <div className="flex flex-col">
-                  <span className="font-medium text-sm flex items-center gap-1">
-                    <Smartphone className="w-3.5 h-3.5" />
-                    {sender.name}
-                    {sender.is_default && <span className="text-xs text-muted-foreground">(padrão)</span>}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{formatPhoneDisplay(sender.phone)}</span>
-                </div>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="w-64">
-                <DropdownMenuLabel>Escolher template</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {options.map((template) => (
-                  <DropdownMenuItem key={template.id} onClick={() => handleSend(sender.id, template.id)}>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-sm">
-                        {template.label}
-                        {template.is_default && <span className="ml-1 text-xs text-muted-foreground">(padrão)</span>}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{template.identifier}</span>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          );
-        })}
+        {templates.map((t) => (
+          <DropdownMenuItem key={t.id} onClick={() => handleSend(t.id)}>
+            <div className="flex flex-col">
+              <span className="font-medium text-sm">
+                {t.label}
+                {t.is_default && <span className="ml-1 text-xs text-muted-foreground">(padrão)</span>}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {t.sender_name} · {t.identifier}
+              </span>
+            </div>
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

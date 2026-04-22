@@ -44,11 +44,6 @@ const BUTTON_CONFIG_OPTIONS = [
   { value: "no_buttons", label: "Sem botões" },
 ];
 
-const PARAM_STYLE_OPTIONS = [
-  { value: "named", label: "Parâmetros nomeados" },
-  { value: "positional", label: "Parâmetros posicionais" },
-];
-
 export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate }: EditWhatsAppSenderDialogProps) {
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
@@ -59,7 +54,6 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
   const [templateIdentifier, setTemplateIdentifier] = useState("");
   const [buttonConfig, setButtonConfig] = useState("two_buttons");
   const [hasNomeParam, setHasNomeParam] = useState(true);
-  const [paramStyle, setParamStyle] = useState("named");
 
   useEffect(() => {
     if (sender) {
@@ -71,7 +65,6 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
       setTemplateIdentifier(sender.template_identifier ?? "");
       setButtonConfig(sender.button_config ?? "two_buttons");
       setHasNomeParam(sender.has_nome_param ?? true);
-      setParamStyle(sender.param_style ?? "named");
     }
   }, [sender]);
 
@@ -90,7 +83,6 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
       template_identifier: templateIdentifier.trim() || null,
       button_config: buttonConfig,
       has_nome_param: hasNomeParam,
-      param_style: paramStyle,
     };
 
     // Only update API key if provided
@@ -184,22 +176,6 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
               <p className="text-xs text-muted-foreground">
                 Define como os botões dinâmicos do template são mapeados no payload.
               </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Estilo dos parâmetros</Label>
-              <Select value={paramStyle} onValueChange={setParamStyle}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PARAM_STYLE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="flex items-center space-x-2">

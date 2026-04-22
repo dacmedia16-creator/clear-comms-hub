@@ -9,12 +9,6 @@ export interface ActiveBroadcast {
   status: string;
   updated_at: string | null;
   announcement_title?: string | null;
-  sender_id?: string | null;
-  sender_name_snapshot?: string | null;
-  sender_phone_snapshot?: string | null;
-  template_id?: string | null;
-  template_label_snapshot?: string | null;
-  template_identifier_snapshot?: string | null;
 }
 
 export function useActiveBroadcasts(condominiumId: string | null | undefined) {
@@ -29,7 +23,7 @@ export function useActiveBroadcasts(condominiumId: string | null | undefined) {
     }
     const { data, error } = await supabase
       .from("whatsapp_broadcasts")
-      .select("id, announcement_id, condominium_id, total_members, status, updated_at, sender_id, sender_name_snapshot, sender_phone_snapshot, template_id, template_label_snapshot, template_identifier_snapshot, announcements(title)")
+      .select("id, announcement_id, condominium_id, total_members, status, updated_at, announcements(title)")
       .eq("condominium_id", condominiumId)
       .in("status", ["processing", "paused"])
       .order("updated_at", { ascending: false });
@@ -44,12 +38,6 @@ export function useActiveBroadcasts(condominiumId: string | null | undefined) {
           status: b.status,
           updated_at: b.updated_at,
           announcement_title: b.announcements?.title ?? null,
-          sender_id: b.sender_id ?? null,
-          sender_name_snapshot: b.sender_name_snapshot ?? null,
-          sender_phone_snapshot: b.sender_phone_snapshot ?? null,
-          template_id: b.template_id ?? null,
-          template_label_snapshot: b.template_label_snapshot ?? null,
-          template_identifier_snapshot: b.template_identifier_snapshot ?? null,
         }))
       );
     }

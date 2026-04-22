@@ -519,7 +519,7 @@ serve(async (req) => {
 
   try {
     const body: RequestBody = await req.json();
-    const { announcement, condominium, templateId, batchOffset = 0, membersPayload, authHeader: passedAuthHeader, templateIdentifier: passedTemplateIdentifier, broadcastId: passedBroadcastId, existingBroadcastId, buttonConfig: passedButtonConfig, hasNomeParam: passedHasNomeParam } = body;
+    const { announcement, condominium, senderId, templateId, batchOffset = 0, membersPayload, authHeader: passedAuthHeader, templateIdentifier: passedTemplateIdentifier, broadcastId: passedBroadcastId, existingBroadcastId, buttonConfig: passedButtonConfig, hasNomeParam: passedHasNomeParam } = body;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -543,7 +543,7 @@ serve(async (req) => {
     // First invocation: resolve sender, fetch members, return immediate response
     console.log(`[Initial] Processing announcement ${announcement.id} in condominium ${condominium.id}`);
 
-    const senderInfo = await resolveAuthHeader(supabase, templateId);
+    const senderInfo = await resolveAuthHeader(supabase, senderId, templateId);
     if (!senderInfo) {
       return new Response(
         JSON.stringify({ error: "API key não configurada. Cadastre um número de WhatsApp na Central de Notificações." }),
@@ -579,7 +579,17 @@ serve(async (req) => {
       // Resume: update existing broadcast back to processing
       await supabase
         .from('whatsapp_broadcasts')
-        .update({ status: 'processing', total_members: members.length, updated_at: new Date().toISOString() })
+        .update({
+          status: 'processing',
+          total_members: members.length,
+          sender_id: senderInfo.senderId,
+          sender_name_snapshot: senderInfo.senderName,
+          sender_phone_snapshot: senderInfo.senderPhone,
+          template_id: senderInfo.templateId,
+          template_label_snapshot: senderInfo.templateLabel,
+          template_identifier_snapshot: templateIdentifier,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', existingBroadcastId);
       console.log(`[Initial] Resuming existing broadcast ${existingBroadcastId}`);
     } else {
@@ -591,8 +601,14 @@ serve(async (req) => {
           condominium_id: condominium.id,
           status: 'processing',
           total_members: members.length,
+          sender_id: senderInfo.senderId,
+          sender_name_snapshot: senderInfo.senderName,
+          sender_phone_snapshot: senderInfo.senderPhone,
+          template_id: senderInfo.templateId,
+          template_label_snapshot: senderInfo.templateLabel,
+          template_identifier_snapshot: templateIdentifier,
         })
-        .select('id')
+        .select('id, sender_id, sender_name_snapshot, sender_phone_snapshot, template_id, template_label_snapshot, template_identifier_snapshot')
         .single();
 
       if (broadcastError) {
@@ -612,6 +628,12 @@ serve(async (req) => {
         total: members.length,
         status: 'processing',
         broadcast_id: broadcastId,
+        sender_id: senderInfo.senderId,
+        sender_name_snapshot: senderInfo.senderName,
+        sender_phone_snapshot: senderInfo.senderPhone,
+        template_id: senderInfo.templateId,
+        template_label_snapshot: senderInfo.templateLabel,
+        template_identifier_snapshot: templateIdentifier,
         message: `Enviando mensagens para ${members.length} moradores em lotes de ${BATCH_SIZE}. Cada envio terá um intervalo de 15-30 segundos.`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

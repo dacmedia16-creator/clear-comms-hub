@@ -145,7 +145,7 @@ export function SendWhatsAppButton({
 
   const directSender = senders.length === 1 ? senders[0] : senders.find((sender) => sender.is_default) || null;
   const directTemplates = directSender ? senderTemplates.get(directSender.id) || [] : [];
-  const canSendDirectly = senders.length <= 1 && directSender && directTemplates.length <= 1;
+  const canSendDirectly = senders.length === 0 || (senders.length <= 1 && directSender && directTemplates.length <= 1);
 
   if (canSendDirectly) {
     return (

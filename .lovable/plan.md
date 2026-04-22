@@ -1,67 +1,77 @@
 
+## Objetivo
 
-## Problema
+Adicionar mais um número de WhatsApp para envio usando a estrutura que já existe no sistema.
 
-Existe outro broadcast em andamento (não o que já cancelamos). O Monitor de Envios sumiu da tela e não há como reabrir → sem UI para pausar/finalizar o broadcast atual.
+## O que já existe hoje
 
-## Causa
+O projeto já tem suporte para múltiplos números de WhatsApp:
+- Cadastro de números em `whatsapp_senders`
+- Tela de Super Admin com botão `Adicionar Número`
+- Configuração de número ativo e número padrão
+- Templates por número em `whatsapp_sender_templates`
 
-O `WhatsAppMonitor` só aparece logo após disparar o envio (estado local na página de anúncios). Se o usuário fecha (X) ou recarrega, perde a referência do `broadcastId` e o painel some, mesmo com o broadcast ainda rodando no backend.
+Arquivos já preparados para isso:
+- `src/components/super-admin/AddWhatsAppSenderDialog.tsx`
+- `src/components/super-admin/WhatsAppSendersCard.tsx`
+- `src/hooks/useWhatsAppSenders.ts`
+- `src/components/super-admin/SenderTemplatesDialog.tsx`
 
-## Solução em 2 partes
+## Plano
 
-### 1. Ação imediata (agora)
+1. Usar a tela já existente em **Super Admin > Notificações**
+   - Abrir o card **Números de WhatsApp**
+   - Clicar em **Adicionar Número**
 
-Identificar o broadcast ativo (`status='processing'`) e finalizá-lo via DB:
+2. Cadastrar o novo número com os campos já suportados
+   - Nome identificador
+   - Telefone com DDD
+   - API Key do provedor
+   - Template principal opcional
+   - Configuração de botões
+   - Se usa parâmetro `nome`
+   - Status ativo
+   - Se será o número padrão ou não
 
-```sql
--- Listar broadcasts ativos
-SELECT id, announcement_id, condominium_id, total_members, status, updated_at
-FROM whatsapp_broadcasts
-WHERE status IN ('processing', 'paused')
-ORDER BY updated_at DESC;
+3. Validar o comportamento do novo número
+   - Confirmar que ele aparece na tabela
+   - Confirmar se ficou ativo
+   - Confirmar se deve ou não virar padrão
+   - Se necessário, abrir **Gerenciar templates** para adicionar templates específicos desse número
 
--- Pausar todos os ativos (a função para em ~30s)
-UPDATE whatsapp_broadcasts 
-SET status = 'paused', updated_at = now()
-WHERE status = 'processing';
+4. Testar envio
+   - Fazer teste por template via diálogo de templates
+   - Validar se o envio sai com o número novo sem afetar o número atual
 
--- Após confirmar que parou, marcar como completed
-UPDATE whatsapp_broadcasts 
-SET status = 'completed', updated_at = now()
-WHERE status = 'paused';
-```
+## Resultado esperado
 
-### 2. Correção da UI (definitiva)
+- O sistema passa a ter mais de um número cadastrado para disparo
+- Você pode manter um como padrão e outro como alternativa
+- Cada número pode ter seus próprios templates
 
-Adicionar uma **lista persistente de broadcasts ativos** na página do anúncio / dashboard, para que o usuário sempre consiga reabrir o Monitor mesmo após fechar ou recarregar.
+## Se houver bloqueio ao cadastrar
 
-**Mudanças:**
+Se o botão existir mas salvar der erro, a próxima implementação deve focar em:
+- validar permissões de Super Admin na tabela `whatsapp_senders`
+- revisar mensagens de erro do `createSender`
+- conferir consistência entre os campos enviados pelo formulário e os campos realmente persistidos
+- opcionalmente adicionar validação melhor de telefone e feedback mais claro para falhas de cadastro
 
-- **Novo hook `useActiveBroadcasts(condominiumId)`** em `src/hooks/`
-  - Query: `whatsapp_broadcasts` com `status IN ('processing','paused')` do condomínio
-  - Realtime subscription para atualizar quando status mudar
-  - Retorna lista com `id`, `announcement_id`, `total_members`, `status`
+## Detalhes técnicos
 
-- **Novo componente `ActiveBroadcastsBanner.tsx`** em `src/components/`
-  - Mostra cartão fixo no topo quando há broadcasts ativos
-  - Botão "Abrir Monitor" → reabre `WhatsAppMonitor` com o `broadcastId`+`announcementId` corretos
-  - Botão "Finalizar" → marca como `completed` direto
+Fluxo atual de criação:
+- `AddWhatsAppSenderDialog` envia `name`, `phone`, `api_key`, `is_active`, `is_default`, `template_identifier`, `button_config`, `has_nome_param`
+- `useWhatsAppSenders.createSender()` hoje insere no banco apenas:
+  - `name`
+  - `phone`
+  - `api_key`
+  - `is_active`
+  - `is_default`
 
-- **Integração**: renderizar o banner em `CondoMembersPage` / página do anúncio, acima do conteúdo
+Melhoria recomendada na próxima execução:
+- incluir também no `insert`:
+  - `template_identifier`
+  - `button_config`
+  - `has_nome_param`
 
-- **Pequeno ajuste em `WhatsAppMonitor`**: aceitar ser aberto a partir de um broadcast existente (já tem `existingBroadcastId` no resume — só expor caminho de "reabrir" sem reinvocar a função)
-
-## Resultado
-
-- Agora: o broadcast atual é finalizado pelo SQL
-- Daqui pra frente: sempre que houver envio em andamento, aparece um banner com botões "Abrir Monitor" e "Finalizar" → impossível "perder" o painel
-
-## Plano de execução
-
-1. Rodar SELECT para ver quantos broadcasts estão ativos e qual finalizar
-2. UPDATE → `paused` → aguardar ~30s → `completed`
-3. Criar `useActiveBroadcasts` + `ActiveBroadcastsBanner`
-4. Integrar banner na página de anúncios/dashboard
-5. Você testa: dispara um envio, fecha o monitor, confirma que o banner aparece e permite reabrir/finalizar
-
+Assim o novo número já nasce totalmente configurado, sem perder os campos extras do formulário.

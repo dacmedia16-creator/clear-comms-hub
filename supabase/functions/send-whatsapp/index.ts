@@ -42,6 +42,7 @@ interface RequestBody {
   announcement: Announcement;
   condominium: Condominium;
   baseUrl?: string;
+  senderId?: string;
   // Optional: pick a specific template (from whatsapp_sender_templates) for this send
   templateId?: string;
   // Batch params (used in self-invocation)
@@ -53,6 +54,19 @@ interface RequestBody {
   existingBroadcastId?: string;
   buttonConfig?: string;
   hasNomeParam?: boolean;
+}
+
+interface ResolvedSenderInfo {
+  authHeader: string;
+  senderId: string | null;
+  senderPhone: string;
+  senderName: string;
+  templateId: string | null;
+  templateLabel: string | null;
+  templateIdentifier: string | null;
+  buttonConfig: string;
+  hasNomeParam: boolean;
+  paramStyle: string;
 }
 
 interface ContactInfo {
@@ -94,16 +108,20 @@ function randomDelay(minSeconds: number, maxSeconds: number): Promise<void> {
 
 async function resolveAuthHeader(
   supabase: SupabaseClient,
+  senderId?: string,
   templateId?: string
-): Promise<{ authHeader: string; senderPhone: string; senderName: string; templateIdentifier: string | null; buttonConfig: string; hasNomeParam: boolean } | null> {
+): Promise<ResolvedSenderInfo | null> {
   let apiKey = Deno.env.get('ZIONTALK_API_KEY');
+  let resolvedSenderId: string | null = null;
   let senderPhone = 'ENV_DEFAULT';
   let senderName = 'ENV_DEFAULT';
+  let resolvedTemplateId: string | null = null;
+  let templateLabel: string | null = null;
   let templateIdentifier: string | null = null;
   let buttonConfig = 'two_buttons';
   let hasNomeParam = true;
+  let paramStyle = 'named';
 
-  // If templateId provided, use that template's sender + override config
   if (templateId) {
     const { data: tpl, error: tplErr } = await supabase
       .from('whatsapp_sender_templates')
@@ -115,37 +133,60 @@ async function resolveAuthHeader(
       console.error("Error fetching template by id:", tplErr);
     } else {
       const sender = (tpl as any).whatsapp_senders;
+      if (senderId && (tpl as any).sender_id !== senderId) {
+        throw new Error('O template selecionado não pertence ao número escolhido.');
+      }
       if (sender?.is_active) {
         apiKey = sender.api_key;
+        resolvedSenderId = sender.id;
         senderPhone = sender.phone;
         senderName = sender.name;
+        resolvedTemplateId = (tpl as any).id;
+        templateLabel = (tpl as any).label ?? null;
         templateIdentifier = (tpl as any).identifier;
         buttonConfig = (tpl as any).button_config ?? 'two_buttons';
         hasNomeParam = (tpl as any).has_nome_param ?? true;
+        paramStyle = (tpl as any).param_style ?? 'named';
         console.log(`Using template "${templateIdentifier}" via sender ${senderName}`);
         if (!apiKey) return null;
-        return { authHeader: 'Basic ' + encode(`${apiKey}:`), senderPhone, senderName, templateIdentifier, buttonConfig, hasNomeParam };
+        return {
+          authHeader: 'Basic ' + encode(`${apiKey}:`),
+          senderId: resolvedSenderId,
+          senderPhone,
+          senderName,
+          templateId: resolvedTemplateId,
+          templateLabel,
+          templateIdentifier,
+          buttonConfig,
+          hasNomeParam,
+          paramStyle,
+        };
       }
     }
   }
 
-  const { data: senders, error: sendersError } = await supabase
+  const sendersQuery = supabase
     .from('whatsapp_senders')
     .select('*')
     .eq('is_active', true)
-    .order('is_default', { ascending: false })
-    .limit(1);
+    .order('is_default', { ascending: false });
+
+  const { data: senders, error: sendersError } = senderId
+    ? await sendersQuery.eq('id', senderId).limit(1)
+    : await sendersQuery.limit(1);
 
   if (sendersError) {
     console.error("Error fetching whatsapp_senders:", sendersError);
   } else if (senders && senders.length > 0) {
     const sender = senders[0];
     apiKey = sender.api_key;
+    resolvedSenderId = sender.id;
     senderPhone = sender.phone;
     senderName = sender.name;
     templateIdentifier = sender.template_identifier ?? null;
     buttonConfig = sender.button_config ?? 'two_buttons';
     hasNomeParam = sender.has_nome_param ?? true;
+    paramStyle = sender.param_style ?? 'named';
 
     // Try to load default template from whatsapp_sender_templates
     const { data: defTpl } = await supabase
@@ -156,9 +197,12 @@ async function resolveAuthHeader(
       .maybeSingle();
 
     if (defTpl) {
+      resolvedTemplateId = (defTpl as any).id;
+      templateLabel = (defTpl as any).label ?? null;
       templateIdentifier = (defTpl as any).identifier;
       buttonConfig = (defTpl as any).button_config ?? buttonConfig;
       hasNomeParam = (defTpl as any).has_nome_param ?? hasNomeParam;
+      paramStyle = (defTpl as any).param_style ?? paramStyle;
       console.log(`Using default template "${templateIdentifier}" for sender ${senderName}`);
     } else {
       console.log(`Using sender column template "${templateIdentifier ?? 'default'}" for ${senderName}`);
@@ -168,7 +212,18 @@ async function resolveAuthHeader(
   }
 
   if (!apiKey) return null;
-  return { authHeader: 'Basic ' + encode(`${apiKey}:`), senderPhone, senderName, templateIdentifier, buttonConfig, hasNomeParam };
+  return {
+    authHeader: 'Basic ' + encode(`${apiKey}:`),
+    senderId: resolvedSenderId,
+    senderPhone,
+    senderName,
+    templateId: resolvedTemplateId,
+    templateLabel,
+    templateIdentifier,
+    buttonConfig,
+    hasNomeParam,
+    paramStyle,
+  };
 }
 
 async function fetchAndFilterMembers(

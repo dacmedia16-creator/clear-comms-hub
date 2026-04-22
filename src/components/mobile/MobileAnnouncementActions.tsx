@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Drawer,
@@ -17,6 +18,7 @@ interface MobileAnnouncementActionsProps {
   onTogglePin: () => void;
   onDelete: () => void;
   onSendWhatsApp?: () => void;
+  whatsAppAction?: ReactNode;
   showWhatsApp?: boolean;
 }
 
@@ -28,6 +30,7 @@ export function MobileAnnouncementActions({
   onTogglePin,
   onDelete,
   onSendWhatsApp,
+  whatsAppAction,
   showWhatsApp = true,
 }: MobileAnnouncementActionsProps) {
   const isMobile = useIsMobile();
@@ -43,7 +46,8 @@ export function MobileAnnouncementActions({
           </DrawerTitle>
         </DrawerHeader>
         <div className="px-4 pb-6 space-y-2">
-          {showWhatsApp && onSendWhatsApp && (
+          {showWhatsApp && whatsAppAction}
+          {showWhatsApp && !whatsAppAction && onSendWhatsApp && (
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 h-12 text-base"

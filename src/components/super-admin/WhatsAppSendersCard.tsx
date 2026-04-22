@@ -27,6 +27,7 @@ import { useWhatsAppSenders, WhatsAppSender } from "@/hooks/useWhatsAppSenders";
 import { AddWhatsAppSenderDialog } from "./AddWhatsAppSenderDialog";
 import { EditWhatsAppSenderDialog } from "./EditWhatsAppSenderDialog";
 import { SenderTemplatesDialog } from "./SenderTemplatesDialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 function formatPhoneDisplay(phone: string): string {
   if (phone.length === 11) {
@@ -36,6 +37,19 @@ function formatPhoneDisplay(phone: string): string {
     return `(${phone.slice(0, 2)}) ${phone.slice(2, 6)}-${phone.slice(6)}`;
   }
   return phone;
+}
+
+function formatButtonConfigLabel(config: string): string {
+  switch (config) {
+    case "single_button_idx0":
+      return "1 botão · posição 1";
+    case "single_button_idx1":
+      return "1 botão · posição 2";
+    case "no_buttons":
+      return "Sem botões";
+    default:
+      return "2 botões";
+  }
 }
 
 export function WhatsAppSendersCard() {
@@ -126,13 +140,14 @@ export function WhatsAppSendersCard() {
               </p>
             </div>
           ) : (
+            <TooltipProvider>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Telefone</TableHead>
-                  <TableHead>Template</TableHead>
-                  <TableHead>Botões</TableHead>
+                  <TableHead>Template padrão</TableHead>
+                  <TableHead>Config. do número</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-center">Padrão</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -145,16 +160,33 @@ export function WhatsAppSendersCard() {
                   <TableCell className="font-mono text-sm">
                     {formatPhoneDisplay(sender.phone)}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {sender.template_identifier ?? <span className="italic">padrão</span>}
+                  <TableCell className="text-xs text-muted-foreground">
+                    <div className="flex flex-col gap-1">
+                      <span className="font-mono">
+                        {sender.template_identifier ?? <span className="italic">sem identificador no número</span>}
+                      </span>
+                      <span>
+                        O envio usa o template padrão cadastrado em <span className="font-medium">Templates</span> quando existir.
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-xs font-mono">
-                      {(sender as any).button_config ?? "two_buttons"}
-                    </Badge>
-                    {(sender as any).has_nome_param === false && (
-                      <Badge variant="secondary" className="text-xs ml-1">sem nome</Badge>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className="cursor-help text-xs">
+                            {formatButtonConfigLabel((sender as any).button_config ?? "two_buttons")}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="font-mono text-xs">{(sender as any).button_config ?? "two_buttons"}</p>
+                          <p className="text-xs text-muted-foreground">Configuração aplicada quando o envio usar os dados do número.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      {(sender as any).has_nome_param === false && (
+                        <Badge variant="secondary" className="text-xs">sem nome</Badge>
+                      )}
+                    </div>
                   </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center">
@@ -215,6 +247,7 @@ export function WhatsAppSendersCard() {
                 ))}
               </TableBody>
             </Table>
+            </TooltipProvider>
           )}
         </CardContent>
       </Card>

@@ -38,9 +38,9 @@ function formatPhoneBR(value: string): string {
 }
 
 const BUTTON_CONFIG_OPTIONS = [
-  { value: "two_buttons", label: "2 Botões (link + optout)" },
-  { value: "single_button_idx0", label: "1 Botão (idx 0)" },
-  { value: "single_button_idx1", label: "1 Botão (idx 1)" },
+  { value: "two_buttons", label: "2 botões (link + sair)" },
+  { value: "single_button_idx0", label: "1 botão na posição 1" },
+  { value: "single_button_idx1", label: "1 botão na posição 2" },
   { value: "no_buttons", label: "Sem botões" },
 ];
 
@@ -174,7 +174,7 @@ export function EditWhatsAppSenderDialog({ sender, open, onOpenChange, onUpdate 
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Define como os botões dinâmicos do template são mapeados no payload.
+                Essa é a configuração do número. Se existir um template padrão com outra configuração, ele prevalece no envio.
               </p>
             </div>
 
